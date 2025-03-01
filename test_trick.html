@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trick Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .trick-area {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #e8f4fc;
+            border-radius: 5px;
+            text-align: center;
+            min-height: 200px;
+            border: 2px solid #3498db;
+        }
+        
+        #current-trick {
+            min-height: 170px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .trick-card-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+        
+        .player-label {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 5px;
+            padding: 5px 10px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            white-space: nowrap;
+            z-index: 5;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card {
+            position: relative;
+            width: 120px;
+            height: 170px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            border: 2px solid #ddd;
+        }
+        
+        .card-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Trick Test</h1>
+    
+    <div class="trick-area">
+        <h3>Current Trick</h3>
+        <div id="current-trick"></div>
+    </div>
+    
+    <button id="test-btn">Test Trick Display</button>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentTrickEl = document.getElementById('current-trick');
+            const testBtn = document.getElementById('test-btn');
+            
+            // Sample trick data
+            const sampleTrick = [
+                {
+                    suit: 'HEARTS',
+                    rank: 'ACE',
+                    is_second: false,
+                    id: 'HEARTS_ACE_0'
+                },
+                {
+                    suit: 'HEARTS',
+                    rank: 'KING',
+                    is_second: false,
+                    id: 'HEARTS_KING_0'
+                },
+                {
+                    suit: 'HEARTS',
+                    rank: 'QUEEN',
+                    is_second: true,
+                    id: 'HEARTS_QUEEN_1'
+                }
+            ];
+            
+            // Sample player data
+            const samplePlayers = [
+                {
+                    name: 'You',
+                    idx: 0,
+                    is_current: false
+                },
+                {
+                    name: 'Player 1',
+                    idx: 1,
+                    is_current: false
+                },
+                {
+                    name: 'Player 2',
+                    idx: 2,
+                    is_current: true
+                }
+            ];
+            
+            function createCardElement(card) {
+                const cardElement = document.createElement('div');
+                cardElement.className = `card ${card.suit.toLowerCase()}`;
+                
+                // Map card to filename
+                let cardRank;
+                switch(card.rank) {
+                    case 'ACE': cardRank = 'A'; break;
+                    case 'KING': cardRank = 'K'; break;
+                    case 'QUEEN': cardRank = 'Q'; break;
+                    case 'JACK': cardRank = 'J'; break;
+                    case 'TEN': cardRank = '0'; break;
+                    case 'NINE': cardRank = '9'; break;
+                    default: cardRank = card.rank;
+                }
+                
+                let cardSuit;
+                switch(card.suit) {
+                    case 'SPADES': cardSuit = 'S'; break;
+                    case 'HEARTS': cardSuit = 'H'; break;
+                    case 'DIAMONDS': cardSuit = 'D'; break;
+                    case 'CLUBS': cardSuit = 'C'; break;
+                    default: cardSuit = card.suit.charAt(0);
+                }
+                
+                // Create the card image
+                const cardImg = document.createElement('img');
+                cardImg.className = 'card-image';
+                cardImg.src = `http://localhost:5001/static/images/cards/${cardRank}${cardSuit}.png`;
+                cardImg.alt = `${card.rank.toLowerCase()} of ${card.suit.toLowerCase()}`;
+                
+                cardElement.appendChild(cardImg);
+                
+                return cardElement;
+            }
+            
+            function renderTrick() {
+                currentTrickEl.innerHTML = '';
+                
+                // Render each card in the trick with player information
+                sampleTrick.forEach((card, index) => {
+                    // Create container for card and player label
+                    const cardContainer = document.createElement('div');
+                    cardContainer.className = 'trick-card-container';
+                    
+                    // Create player label
+                    const playerLabel = document.createElement('div');
+                    playerLabel.className = 'player-label';
+                    playerLabel.textContent = samplePlayers[index].name;
+                    
+                    // Highlight the current player's card
+                    if (samplePlayers[index].is_current) {
+                        playerLabel.classList.add('current');
+                    }
+                    
+                    // Create card element
+                    const cardElement = createCardElement(card);
+                    
+                    // Add player label and card to container
+                    cardContainer.appendChild(playerLabel);
+                    cardContainer.appendChild(cardElement);
+                    
+                    // Add container to trick area
+                    currentTrickEl.appendChild(cardContainer);
+                });
+            }
+            
+            // Add event listener to test button
+            testBtn.addEventListener('click', renderTrick);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# Core dependencies
+numpy>=1.19.0
+torch>=1.7.0
+
+# Web dependencies
+flask>=2.0.0
+flask-socketio>=5.0.0
+
+# Optional dependencies for visualization (if needed)
+matplotlib>=3.3.0
+tqdm>=4.48.0
