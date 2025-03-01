@@ -332,6 +332,12 @@ document.addEventListener('DOMContentLoaded', function() {
             updateGameState(data.state);
             renderGameState();
             
+            // Hide the RE and KONTRA scores in the game info sidebar
+            const gameScoresEl = document.getElementById('game-scores');
+            if (gameScoresEl) {
+                gameScoresEl.classList.add('hidden');
+            }
+            
             // Show game board
             variantSelectionScreen.classList.add('hidden');
             gameBoard.classList.remove('hidden');
@@ -1217,6 +1223,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Stop polling for trick updates
         stopPolling();
         
+        // Show the RE and KONTRA scores in the game info sidebar
+        const gameScoresEl = document.getElementById('game-scores');
+        if (gameScoresEl) {
+            gameScoresEl.classList.remove('hidden');
+        }
+        
         // Update final scores
         finalReScoreEl.textContent = gameState.scores[0];
         finalKontraScoreEl.textContent = gameState.scores[1];
@@ -1407,6 +1419,12 @@ document.addEventListener('DOMContentLoaded', function() {
     function resetGame() {
         // Stop polling if it's still active
         stopPolling();
+        
+        // Hide the RE and KONTRA scores in the game info sidebar
+        const gameScoresEl = document.getElementById('game-scores');
+        if (gameScoresEl) {
+            gameScoresEl.classList.add('hidden');
+        }
         
         // Reset game state
         gameState = {

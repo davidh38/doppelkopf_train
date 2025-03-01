@@ -127,8 +127,11 @@
                 <p>Your Team: <span id="player-team">RE</span></p>
                 <p>Game Variant: <span id="game-variant">NORMAL</span></p>
                 <div class="scores" style="margin-top: 20px;">
-                    <p>RE: <span id="re-score">0</span></p>
-                    <p>KONTRA: <span id="kontra-score">0</span></p>
+                    <!-- RE and KONTRA scores hidden during gameplay, shown only at game end -->
+                    <div id="game-scores" class="hidden">
+                        <p>RE: <span id="re-score">0</span></p>
+                        <p>KONTRA: <span id="kontra-score">0</span></p>
+                    </div>
                     <p>Multiplier: <span id="game-multiplier">1x</span></p>
                 </div>
             </div>
