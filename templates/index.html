@@ -10,6 +10,32 @@
 <body>
     <div class="container">
         <h1>Doppelkopf</h1>
+        <div style="text-align: center; margin-bottom: 15px; color: #3498db; font-weight: bold;">
+            Playing against trained AI model
+            <span id="model-path"></span>
+        </div>
+        
+        <!-- Hidden scoreboard for data storage only -->
+        <div id="scoreboard" class="hidden">
+            <div class="scoreboard-content">
+                <div class="score-item">
+                    <span class="score-label">You:</span>
+                    <span id="player-0-score" class="score-value">0</span>
+                </div>
+                <div class="score-item">
+                    <span class="score-label">Player 1:</span>
+                    <span id="player-1-score" class="score-value">0</span>
+                </div>
+                <div class="score-item">
+                    <span class="score-label">Player 2:</span>
+                    <span id="player-2-score" class="score-value">0</span>
+                </div>
+                <div class="score-item">
+                    <span class="score-label">Player 3:</span>
+                    <span id="player-3-score" class="score-value">0</span>
+                </div>
+            </div>
+        </div>
         
         <!-- Game setup screen -->
         <div id="game-setup" class="screen">
@@ -25,6 +51,22 @@
                 <button id="hochzeit-btn" class="btn variant-btn" disabled>Hochzeit (Marriage)</button>
                 <button id="queen-solo-btn" class="btn variant-btn">Queen Solo</button>
                 <button id="jack-solo-btn" class="btn variant-btn">Jack Solo</button>
+                <button id="fleshless-btn" class="btn variant-btn">Fleshless</button>
+                <button id="trump-btn" class="btn variant-btn">Trump Solo</button>
+            </div>
+            
+            <!-- Re/Contra announcement options -->
+            <div class="announcement-options">
+                <h3>Announcements</h3>
+                <div class="announcement-buttons" style="display: flex; flex-direction: column; gap: 10px; width: 100px; margin: 0 auto;">
+                    <button id="re-btn" class="btn announcement-btn">Re (2x)</button>
+                    <button id="contra-btn" class="btn announcement-btn">Contra (2x)</button>
+                </div>
+                <div id="announcement-status" class="announcement-status">
+                    <p>Current multiplier: <span id="multiplier">1x</span></p>
+                    <p id="re-status" class="hidden">Re announced!</p>
+                    <p id="contra-status" class="hidden">Contra announced!</p>
+                </div>
             </div>
             
             <!-- Show player's hand during variant selection -->
@@ -36,43 +78,87 @@
         
         <!-- Main game screen -->
         <div id="game-board" class="screen hidden">
-            <div class="game-info">
-                <div class="player-info">
-                    <p>Your Team: <span id="player-team">RE</span></p>
-                    <p>Game Variant: <span id="game-variant">NORMAL</span></p>
-                    <p>Your Score: <span id="player-score">0</span></p>
+            <!-- Left sidebar with player scores and announcements -->
+            <div class="left-sidebar">
+                <h3>Game Scores</h3>
+                <div id="score-labels-container">
+                    <div class="score-item">
+                        <span class="score-label">You:</span>
+                        <span id="player-score" class="score-value">0</span>
+                    </div>
+                    <div class="score-item">
+                        <span class="score-label">Player 1:</span>
+                        <span id="player-1-score-sidebar" class="score-value">0</span>
+                    </div>
+                    <div class="score-item">
+                        <span class="score-label">Player 2:</span>
+                        <span id="player-2-score-sidebar" class="score-value">0</span>
+                    </div>
+                    <div class="score-item">
+                        <span class="score-label">Player 3:</span>
+                        <span id="player-3-score-sidebar" class="score-value">0</span>
+                    </div>
+                    <p class="score-note">Note: Scores update during gameplay</p>
                 </div>
-                <div class="scores">
-                    <p>RE: <span id="re-score">0</span></p>
-                    <p>KONTRA: <span id="kontra-score">0</span></p>
-                </div>
-                <div class="current-player">
+                
+                <!-- Turn indicator -->
+                <div class="current-player" style="margin-top: 20px; text-align: center;">
                     <p id="turn-indicator">Waiting for AI...</p>
+                    <div id="game-announcements">
+                        <p id="game-re-status" class="hidden">Re announced!</p>
+                        <p id="game-contra-status" class="hidden">Contra announced!</p>
+                    </div>
+                </div>
+                
+                <!-- Announcement buttons in left sidebar -->
+                <div id="game-announcement-area" class="announcement-options hidden" style="margin-top: 20px;">
+                    <h3>Announcements</h3>
+                    <div class="announcement-buttons" style="display: flex; flex-direction: column; gap: 10px; width: 100px; margin: 0 auto;">
+                        <button id="game-re-btn" class="btn announcement-btn">Re (2x)</button>
+                        <button id="game-contra-btn" class="btn announcement-btn">Contra (2x)</button>
+                    </div>
+                    <p>Current multiplier: <span id="game-announcement-multiplier">1x</span></p>
                 </div>
             </div>
             
+            <!-- Right sidebar with game info -->
+            <div class="right-sidebar">
+                <h3>Game Info</h3>
+                <p>Your Team: <span id="player-team">RE</span></p>
+                <p>Game Variant: <span id="game-variant">NORMAL</span></p>
+                <div class="scores" style="margin-top: 20px;">
+                    <p>RE: <span id="re-score">0</span></p>
+                    <p>KONTRA: <span id="kontra-score">0</span></p>
+                    <p>Multiplier: <span id="game-multiplier">1x</span></p>
+                </div>
+            </div>
+            
+            <!-- Main content areas -->
             <div class="other-players-area">
                 <h3>Other Players</h3>
                 <div id="other-players" class="other-players-container"></div>
             </div>
             
             <div class="game-area">
-            <div class="trick-area">
-                <h3>Current Trick</h3>
-                <!-- HARDCODED TRICK DISPLAY -->
-                <div id="hardcoded-trick" style="display: flex; justify-content: center; gap: 20px; margin: 20px 0;">
-                    <!-- This will be populated by JavaScript -->
+                <div class="trick-area">
+                    <h3>Current Trick</h3>
+                    <!-- Button to show last trick -->
+                    <button id="show-last-trick-btn" class="btn" style="margin-bottom: 10px;">Show Last Trick</button>
+                    
+                    <!-- HARDCODED TRICK DISPLAY -->
+                    <div id="hardcoded-trick" style="display: flex; justify-content: center; gap: 20px; margin: 20px 0;">
+                        <!-- This will be populated by JavaScript -->
+                    </div>
+                    
+                    <div id="current-trick" class="trick-cards" style="display: none;"></div>
+                    
+                    <!-- Debug section -->
+                    <div id="debug-section" style="margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px;">
+                        <h4>Debug Info</h4>
+                        <div id="debug-trick" style="text-align: left; font-family: monospace; background: #f5f5f5; padding: 10px; border-radius: 5px; overflow: auto; max-height: 200px;"></div>
+                        <button id="debug-btn" style="margin-top: 10px; padding: 5px 10px; background: #3498db; color: white; border: none; border-radius: 3px; cursor: pointer;">Show Raw Trick Data</button>
+                    </div>
                 </div>
-                
-                <div id="current-trick" class="trick-cards" style="display: none;"></div>
-                
-                <!-- Debug section -->
-                <div id="debug-section" style="margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px;">
-                    <h4>Debug Info</h4>
-                    <div id="debug-trick" style="text-align: left; font-family: monospace; background: #f5f5f5; padding: 10px; border-radius: 5px; overflow: auto; max-height: 200px;"></div>
-                    <button id="debug-btn" style="margin-top: 10px; padding: 5px 10px; background: #3498db; color: white; border: none; border-radius: 3px; cursor: pointer;">Show Raw Trick Data</button>
-                </div>
-            </div>
                 
                 <div class="last-trick-container hidden">
                     <h3>Last Trick</h3>
@@ -94,7 +180,36 @@
             <div class="final-scores">
                 <p>RE: <span id="final-re-score">0</span></p>
                 <p>KONTRA: <span id="final-kontra-score">0</span></p>
+                <p>Multiplier: <span id="final-multiplier">1x</span></p>
+                <div id="final-announcements">
+                    <p id="final-re-status" class="hidden">Re announced!</p>
+                    <p id="final-contra-status" class="hidden">Contra announced!</p>
+                </div>
             </div>
+            
+            <!-- Player scores scoreboard -->
+            <div class="game-wins-scoreboard">
+                <h3>Player Scores</h3>
+                <div class="scoreboard-content">
+                    <div class="score-item">
+                        <span class="score-label">You:</span>
+                        <span id="game-over-player-0-score" class="score-value">0</span>
+                    </div>
+                    <div class="score-item">
+                        <span class="score-label">Player 1:</span>
+                        <span id="game-over-player-1-score" class="score-value">0</span>
+                    </div>
+                    <div class="score-item">
+                        <span class="score-label">Player 2:</span>
+                        <span id="game-over-player-2-score" class="score-value">0</span>
+                    </div>
+                    <div class="score-item">
+                        <span class="score-label">Player 3:</span>
+                        <span id="game-over-player-3-score" class="score-value">0</span>
+                    </div>
+                </div>
+            </div>
+            
             <button id="play-again-btn" class="btn">Play Again</button>
         </div>
     </div>

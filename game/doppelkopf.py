@@ -109,6 +109,21 @@ class Card:
         elif game_variant == GameVariant.JACK_SOLO:
             return self.rank == Rank.JACK
             
+        # In Fleshless, no Kings, Queens, or Jacks are trump
+        elif game_variant == GameVariant.FLESHLESS:
+            # Only Diamonds and Ten of Hearts are trump
+            if self.suit == Suit.DIAMONDS:
+                return True
+                
+            if self.rank == Rank.TEN and self.suit == Suit.HEARTS:
+                return True
+                
+            # Kings, Queens, and Jacks are not trump
+            if self.rank == Rank.KING or self.rank == Rank.QUEEN or self.rank == Rank.JACK:
+                return False
+                
+            return False
+            
         return False
     
     def get_value(self) -> int:
@@ -157,6 +172,7 @@ class GameVariant(Enum):
     HOCHZEIT = auto()  # Marriage - player with both Queens of Clubs announces partnership
     QUEEN_SOLO = auto()  # Solo game where only Queens are trump
     JACK_SOLO = auto()  # Solo game where only Jacks are trump
+    FLESHLESS = auto()  # Fleshless - no Kings, Queens, or Jacks are trump
 
 class PlayerTeam(Enum):
     """Teams in Doppelkopf."""
@@ -348,12 +364,11 @@ class DoppelkopfGame:
         # Store the last trick points for display
         self.last_trick_points = trick_points
         
-        # Store the trick winner for display purposes, but don't change the turn order
-        # The first player of the next trick is the player after the last player of the current trick
-        # This maintains the same clockwise order: 0, 1, 2, 3, 0, 1, 2, 3, ...
+        # Store the trick winner and set them as the next player to play
+        # When a player wins a trick, it is their turn to play next
         
-        # Calculate the first player of the next trick
-        # If we just completed a trick, current_player is already at the next position
+        # The current_player will be updated to the trick winner when the trick is cleared
+        # This is handled by the server after a delay to show the completed trick
         
         # IMPORTANT: Do not clear the current trick here
         # The current trick will be cleared by the server after a delay

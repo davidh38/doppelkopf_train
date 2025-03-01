@@ -5,11 +5,24 @@ Flask web application for Doppelkopf card game.
 
 import os
 import json
+import argparse
 from flask import Flask, render_template, request, jsonify, session
 from flask_socketio import SocketIO, emit
 from game.doppelkopf import DoppelkopfGame, Card, Suit, Rank, GameVariant
 from agents.random_agent import select_random_action
 from agents.rl_agent import RLAgent
+
+# Parse command line arguments
+def parse_arguments():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(description='Run Doppelkopf web app with a trained model')
+    parser.add_argument('--model', type=str, default='models/final_model.pt',
+                        help='Path to a trained model')
+    return parser.parse_args()
+
+# Get command line arguments
+args = parse_arguments()
+MODEL_PATH = args.model
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(24)
@@ -17,6 +30,14 @@ socketio = SocketIO(app)
 
 # Global game state (in a real application, you'd use a database or session management)
 games = {}
+
+# Global scoreboard to track wins and player scores
+scoreboard = {
+    'player_wins': 0,
+    'ai_wins': 0,
+    'player_scores': [0, 0, 0, 0],  # Individual scores for all 4 players
+    'last_starting_player': 0  # Track the last player who started a game
+}
 
 def card_to_dict(card):
     """Convert a Card object to a dictionary for JSON serialization."""
@@ -57,6 +78,7 @@ def get_game_state(game_id, player_id=0):
         return None
     
     game = games[game_id]['game']
+    game_data = games[game_id]
     
     # Convert game state to JSON-serializable format
     state = {
@@ -80,7 +102,12 @@ def get_game_state(game_id, player_id=0):
             } for i in range(1, game.num_players)
         ],
         'player_score': game.player_scores[player_id],
-        'last_trick_points': getattr(game, 'last_trick_points', 0)
+        'last_trick_points': getattr(game, 'last_trick_points', 0),
+        're_announced': game_data.get('re_announced', False),
+        'contra_announced': game_data.get('contra_announced', False),
+        'multiplier': game_data.get('multiplier', 1),
+        # Can announce until the fifth card is played
+        'can_announce': (len(game.current_trick) + sum(len(trick) for trick in game.tricks)) < 5
     }
     
     # Add current trick with player information - VERY simplified approach
@@ -159,12 +186,28 @@ def ai_play_turn(game_id):
             # Emit the game state update with the completed trick
             socketio.emit('game_update', get_game_state(game_id), room=game_id)
             
-            # IMPORTANT: Pause for exactly 1 second to show the completed trick
-            # This ensures the current trick with all 4 cards stays visible for 1 second
-            socketio.sleep(1)
-            
             # Calculate points for the trick
             trick_points = sum(card.get_value() for card in game.current_trick)
+            
+            # Store the last trick information
+            games[game_id]['last_trick'] = [card_to_dict(card) for card in game.current_trick]
+            
+            # Calculate the starting player for this trick
+            starting_player = (game.current_player - len(game.current_trick)) % game.num_players
+            
+            # Add player information to each card in the trick
+            trick_players = []
+            for i in range(len(game.current_trick)):
+                player_idx = (starting_player + i) % game.num_players
+                trick_players.append({
+                    'name': "You" if player_idx == 0 else f"Player {player_idx}",
+                    'idx': player_idx,
+                    'is_current': player_idx == game.current_player
+                })
+            
+            games[game_id]['last_trick_players'] = trick_players
+            games[game_id]['last_trick_winner'] = trick_winner
+            games[game_id]['last_trick_points'] = trick_points
             
             # Emit the trick completed event with points
             socketio.emit('trick_completed', {
@@ -173,11 +216,12 @@ def ai_play_turn(game_id):
                 'trick_points': trick_points
             }, room=game_id)
             
-            # Pause for exactly 3 seconds to show the completed trick
-            socketio.sleep(3)
+            # Pause for exactly 1 second to show the completed trick
+            socketio.sleep(1)
             
-            # Now clear the current trick and reset the trick winner
+            # Now clear the current trick and set the current player to the trick winner
             game.current_trick = []
+            game.current_player = trick_winner  # Set the current player to the trick winner
             game.trick_winner = None
             
             # Emit a game state update to reflect the cleared trick
@@ -187,6 +231,13 @@ def ai_play_turn(game_id):
 def index():
     """Render the main game page."""
     return render_template('index.html')
+
+@app.route('/model_info', methods=['GET'])
+def model_info():
+    """Get information about the model being used."""
+    return jsonify({
+        'model_path': MODEL_PATH
+    })
 
 @app.route('/new_game', methods=['POST'])
 def new_game():
@@ -198,19 +249,44 @@ def new_game():
     game = DoppelkopfGame()
     game.reset()
     
-    # Initialize AI agents
-    model_path = 'models/final_model.pt'
-    rl_agent = RLAgent(game.get_state_size(), game.get_action_size())
-    rl_agent.load(model_path)
+    # Set the starting player based on the last game's starting player
+    # The next player (clockwise) to the one who started the last game should start
+    next_starting_player = (scoreboard['last_starting_player'] + 1) % 4
+    game.current_player = next_starting_player
     
-    # Other players are random agents for now
-    ai_agents = [rl_agent] + [select_random_action for _ in range(2)]
+    # Store the new starting player
+    scoreboard['last_starting_player'] = next_starting_player
+    
+    # Initialize AI agents - all using the trained model from our training session
+    model_path = MODEL_PATH  # Use the model path from command line arguments
+    
+    # Create three separate RL agent instances to avoid shared state
+    rl_agents = []
+    for _ in range(3):
+        agent = RLAgent(game.get_state_size(), game.get_action_size())
+        agent.load(model_path)
+        rl_agents.append(agent)
+    
+    # All AI players use the trained model
+    ai_agents = rl_agents
     
     # Store game state
     games[game_id] = {
         'game': game,
-        'ai_agents': ai_agents
+        'ai_agents': ai_agents,
+        'last_trick': None,
+        'last_trick_players': None,
+        'last_trick_winner': None,
+        'last_trick_points': 0,
+        're_announced': False,
+        'contra_announced': False,
+        'multiplier': 1,  # Score multiplier (doubled for Re/Contra)
+        'starting_player': next_starting_player  # Track the starting player for this game
     }
+    
+    # If it's not the player's turn, have AI play
+    if game.current_player != 0:
+        ai_play_turn(game_id)
     
     # Return initial game state
     return jsonify({
@@ -240,6 +316,8 @@ def set_variant():
         game.game_variant = GameVariant.QUEEN_SOLO
     elif variant == 'jack_solo':
         game.game_variant = GameVariant.JACK_SOLO
+    elif variant == 'fleshless':
+        game.game_variant = GameVariant.FLESHLESS
     else:
         return jsonify({'error': 'Invalid variant'}), 400
     
@@ -297,14 +375,71 @@ def play_card():
     trick_completed = game.trick_winner is not None
     trick_winner = game.trick_winner
     
+    # If a trick was completed, handle it before AI plays
+    if trick_completed:
+        # Calculate points for the trick
+        trick_points = sum(card.get_value() for card in game.current_trick)
+        
+        # Store the trick winner but don't reset it yet
+        trick_winner = game.trick_winner
+        
+        # Clear the current trick and set the current player to the trick winner
+        game.current_trick = []
+        game.current_player = trick_winner  # Set the current player to the trick winner
+        game.trick_winner = None
+    
     # Have AI players take their turns
     ai_play_turn(game_id)
+    
+    # Check if game is over and update scoreboard
+    if game.game_over:
+        player_team = game.teams[0]
+        game_data = games[game_id]
+        multiplier = game_data.get('multiplier', 1)
+        
+        # Count players in each team
+        re_players = sum(1 for team in game.teams if team.name == 'RE')
+        kontra_players = sum(1 for team in game.teams if team.name == 'KONTRA')
+        
+        # Update player scores - winners get +1, losers get -1 (multiplied by team size ratio)
+        if game.winner.name == 'RE':
+            # RE team won
+            re_points = kontra_players  # Each RE player gets +kontra_players
+            kontra_points = -re_players  # Each KONTRA player gets -re_players
+            
+            for i in range(len(game.teams)):
+                if game.teams[i].name == 'RE':
+                    scoreboard['player_scores'][i] += re_points * multiplier
+                else:  # KONTRA team
+                    scoreboard['player_scores'][i] += kontra_points * multiplier
+        else:
+            # KONTRA team won
+            re_points = -kontra_players  # Each RE player gets -kontra_players
+            kontra_points = re_players  # Each KONTRA player gets +re_players
+            
+            for i in range(len(game.teams)):
+                if game.teams[i].name == 'RE':
+                    scoreboard['player_scores'][i] += re_points * multiplier
+                else:  # KONTRA team
+                    scoreboard['player_scores'][i] += kontra_points * multiplier
+        
+        # Update team scores with multiplier
+        game.scores[0] *= multiplier
+        game.scores[1] *= multiplier
+        
+        # Update win counts
+        if game.winner == player_team:
+            scoreboard['player_wins'] += 1
+        else:
+            scoreboard['ai_wins'] += 1
     
     return jsonify({
         'state': get_game_state(game_id),
         'trick_completed': trick_completed,
         'trick_winner': trick_winner,
-        'is_player_winner': trick_winner == 0 if trick_winner is not None else False
+        'is_player_winner': trick_winner == 0 if trick_winner is not None else False,
+        'trick_points': trick_points if trick_completed else 0,
+        'scoreboard': scoreboard
     })
 
 @app.route('/get_current_trick', methods=['GET'])
@@ -340,5 +475,69 @@ def get_current_trick():
         'starting_player': starting_player
     })
 
+@app.route('/get_last_trick', methods=['GET'])
+def get_last_trick():
+    """Get the last completed trick."""
+    game_id = request.args.get('game_id')
+    
+    if game_id not in games:
+        return jsonify({'error': 'Game not found'}), 404
+    
+    game_data = games[game_id]
+    
+    if game_data['last_trick'] is None:
+        return jsonify({'error': 'No last trick available'}), 404
+    
+    return jsonify({
+        'last_trick': game_data['last_trick'],
+        'trick_players': game_data['last_trick_players'],
+        'winner': game_data['last_trick_winner'],
+        'trick_points': game_data['last_trick_points']
+    })
+
+@app.route('/announce', methods=['POST'])
+def announce():
+    """Announce Re or Contra."""
+    data = request.json
+    game_id = data.get('game_id')
+    announcement = data.get('announcement')  # 're' or 'contra'
+    
+    if game_id not in games:
+        return jsonify({'error': 'Game not found'}), 404
+    
+    game_data = games[game_id]
+    game = game_data['game']
+    
+    # Check if more than 5 cards have been played
+    # Count cards in completed tricks plus current trick
+    cards_played = len(game.current_trick)
+    for trick in game.tricks:
+        cards_played += len(trick)
+    
+    if cards_played >= 5:
+        return jsonify({'error': 'Cannot announce after the fifth card has been played'}), 400
+    
+    # Update the game data based on the announcement
+    if announcement == 're':
+        game_data['re_announced'] = True
+        game_data['multiplier'] *= 2
+    elif announcement == 'contra':
+        game_data['contra_announced'] = True
+        game_data['multiplier'] *= 2
+    else:
+        return jsonify({'error': 'Invalid announcement'}), 400
+    
+    return jsonify({
+        'state': get_game_state(game_id),
+        're_announced': game_data['re_announced'],
+        'contra_announced': game_data['contra_announced'],
+        'multiplier': game_data['multiplier']
+    })
+
+@app.route('/get_scoreboard', methods=['GET'])
+def get_scoreboard():
+    """Get the current scoreboard."""
+    return jsonify(scoreboard)
+
 if __name__ == '__main__':
-    socketio.run(app, debug=True, port=5001)
+    socketio.run(app, debug=True, port=5004)

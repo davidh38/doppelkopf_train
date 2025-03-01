@@ -164,11 +164,12 @@ def announce_game_variant(game, human_player_idx):
         print("1: Hochzeit (Marriage) - You have both Queens of Clubs")
     print("2: Queen Solo - Only Queens are trump")
     print("3: Jack Solo - Only Jacks are trump")
+    print("4: Fleshless - No Kings, Queens, or Jacks are trump")
     print("0: No special variant (normal game)")
     
     while True:
         try:
-            choice = int(input("Enter your choice (0-3): "))
+            choice = int(input("Enter your choice (0-4): "))
             if choice == 0:
                 game.game_variant = GameVariant.NORMAL
                 print("Playing normal game.")
@@ -187,6 +188,10 @@ def announce_game_variant(game, human_player_idx):
             elif choice == 3:
                 game.game_variant = GameVariant.JACK_SOLO
                 print("Jack Solo announced! Only Jacks are trump.")
+                break
+            elif choice == 4:
+                game.game_variant = GameVariant.FLESHLESS
+                print("Fleshless announced! No Kings, Queens, or Jacks are trump.")
                 break
             else:
                 print("Invalid choice. Please try again.")
