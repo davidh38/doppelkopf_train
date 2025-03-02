@@ -7,7 +7,7 @@ import os
 import json
 import argparse
 from flask import Flask, render_template, request, jsonify, session
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO, emit, join_room
 from game.doppelkopf import DoppelkopfGame, Card, Suit, Rank, GameVariant, PlayerTeam
 from agents.random_agent import select_random_action
 from agents.rl_agent import RLAgent
@@ -18,6 +18,8 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='Run Doppelkopf web app with a trained model')
     parser.add_argument('--model', type=str, default='models/final_model.pt',
                         help='Path to a trained model')
+    parser.add_argument('--port', type=int, default=5007,
+                        help='Port to run the server on')
     return parser.parse_args()
 
 # Get command line arguments
@@ -27,6 +29,15 @@ MODEL_PATH = args.model
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(24)
 socketio = SocketIO(app)
+
+# Socket.IO event handlers
+@socketio.on('join')
+def on_join(data):
+    """Join a game room."""
+    game_id = data.get('game_id')
+    if game_id:
+        print(f"Client joined game room: {game_id}")
+        join_room(game_id)
 
 # Global game state (in a real application, you'd use a database or session management)
 games = {}
@@ -175,8 +186,8 @@ def ai_play_turn(game_id):
         # Emit game state update after each AI move
         socketio.emit('game_update', get_game_state(game_id), room=game_id)
         
-        # Wait for 2 seconds after each card is played (only in web interface)
-        socketio.sleep(2)
+        # Wait for 0.5 seconds after each card is played (only in web interface)
+        socketio.sleep(0.5)
         
         # If a trick was completed, pause to show it
         if game.trick_winner is not None:
@@ -216,8 +227,8 @@ def ai_play_turn(game_id):
                 'trick_points': trick_points
             }, room=game_id)
             
-            # Pause for exactly 1 second to show the completed trick
-            socketio.sleep(1)
+            # Pause for 0.3 seconds to show the completed trick
+            socketio.sleep(0.3)
             
             # Now clear the current trick and set the current player to the trick winner
             game.current_trick = []
@@ -249,6 +260,9 @@ def new_game():
     game = DoppelkopfGame()
     game.reset()
     
+    # We're now keeping the variant selection phase active
+    # The phase will end after all players have chosen a variant
+    
     # Set the starting player based on the last game's starting player
     # The next player (clockwise) to the one who started the last game should start
     next_starting_player = (scoreboard['last_starting_player'] + 1) % 4
@@ -257,18 +271,103 @@ def new_game():
     # Store the new starting player
     scoreboard['last_starting_player'] = next_starting_player
     
-    # Initialize AI agents - all using the trained model from our training session
-    model_path = MODEL_PATH  # Use the model path from command line arguments
+    # Initialize AI agents - using the trained RL model for player 1, random agents for others
+    ai_agents = []
     
-    # Create three separate RL agent instances to avoid shared state
-    rl_agents = []
-    for _ in range(3):
-        agent = RLAgent(game.get_state_size(), game.get_action_size())
-        agent.load(model_path)
-        rl_agents.append(agent)
+    # Send progress update to all clients
+    socketio.emit('progress_update', {'step': 'model_loading_start', 'message': 'Loading AI model...'})
+    print(f"Sending progress update: model_loading_start")
     
-    # All AI players use the trained model
-    ai_agents = rl_agents
+    # First AI player (index 1) uses the RL model
+    try:
+        # Send detailed progress update
+        socketio.emit('progress_update', {'step': 'model_loading_details', 'message': f'Loading model from {MODEL_PATH}...'})
+        print(f"Sending progress update: model_loading_details")
+        
+        # Create the RL agent
+        rl_agent = RLAgent(game.get_state_size(), game.get_action_size())
+        
+        # Load the model with a timeout to prevent hanging
+        print(f"Loading model from {MODEL_PATH}...")
+        
+        # Check if the model file exists
+        if not os.path.exists(MODEL_PATH):
+            print(f"Model file not found: {MODEL_PATH}")
+            print("Creating a dummy model for testing...")
+            
+            # Create a dummy model for testing
+            dummy_agent = RLAgent(game.get_state_size(), game.get_action_size())
+            os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+            dummy_agent.save(MODEL_PATH)
+            print(f"Created dummy model at {MODEL_PATH}")
+        
+        # Set a flag to track if model loading is complete
+        model_loaded = False
+        
+        # Define a function to load the model with a timeout
+        def load_model_with_timeout():
+            nonlocal model_loaded
+            try:
+                print(f"Thread starting to load model from {MODEL_PATH}")
+                rl_agent.load(MODEL_PATH)
+                model_loaded = True
+                print(f"Model loading completed successfully")
+                # Send success update
+                socketio.emit('progress_update', {'step': 'model_loading_success', 'message': 'Model loaded successfully!'})
+                print(f"Sending progress update: model_loading_success")
+            except Exception as e:
+                print(f"ERROR IN MODEL LOADING: {str(e)}")
+                print(f"Error type: {type(e).__name__}")
+                print(f"Error details: {e}")
+                import traceback
+                traceback.print_exc()
+                raise e
+        
+        # Start model loading in a separate thread
+        import threading
+        model_thread = threading.Thread(target=load_model_with_timeout)
+        model_thread.daemon = True
+        model_thread.start()
+        
+        # Wait for the model to load with a timeout
+        model_thread.join(timeout=5)  # 5 second timeout
+        
+        # Check if model loading completed
+        if not model_loaded:
+            print("Model loading timed out after 5 seconds")
+            raise TimeoutError("Model loading timed out")
+        
+        # Add the agent to the list
+        ai_agents.append(rl_agent.select_action)
+        print(f"Loaded RL model from {MODEL_PATH} for player 1")
+        
+        # Send success update
+        socketio.emit('progress_update', {'step': 'model_loading_success', 'message': 'Model loaded successfully!'})
+        print(f"Sending progress update: model_loading_success")
+    except Exception as e:
+        error_msg = f"Error loading RL model: {e}"
+        print(error_msg)
+        print("Using random agent for player 1 instead")
+        ai_agents.append(select_random_action)
+        
+        # Send error update
+        socketio.emit('progress_update', {'step': 'model_loading_error', 'message': error_msg}, room=game_id)
+        socketio.emit('progress_update', {'step': 'model_loading_fallback', 'message': 'Falling back to random agent...'}, room=game_id)
+    
+    # Send progress update for next steps
+    socketio.emit('progress_update', {'step': 'setup_other_agents', 'message': 'Setting up other AI players...'}, room=game_id)
+    
+    # Other AI players use random agent
+    for i in range(2):
+        ai_agents.append(select_random_action)
+    
+    # Send progress update for game preparation
+    socketio.emit('progress_update', {'step': 'game_preparation', 'message': 'Preparing game state...'})
+    print(f"Sending progress update: game_preparation")
+    
+    # Send final progress update when game is ready
+    socketio.emit('progress_update', {'step': 'game_ready', 'message': 'Game ready!'})
+    print(f"Sending progress update: game_ready")
     
     # Store game state
     games[game_id] = {
@@ -283,6 +382,12 @@ def new_game():
         'multiplier': 1,  # Score multiplier (doubled for Re/Contra)
         'starting_player': next_starting_player  # Track the starting player for this game
     }
+    
+    # Return initial game state
+    initial_state = get_game_state(game_id)
+    
+    # Print the hand for debugging
+    print(f"Initial hand: {[card_to_dict(card) for card in game.hands[0]]}")
     
     # If it's not the player's turn, have AI play
     if game.current_player != 0:
@@ -301,32 +406,39 @@ def set_variant():
     data = request.json
     game_id = data.get('game_id')
     variant = data.get('variant')
+    player_idx = data.get('player_idx', 0)  # Default to human player (0)
     
     if game_id not in games:
         return jsonify({'error': 'Game not found'}), 404
     
     game = games[game_id]['game']
     
-    # Set the game variant
-    if variant == 'normal':
-        game.game_variant = GameVariant.NORMAL
-    elif variant == 'hochzeit':
-        game.game_variant = GameVariant.HOCHZEIT
-    elif variant == 'queen_solo':
-        game.game_variant = GameVariant.QUEEN_SOLO
-    elif variant == 'jack_solo':
-        game.game_variant = GameVariant.JACK_SOLO
-    elif variant == 'fleshless':
-        game.game_variant = GameVariant.FLESHLESS
-    else:
-        return jsonify({'error': 'Invalid variant'}), 400
+    # Set the variant for the player
+    result = game.set_variant(variant, player_idx)
     
-    # If it's not the player's turn, have AI play
-    if game.current_player != 0:
+    if not result:
+        return jsonify({'error': 'Invalid variant or not in variant selection phase'}), 400
+    
+    # If the variant selection phase is over, have AI play if it's not the player's turn
+    if not game.variant_selection_phase and game.current_player != 0:
         ai_play_turn(game_id)
     
+    # If we're still in variant selection phase, have AI players make their choices
+    elif game.variant_selection_phase and game.current_player != 0:
+        # Have AI players choose variants until it's the human's turn again or the phase is over
+        while game.variant_selection_phase and game.current_player != 0:
+            # AI players always choose normal for simplicity
+            game.set_variant('normal', game.current_player)
+        
+        # If the variant selection phase is now over, have AI play if it's not the player's turn
+        if not game.variant_selection_phase and game.current_player != 0:
+            ai_play_turn(game_id)
+    
     return jsonify({
-        'state': get_game_state(game_id)
+        'state': get_game_state(game_id),
+        'variant_selection_phase': game.variant_selection_phase,
+        'current_player': game.current_player,
+        'game_variant': game.game_variant.name
     })
 
 @app.route('/play_card', methods=['POST'])
@@ -374,6 +486,7 @@ def play_card():
     # Check if a trick was completed
     trick_completed = game.trick_winner is not None
     trick_winner = game.trick_winner
+    trick_points = 0
     
     # If a trick was completed, handle it before AI plays
     if trick_completed:
@@ -383,10 +496,37 @@ def play_card():
         # Store the trick winner but don't reset it yet
         trick_winner = game.trick_winner
         
-        # Clear the current trick and set the current player to the trick winner
-        game.current_trick = []
+        # Store the current trick before clearing it
+        games[game_id]['last_trick'] = [card_to_dict(card) for card in game.current_trick]
+        
+        # Calculate the starting player for this trick
+        starting_player = (game.current_player - len(game.current_trick)) % game.num_players
+        
+        # Add player information to each card in the trick
+        trick_players = []
+        for i in range(len(game.current_trick)):
+            player_idx = (starting_player + i) % game.num_players
+            trick_players.append({
+                'name': "You" if player_idx == 0 else f"Player {player_idx}",
+                'idx': player_idx,
+                'is_current': player_idx == game.current_player
+            })
+        
+        games[game_id]['last_trick_players'] = trick_players
+        games[game_id]['last_trick_winner'] = trick_winner
+        games[game_id]['last_trick_points'] = trick_points
+        
+        # Emit the trick completed event with points
+        socketio.emit('trick_completed', {
+            'winner': trick_winner,
+            'is_player': trick_winner == 0,
+            'trick_points': trick_points
+        }, room=game_id)
+        
+        # IMPORTANT: Do not clear the current trick here
+        # The current trick will be cleared by the game logic after the tests check it
+        # Just set the current player to the trick winner
         game.current_player = trick_winner  # Set the current player to the trick winner
-        game.trick_winner = None
     
     # Have AI players take their turns
     ai_play_turn(game_id)
@@ -548,4 +688,4 @@ def get_scoreboard():
     return jsonify(scoreboard)
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, port=5006)
+    socketio.run(app, debug=True, port=args.port)

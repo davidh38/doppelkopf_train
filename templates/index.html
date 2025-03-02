@@ -41,11 +41,22 @@
         <div id="game-setup" class="screen">
             <h2>Start a New Game</h2>
             <button id="new-game-btn" class="btn">New Game</button>
+            
+            <!-- Progress indicator (hidden by default) -->
+            <div id="progress-container" class="progress-container hidden">
+                <div class="progress-bar">
+                    <div id="progress-bar-fill" class="progress-bar-fill"></div>
+                </div>
+                <div id="progress-message" class="progress-message">Initializing game...</div>
+            </div>
         </div>
         
         <!-- Game variant selection screen -->
         <div id="variant-selection" class="screen hidden">
             <h2>Select Game Variant</h2>
+            <div id="variant-selection-status" class="status-message">
+                Please select a game variant
+            </div>
             <div class="variant-options">
                 <button id="normal-btn" class="btn variant-btn">Normal Game</button>
                 <button id="hochzeit-btn" class="btn variant-btn" disabled>Hochzeit (Marriage)</button>

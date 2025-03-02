@@ -1,6 +1,7 @@
 """
 Reinforcement Learning agent for Doppelkopf.
 This agent uses Deep Q-Learning to learn to play Doppelkopf.
+It supports making Re/Contra announcements and selecting game variants.
 """
 
 import os
@@ -99,7 +100,7 @@ class RLAgent:
         
         Args:
             state_size: Size of the state space
-            action_size: Size of the action space
+            action_size: Size of the action space (cards only)
             learning_rate: Learning rate for the optimizer
             gamma: Discount factor for future rewards
             epsilon_start: Starting value of epsilon for epsilon-greedy policy
@@ -109,8 +110,18 @@ class RLAgent:
             batch_size: Batch size for training
             target_update: How often to update the target network
         """
+        # Base state and action sizes for cards
         self.state_size = state_size
         self.action_size = action_size
+        
+        # Additional actions for announcements and game variants
+        # 2 announcement actions (Re, Contra)
+        # 5 game variant actions (Normal, Hochzeit, Queen Solo, Jack Solo, Fleshless)
+        self.num_announcement_actions = 2
+        self.num_variant_actions = 5
+        
+        # Total action size including cards, announcements, and variants
+        self.total_action_size = action_size + self.num_announcement_actions + self.num_variant_actions
         self.gamma = gamma
         self.epsilon = epsilon_start
         self.epsilon_end = epsilon_end
@@ -121,9 +132,9 @@ class RLAgent:
         # Initialize device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
-        # Initialize networks
-        self.policy_net = DQN(state_size, action_size).to(self.device)
-        self.target_net = DQN(state_size, action_size).to(self.device)
+        # Initialize networks with expanded action space
+        self.policy_net = DQN(state_size, self.total_action_size).to(self.device)
+        self.target_net = DQN(state_size, self.total_action_size).to(self.device)
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
         
@@ -145,11 +156,26 @@ class RLAgent:
             player_idx: Index of the player
             
         Returns:
-            The selected action
+            The selected action (card, announcement, or game variant)
         """
-        # Get legal actions
-        legal_actions = game.get_legal_actions(player_idx)
-        if not legal_actions:
+        # Check if we need to select a game variant (at the start of the game)
+        if hasattr(game, 'variant_selection_phase') and game.variant_selection_phase:
+            return self._select_variant_action(game, player_idx)
+        
+        # Check if we can make an announcement
+        can_announce = False
+        if hasattr(game, 'can_announce'):
+            can_announce = game.can_announce
+        else:
+            # If not explicitly tracked, we can announce until the fifth card is played
+            cards_played = len(game.current_trick)
+            for trick in game.tricks:
+                cards_played += len(trick)
+            can_announce = cards_played < 5
+        
+        # Get legal card actions
+        legal_card_actions = game.get_legal_actions(player_idx)
+        if not legal_card_actions and not can_announce:
             return None
         
         # Get state representation
@@ -158,34 +184,118 @@ class RLAgent:
         
         # Epsilon-greedy action selection
         if random.random() < self.epsilon:
-            # Random action
-            return random.choice(legal_actions)
+            # Random action selection
+            
+            # Determine all possible actions
+            all_possible_actions = []
+            
+            # Add card actions
+            for card in legal_card_actions:
+                all_possible_actions.append(('card', card))
+            
+            # Add announcement actions if allowed
+            if can_announce:
+                player_team = game.teams[player_idx]
+                if player_team.name == 'RE':
+                    all_possible_actions.append(('announce', 're'))
+                elif player_team.name == 'KONTRA':
+                    all_possible_actions.append(('announce', 'contra'))
+            
+            # Randomly select one action
+            if all_possible_actions:
+                action_type, action = random.choice(all_possible_actions)
+                return (action_type, action)
+            return None
         else:
-            # Greedy action
+            # Greedy action selection
             with torch.no_grad():
                 q_values = self.policy_net(state_tensor)
                 
-                # Filter to only legal actions
-                legal_q_values = []
-                for action in legal_actions:
-                    action_idx = game._card_to_idx(action)
-                    legal_q_values.append((action, q_values[0][action_idx].item()))
+                # Collect all possible actions with their Q-values
+                action_q_values = []
+                
+                # Add card actions
+                for card in legal_card_actions:
+                    card_idx = game._card_to_idx(card)
+                    action_q_values.append(('card', card, q_values[0][card_idx].item()))
+                
+                # Add announcement actions if allowed
+                if can_announce:
+                    player_team = game.teams[player_idx]
+                    if player_team.name == 'RE':
+                        re_idx = self.action_size  # First announcement action
+                        action_q_values.append(('announce', 're', q_values[0][re_idx].item()))
+                    elif player_team.name == 'KONTRA':
+                        contra_idx = self.action_size + 1  # Second announcement action
+                        action_q_values.append(('announce', 'contra', q_values[0][contra_idx].item()))
                 
                 # Select the action with the highest Q-value
-                return max(legal_q_values, key=lambda x: x[1])[0]
+                if action_q_values:
+                    action_type, action, _ = max(action_q_values, key=lambda x: x[2])
+                    return (action_type, action)
+                return None
     
-    def observe_action(self, state, action, next_state, reward):
+    def _select_variant_action(self, game, player_idx: int) -> Any:
+        """
+        Select a game variant action.
+        
+        Args:
+            game: The game instance
+            player_idx: Index of the player
+            
+        Returns:
+            The selected game variant
+        """
+        # Get state representation
+        state = game.get_state_for_player(player_idx)
+        state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+        
+        # Epsilon-greedy variant selection
+        if random.random() < self.epsilon:
+            # Random variant
+            variants = ['normal', 'hochzeit', 'queen_solo', 'jack_solo', 'fleshless']
+            return ('variant', random.choice(variants))
+        else:
+            # Greedy variant selection
+            with torch.no_grad():
+                q_values = self.policy_net(state_tensor)
+                
+                # Get Q-values for variant actions
+                variant_start_idx = self.action_size + self.num_announcement_actions
+                variant_q_values = q_values[0][variant_start_idx:variant_start_idx + self.num_variant_actions]
+                
+                # Map variant indices to names
+                variants = ['normal', 'hochzeit', 'queen_solo', 'jack_solo', 'fleshless']
+                
+                # Select the variant with the highest Q-value
+                variant_idx = variant_q_values.argmax().item()
+                return ('variant', variants[variant_idx])
+    
+    def observe_action(self, state, action, next_state, reward, action_type='card'):
         """
         Observe an action and its result.
         
         Args:
             state: The state before the action
-            action: The action that was taken
+            action: The action that was taken (index)
             next_state: The state after the action
             reward: The reward received
+            action_type: Type of action ('card', 'announce', or 'variant')
         """
         # Convert to tensors
         state_tensor = torch.FloatTensor(state).to(self.device)
+        
+        # Adjust action index based on action type
+        if action_type == 'announce':
+            if action == 're':
+                action = self.action_size  # First announcement action
+            else:  # 'contra'
+                action = self.action_size + 1  # Second announcement action
+        elif action_type == 'variant':
+            variants = ['normal', 'hochzeit', 'queen_solo', 'jack_solo', 'fleshless']
+            variant_idx = variants.index(action)
+            action = self.action_size + self.num_announcement_actions + variant_idx
+        
         action_tensor = torch.LongTensor([action]).to(self.device)
         
         if next_state is not None:
@@ -268,5 +378,7 @@ class RLAgent:
         Args:
             path: Path to load the model from
         """
-        self.policy_net.load_state_dict(torch.load(path))
+        # Use map_location to ensure the model loads on the correct device
+        self.policy_net.load_state_dict(torch.load(path, map_location=self.device))
         self.target_net.load_state_dict(self.policy_net.state_dict())
+        print(f"Model loaded successfully to {self.device}")

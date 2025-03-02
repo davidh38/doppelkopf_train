@@ -211,6 +211,23 @@ class DoppelkopfGame:
         self.trick_winner = None
         self.game_over = False
         
+        # Variant selection phase
+        self.variant_selection_phase = True
+        self.player_variant_choices = [None] * self.num_players  # Track each player's variant choice
+        self.variant_priority = {
+            'trump_solo': 1,  # Highest priority
+            'queen_solo': 2,
+            'jack_solo': 3,
+            'fleshless': 4,
+            'normal': 5,      # Lowest priority
+            'hochzeit': 5     # Same priority as normal
+        }
+        
+        # Announcement tracking
+        self.re_announced = False
+        self.contra_announced = False
+        self.can_announce = True  # Can announce until the fifth card is played
+        
         # Deal cards
         self._deal_cards()
         
@@ -235,6 +252,19 @@ class DoppelkopfGame:
             else:
                 self.teams[i] = PlayerTeam.KONTRA
     
+    def has_hochzeit(self, player_idx: int) -> bool:
+        """
+        Check if the player has both Queens of Clubs (Hochzeit/Marriage).
+        
+        Args:
+            player_idx: Index of the player
+            
+        Returns:
+            True if the player has both Queens of Clubs, False otherwise
+        """
+        queens_of_clubs = [Card(Suit.CLUBS, Rank.QUEEN, False), Card(Suit.CLUBS, Rank.QUEEN, True)]
+        return all(queen in self.hands[player_idx] for queen in queens_of_clubs)
+    
     def get_legal_actions(self, player_idx: int) -> List[Card]:
         """
         Get the legal actions (cards that can be played) for the given player.
@@ -245,6 +275,10 @@ class DoppelkopfGame:
         Returns:
             List of legal cards to play
         """
+        # Cannot play cards during variant selection phase
+        if self.variant_selection_phase:
+            return []
+            
         if player_idx != self.current_player or self.game_over:
             return []
         
@@ -289,6 +323,10 @@ class DoppelkopfGame:
         Returns:
             True if the move was legal and executed, False otherwise
         """
+        # Cannot play cards during variant selection phase
+        if self.variant_selection_phase:
+            return False
+            
         if player_idx != self.current_player or self.game_over:
             return False
         
@@ -313,7 +351,176 @@ class DoppelkopfGame:
         if all(len(hand) == 0 for hand in self.hands):
             self._end_game()
         
+        # Update announcement eligibility
+        # Can announce until the fifth card is played
+        cards_played = len(self.current_trick)
+        for trick in self.tricks:
+            cards_played += len(trick)
+        self.can_announce = cards_played < 5
+        
         return True
+    
+    def announce(self, player_idx: int, announcement: str) -> bool:
+        """
+        Make an announcement (Re or Contra).
+        
+        Args:
+            player_idx: Index of the player
+            announcement: The announcement to make ('re' or 'contra')
+            
+        Returns:
+            True if the announcement was legal and executed, False otherwise
+        """
+        # Cannot announce during variant selection phase
+        if self.variant_selection_phase:
+            return False
+            
+        # Cannot announce if not allowed
+        if not self.can_announce:
+            return False
+        
+        # Check if the player is in the appropriate team for the announcement
+        player_team = self.teams[player_idx]
+        
+        if announcement == 're' and player_team != PlayerTeam.RE:
+            return False
+        elif announcement == 'contra' and player_team != PlayerTeam.KONTRA:
+            return False
+        
+        # Check if the announcement has already been made
+        if announcement == 're' and self.re_announced:
+            return False
+        elif announcement == 'contra' and self.contra_announced:
+            return False
+        
+        # Make the announcement
+        if announcement == 're':
+            self.re_announced = True
+        else:  # 'contra'
+            self.contra_announced = True
+        
+        return True
+    
+    def set_variant(self, variant: str, player_idx: int = None) -> bool:
+        """
+        Set the game variant for a player.
+        
+        Args:
+            variant: The variant to set ('normal', 'hochzeit', 'queen_solo', 'jack_solo', 'fleshless')
+            player_idx: Index of the player making the choice (if None, uses current_player)
+            
+        Returns:
+            True if the variant was set, False otherwise
+        """
+        # Can only set variant during variant selection phase
+        if not self.variant_selection_phase:
+            return False
+        
+        # Use current player if player_idx is not provided
+        if player_idx is None:
+            player_idx = self.current_player
+            
+        # Validate the variant
+        valid_variant = False
+        variant_enum = None
+        
+        if variant == 'normal':
+            valid_variant = True
+            variant_enum = GameVariant.NORMAL
+            variant_key = 'normal'
+        elif variant == 'hochzeit':
+            valid_variant = True
+            variant_enum = GameVariant.HOCHZEIT
+            variant_key = 'hochzeit'
+        elif variant == 'queen_solo':
+            valid_variant = True
+            variant_enum = GameVariant.QUEEN_SOLO
+            variant_key = 'queen_solo'
+        elif variant == 'jack_solo':
+            valid_variant = True
+            variant_enum = GameVariant.JACK_SOLO
+            variant_key = 'jack_solo'
+        elif variant == 'fleshless':
+            valid_variant = True
+            variant_enum = GameVariant.FLESHLESS
+            variant_key = 'fleshless'
+        elif variant == 'trump_solo':  # This is not implemented yet, but included for priority
+            valid_variant = True
+            variant_enum = GameVariant.NORMAL  # Fallback to normal for now
+            variant_key = 'trump_solo'
+            
+        if not valid_variant:
+            return False
+            
+        # Record the player's choice
+        self.player_variant_choices[player_idx] = variant_key
+        
+        # Move to the next player
+        self.current_player = (self.current_player + 1) % self.num_players
+        
+        # Check if all players have made a choice
+        if all(choice is not None for choice in self.player_variant_choices):
+            # Determine the final game variant based on choices
+            self._determine_final_variant()
+            
+            # End variant selection phase
+            self.variant_selection_phase = False
+            
+        return True
+        
+    def _determine_final_variant(self):
+        """Determine the final game variant based on player choices."""
+        # Count the occurrences of each variant
+        variant_counts = {}
+        for choice in self.player_variant_choices:
+            if choice in variant_counts:
+                variant_counts[choice] += 1
+            else:
+                variant_counts[choice] = 1
+                
+        # If everyone chose normal, play normal
+        if len(variant_counts) == 1 and 'normal' in variant_counts:
+            self.game_variant = GameVariant.NORMAL
+            return
+            
+        # If only one player chose a non-normal variant, play that variant
+        non_normal_variants = [v for v in self.player_variant_choices if v != 'normal' and v != 'hochzeit']
+        if len(set(non_normal_variants)) == 1 and len(non_normal_variants) == 1:
+            variant = non_normal_variants[0]
+            if variant == 'queen_solo':
+                self.game_variant = GameVariant.QUEEN_SOLO
+            elif variant == 'jack_solo':
+                self.game_variant = GameVariant.JACK_SOLO
+            elif variant == 'fleshless':
+                self.game_variant = GameVariant.FLESHLESS
+            elif variant == 'trump_solo':
+                self.game_variant = GameVariant.NORMAL  # Fallback to normal for now
+            return
+            
+        # If multiple players chose different non-normal variants, use priority
+        if len(set(non_normal_variants)) > 1:
+            # Find the variant with the highest priority (lowest priority number)
+            highest_priority_variant = None
+            highest_priority = float('inf')
+            
+            for variant in set(non_normal_variants):
+                priority = self.variant_priority.get(variant, float('inf'))
+                if priority < highest_priority:
+                    highest_priority = priority
+                    highest_priority_variant = variant
+                    
+            if highest_priority_variant == 'queen_solo':
+                self.game_variant = GameVariant.QUEEN_SOLO
+            elif highest_priority_variant == 'jack_solo':
+                self.game_variant = GameVariant.JACK_SOLO
+            elif highest_priority_variant == 'fleshless':
+                self.game_variant = GameVariant.FLESHLESS
+            elif highest_priority_variant == 'trump_solo':
+                self.game_variant = GameVariant.NORMAL  # Fallback to normal for now
+            return
+            
+        # Default to normal game
+        self.game_variant = GameVariant.NORMAL
     
     def _complete_trick(self):
         """Complete the current trick and determine the winner."""
@@ -408,7 +615,11 @@ class DoppelkopfGame:
             'teams': self.teams.copy(),
             'trick_winner': self.trick_winner,
             'game_over': self.game_over,
-            'last_trick_points': getattr(self, 'last_trick_points', 0)
+            'last_trick_points': getattr(self, 'last_trick_points', 0),
+            'variant_selection_phase': self.variant_selection_phase,
+            're_announced': self.re_announced,
+            'contra_announced': self.contra_announced,
+            'can_announce': self.can_announce
         }
     
     def get_state_size(self) -> int:
@@ -420,7 +631,8 @@ class DoppelkopfGame:
         """
         # This is a simplified representation for the RL agent
         # 48 cards (one-hot encoded) + 4 players (one-hot encoded) + current trick (48 cards)
-        return 48 + 4 + 48
+        # + variant_selection_phase (1) + re_announced (1) + contra_announced (1) + can_announce (1) + player_team (1)
+        return 48 + 4 + 48 + 5
     
     def get_action_size(self) -> int:
         """
@@ -443,6 +655,12 @@ class DoppelkopfGame:
             A numpy array representing the state from the player's perspective
         """
         # Create a state vector
+        # Extended state size to include:
+        # - variant_selection_phase (1 element)
+        # - re_announced (1 element)
+        # - contra_announced (1 element)
+        # - can_announce (1 element)
+        # - player's team (1 element)
         state = np.zeros(self.get_state_size())
         
         # Encode the player's hand (first 48 elements)
@@ -453,10 +671,17 @@ class DoppelkopfGame:
         # Encode the current player (next 4 elements)
         state[48 + self.current_player] = 1
         
-        # Encode the current trick (last 48 elements)
+        # Encode the current trick (next 48 elements)
         for card in self.current_trick:
             card_idx = self._card_to_idx(card)
             state[52 + card_idx] = 1
+        
+        # Encode additional state information
+        state[100] = 1 if self.variant_selection_phase else 0
+        state[101] = 1 if self.re_announced else 0
+        state[102] = 1 if self.contra_announced else 0
+        state[103] = 1 if self.can_announce else 0
+        state[104] = 1 if self.teams[player_idx] == PlayerTeam.RE else 0
         
         return state
     
