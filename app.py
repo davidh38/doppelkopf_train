@@ -8,7 +8,7 @@ import json
 import argparse
 from flask import Flask, render_template, request, jsonify, session
 from flask_socketio import SocketIO, emit
-from game.doppelkopf import DoppelkopfGame, Card, Suit, Rank, GameVariant
+from game.doppelkopf import DoppelkopfGame, Card, Suit, Rank, GameVariant, PlayerTeam
 from agents.random_agent import select_random_action
 from agents.rl_agent import RLAgent
 
@@ -516,6 +516,14 @@ def announce():
     
     if cards_played >= 5:
         return jsonify({'error': 'Cannot announce after the fifth card has been played'}), 400
+    
+    # Check if the player is in the appropriate team for the announcement
+    player_team = game.teams[0]  # Player is always index 0
+    
+    if announcement == 're' and player_team != PlayerTeam.RE:
+        return jsonify({'error': 'Only RE team members can announce Re'}), 400
+    elif announcement == 'contra' and player_team != PlayerTeam.KONTRA:
+        return jsonify({'error': 'Only KONTRA team members can announce Contra'}), 400
     
     # Update the game data based on the announcement
     if announcement == 're':

@@ -549,6 +549,16 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!gameState.canAnnounce) {
             reBtn.disabled = true;
             contraBtn.disabled = true;
+        } else {
+            // Disable Re button if player is not in RE team
+            if (gameState.playerTeam !== 'RE') {
+                reBtn.disabled = true;
+            }
+            
+            // Disable Contra button if player is not in KONTRA team
+            if (gameState.playerTeam !== 'KONTRA') {
+                contraBtn.disabled = true;
+            }
         }
         
         console.log("Updated game state:", gameState);
@@ -656,14 +666,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     gameAnnouncementMultiplierEl.textContent = `${gameState.multiplier}x`;
                 }
                 
-                // Disable Re button if already announced
+                // Disable Re button if already announced or player is not in RE team
                 if (gameReBtn) {
-                    gameReBtn.disabled = gameState.reAnnounced;
+                    gameReBtn.disabled = gameState.reAnnounced || gameState.playerTeam !== 'RE';
                 }
                 
-                // Disable Contra button if already announced
+                // Disable Contra button if already announced or player is not in KONTRA team
                 if (gameContraBtn) {
-                    gameContraBtn.disabled = gameState.contraAnnounced;
+                    gameContraBtn.disabled = gameState.contraAnnounced || gameState.playerTeam !== 'KONTRA';
                 }
             } else {
                 gameAnnouncementArea.classList.add('hidden');
