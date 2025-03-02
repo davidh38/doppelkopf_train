@@ -1024,19 +1024,19 @@ document.addEventListener('DOMContentLoaded', function() {
             cardContainer.className = 'trick-card-container';
             
             // Position the card based on the player's position relative to the user
-            // Player 0 is the user (bottom), Player 1 is left, Player 2 is top, Player 3 is right
+            // Player 0 is the user (top), Player 1 is left, Player 2 is bottom, Player 3 is right
             let position;
             if (playerIdx === 0) {
-                position = "bottom";
-                cardContainer.style.gridArea = "bottom";
+                position = "top";
+                cardContainer.style.gridArea = "top";
                 cardContainer.style.justifySelf = "center";
             } else if (playerIdx === 1) {
                 position = "left";
                 cardContainer.style.gridArea = "left";
                 cardContainer.style.justifySelf = "start";
             } else if (playerIdx === 2) {
-                position = "top";
-                cardContainer.style.gridArea = "top";
+                position = "bottom";
+                cardContainer.style.gridArea = "bottom";
                 cardContainer.style.justifySelf = "center";
             } else if (playerIdx === 3) {
                 position = "right";
