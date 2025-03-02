@@ -175,10 +175,19 @@ def ai_play_turn(game_id):
         agent = ai_agents[ai_idx]
         
         # Handle both class-based and function-based agents
-        if hasattr(agent, 'select_action'):
-            action = agent.select_action(game, current_player)
-        else:
-            action = agent(game, current_player)
+        try:
+            if hasattr(agent, 'select_action'):
+                action = agent.select_action(game, current_player)
+            else:
+                action = agent(game, current_player)
+            
+            # Debug output to help diagnose AI actions
+            print(f"AI player {current_player} selected action: {action}")
+        except Exception as e:
+            print(f"Error in AI action selection: {str(e)}")
+            # Fallback to random action if there's an error
+            action = select_random_action(game, current_player)
+            print(f"Falling back to random action: {action}")
         
         # Play the card
         game.play_card(current_player, action)
