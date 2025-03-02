@@ -194,22 +194,35 @@ document.addEventListener('DOMContentLoaded', function() {
                     progressContainer.classList.add('hidden');
                 }
                 
-                // Show the variant selection screen if we have a game ID
+                // Show the game board directly if we have a game ID
                 if (gameState.gameId) {
-                    console.log("Game ready, showing variant selection screen");
+                    console.log("Game ready, showing game board directly");
                     
                     if (gameSetupScreen) {
                         console.log("Hiding game setup screen");
                         gameSetupScreen.classList.add('hidden');
                     }
                     
-                    if (variantSelectionScreen) {
-                        console.log("Showing variant selection screen");
-                        variantSelectionScreen.classList.remove('hidden');
+                    if (gameBoard) {
+                        console.log("Showing game board");
+                        // First make sure the element is visible in the DOM
+                        gameBoard.style.display = "grid";
+                        
+                        // Then remove the hidden class
+                        gameBoard.classList.remove('hidden');
+                        
+                        // Force a reflow to ensure the DOM updates
+                        void gameBoard.offsetWidth;
+                        
+                        console.log("gameBoard classes after showing:", gameBoard.className);
+                        console.log("gameBoard style.display:", gameBoard.style.display);
                     }
                     
-                    // Render the player's hand in the variant selection screen
-                    renderVariantSelectionHand();
+                    // Render the player's hand
+                    renderHand();
+                    
+                    // Update turn indicator
+                    updateTurnIndicator();
                     
                     // Log the game state to help debug
                     console.log("Game state at game_ready:", gameState);

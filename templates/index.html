@@ -51,41 +51,7 @@
             </div>
         </div>
         
-        <!-- Game variant selection screen -->
-        <div id="variant-selection" class="screen hidden">
-            <h2>Select Game Variant</h2>
-            <div id="variant-selection-status" class="status-message">
-                Please select a game variant
-            </div>
-            <div class="variant-options">
-                <button id="normal-btn" class="btn variant-btn">Normal Game</button>
-                <button id="hochzeit-btn" class="btn variant-btn" disabled>Hochzeit (Marriage)</button>
-                <button id="queen-solo-btn" class="btn variant-btn">Queen Solo</button>
-                <button id="jack-solo-btn" class="btn variant-btn">Jack Solo</button>
-                <button id="fleshless-btn" class="btn variant-btn">Fleshless</button>
-                <button id="trump-btn" class="btn variant-btn">Trump Solo</button>
-            </div>
-            
-            <!-- Re/Contra announcement options -->
-            <div class="announcement-options">
-                <h3>Announcements</h3>
-                <div class="announcement-buttons" style="display: flex; flex-direction: column; gap: 10px; width: 100px; margin: 0 auto;">
-                    <button id="re-btn" class="btn announcement-btn">Re (2x)</button>
-                    <button id="contra-btn" class="btn announcement-btn">Contra (2x)</button>
-                </div>
-                <div id="announcement-status" class="announcement-status">
-                    <p>Current multiplier: <span id="multiplier">1x</span></p>
-                    <p id="re-status" class="hidden">Re announced!</p>
-                    <p id="contra-status" class="hidden">Contra announced!</p>
-                </div>
-            </div>
-            
-            <!-- Show player's hand during variant selection -->
-            <div class="hand-area">
-                <h3>Your Hand</h3>
-                <div id="variant-selection-hand" class="hand-cards"></div>
-            </div>
-        </div>
+        <!-- Game variant selection screen - Removed as a separate screen -->
         
         <!-- Main game screen -->
         <div id="game-board" class="screen hidden">
@@ -197,6 +163,36 @@
             </div>
             
             <div class="hand-area">
+                <!-- Game variant selection options above the hand -->
+                <div id="game-variant-selection" class="variant-selection-area">
+                    <h3>Select Game Variant</h3>
+                    <div id="variant-selection-status" class="status-message">
+                        Please select a game variant
+                    </div>
+                    <div class="variant-options">
+                        <button id="normal-btn" class="btn variant-btn">Normal Game</button>
+                        <button id="hochzeit-btn" class="btn variant-btn" disabled>Hochzeit (Marriage)</button>
+                        <button id="queen-solo-btn" class="btn variant-btn">Queen Solo</button>
+                        <button id="jack-solo-btn" class="btn variant-btn">Jack Solo</button>
+                        <button id="fleshless-btn" class="btn variant-btn">Fleshless</button>
+                        <button id="trump-btn" class="btn variant-btn">Trump Solo</button>
+                    </div>
+                    
+                    <!-- Re/Contra announcement options -->
+                    <div class="announcement-options">
+                        <h3>Announcements</h3>
+                        <div class="announcement-buttons" style="display: flex; flex-direction: column; gap: 10px; width: 100px; margin: 0 auto;">
+                            <button id="re-btn" class="btn announcement-btn">Re (2x)</button>
+                            <button id="contra-btn" class="btn announcement-btn">Contra (2x)</button>
+                        </div>
+                        <div id="announcement-status" class="announcement-status">
+                            <p>Current multiplier: <span id="multiplier">1x</span></p>
+                            <p id="re-status" class="hidden">Re announced!</p>
+                            <p id="contra-status" class="hidden">Contra announced!</p>
+                        </div>
+                    </div>
+                </div>
+                
                 <h3>Your Hand</h3>
                 <div id="player-hand" class="hand-cards"></div>
             </div>
