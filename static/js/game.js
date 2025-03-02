@@ -789,23 +789,28 @@ document.addEventListener('DOMContentLoaded', function() {
                     trickArea.style.display = 'none';
                 }
                 
-                // Add a close button
-                const closeButton = document.createElement('button');
-                closeButton.textContent = 'Close';
-                closeButton.className = 'btn';
-                closeButton.style.marginTop = '10px';
-                closeButton.addEventListener('click', () => {
-                    // Hide the last trick container
-                    lastTrickContainer.classList.add('hidden');
-                    
-                    // Show the current trick container
-                    if (trickArea) {
-                        trickArea.style.display = 'block';
-                    }
-                });
+                // Check if a close button already exists
+                const existingCloseButton = lastTrickContainer.querySelector('.close-trick-btn');
                 
-                // Add the close button to the last trick container
-                lastTrickContainer.appendChild(closeButton);
+                if (!existingCloseButton) {
+                    // Add a close button
+                    const closeButton = document.createElement('button');
+                    closeButton.textContent = 'Close';
+                    closeButton.className = 'btn close-trick-btn';
+                    closeButton.style.marginTop = '10px';
+                    closeButton.addEventListener('click', () => {
+                        // Hide the last trick container
+                        lastTrickContainer.classList.add('hidden');
+                        
+                        // Show the current trick container
+                        if (trickArea) {
+                            trickArea.style.display = 'block';
+                        }
+                    });
+                    
+                    // Add the close button to the last trick container
+                    lastTrickContainer.appendChild(closeButton);
+                }
             })
             .catch(error => {
                 console.error('Error getting last trick:', error);
