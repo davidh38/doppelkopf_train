@@ -963,12 +963,17 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to render the current trick
     function renderCurrentTrick() {
+        console.log("Rendering current trick, player turn:", gameState.currentPlayer === 0);
+        
         // Get the hardcoded trick element
         const hardcodedTrickEl = document.getElementById('hardcoded-trick');
         if (!hardcodedTrickEl) return;
         
         // Clear the trick element
         hardcodedTrickEl.innerHTML = '';
+        
+        // Add a class to the trick element to enforce the grid layout
+        hardcodedTrickEl.className = 'trick-grid';
         
         // ALWAYS set up the grid layout, even if there are no cards yet
         // This ensures the layout doesn't change when it's the user's turn
@@ -985,17 +990,22 @@ document.addEventListener('DOMContentLoaded', function() {
             width: 300px;
             height: 300px;
             margin: 0 auto;
+            position: relative;
         `;
+        
+        // Always add placeholder divs for each position to maintain the grid structure
+        const positions = ["top", "left", "right", "bottom"];
+        positions.forEach(position => {
+            const placeholderDiv = document.createElement('div');
+            placeholderDiv.className = 'trick-placeholder';
+            placeholderDiv.style.gridArea = position;
+            placeholderDiv.style.minWidth = '10px';
+            placeholderDiv.style.minHeight = '10px';
+            hardcodedTrickEl.appendChild(placeholderDiv);
+        });
         
         // If there are no cards in the trick, just return after setting up the grid
         if (!gameState.currentTrick || gameState.currentTrick.length === 0) {
-            // Add placeholder divs for each position to maintain the grid structure
-            const positions = ["top", "left", "right", "bottom"];
-            positions.forEach(position => {
-                const placeholderDiv = document.createElement('div');
-                placeholderDiv.style.gridArea = position;
-                hardcodedTrickEl.appendChild(placeholderDiv);
-            });
             return;
         }
         
