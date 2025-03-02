@@ -116,6 +116,7 @@ def get_game_state(game_id, player_id=0):
         'revealed_teams': game_data['revealed_teams'],
         'player_score': game.player_scores[player_id],
         'last_trick_points': getattr(game, 'last_trick_points', 0),
+        'last_trick_diamond_ace_bonus': getattr(game, 'last_trick_diamond_ace_bonus', 0),
         're_announced': game_data.get('re_announced', False),
         'contra_announced': game_data.get('contra_announced', False),
         'multiplier': game_data.get('multiplier', 1),
@@ -125,6 +126,10 @@ def get_game_state(game_id, player_id=0):
         'can_announce_contra': game.teams[player_id] == PlayerTeam.KONTRA and (len(game.current_trick) + sum(len(trick) for trick in game.tricks)) < 5
     }
     
+    # Add Diamond Ace capture information if available
+    if hasattr(game, 'diamond_ace_captured'):
+        state['diamond_ace_captured'] = game.diamond_ace_captured
+    
     # Add player variant selections if available
     if 'player_variants' in game_data:
         state['player_variants'] = game_data['player_variants']
@@ -133,8 +138,39 @@ def get_game_state(game_id, player_id=0):
     if 're_announced' in game_data or 'contra_announced' in game_data:
         state['announcements'] = {
             're': game_data.get('re_announced', False),
-            'contra': game_data.get('contra_announced', False)
+            'contra': game_data.get('contra_announced', False),
+            'no90': game_data.get('no90_announced', False),
+            'no60': game_data.get('no60_announced', False),
+            'no30': game_data.get('no30_announced', False),
+            'black': game_data.get('black_announced', False)
         }
+    
+    # Calculate if additional announcements are allowed
+    cards_played = len(game.current_trick) + sum(len(trick) for trick in game.tricks)
+    
+    # Check if player can announce additional announcements (No 90, No 60, No 30, Black)
+    # These can only be announced within 5 cards after Re or Contra
+    re_announced_card = game_data.get('re_announcement_card', -1)
+    contra_announced_card = game_data.get('contra_announcement_card', -1)
+    
+    # Player can announce additional announcements if:
+    # 1. They are on team RE and have announced Re, or they are on team KONTRA and have announced Contra
+    # 2. The announcement was made within the last 5 cards
+    can_announce_additional_re = (game.teams[player_id] == PlayerTeam.RE and 
+                                 game_data.get('re_announced', False) and 
+                                 re_announced_card >= 0 and 
+                                 cards_played <= re_announced_card + 5)
+    
+    can_announce_additional_contra = (game.teams[player_id] == PlayerTeam.KONTRA and 
+                                     game_data.get('contra_announced', False) and 
+                                     contra_announced_card >= 0 and 
+                                     cards_played <= contra_announced_card + 5)
+    
+    # Add flags for additional announcements
+    state['can_announce_no90'] = (can_announce_additional_re or can_announce_additional_contra) and not game_data.get('no90_announced', False)
+    state['can_announce_no60'] = (can_announce_additional_re or can_announce_additional_contra) and game_data.get('no90_announced', False) and not game_data.get('no60_announced', False)
+    state['can_announce_no30'] = (can_announce_additional_re or can_announce_additional_contra) and game_data.get('no60_announced', False) and not game_data.get('no30_announced', False)
+    state['can_announce_black'] = (can_announce_additional_re or can_announce_additional_contra) and game_data.get('no30_announced', False) and not game_data.get('black_announced', False)
     
     # Add current trick with player information - VERY simplified approach
     if game.current_trick:
@@ -185,8 +221,36 @@ def ai_play_turn(game_id):
     
     # Keep playing AI turns until it's the human's turn or game is over
     while game.current_player != 0 and not game.game_over:
+        # Check if a trick has been completed but not yet cleared
+        if game.trick_winner is not None:
+            # A trick has been completed but not yet cleared
+            # Clear the trick and set the current player to the trick winner
+            trick_winner = game.trick_winner
+            game.current_trick = []
+            game.current_player = trick_winner
+            game.trick_winner = None
+            
+            # Emit a game state update to reflect the cleared trick
+            socketio.emit('game_update', get_game_state(game_id), room=game_id)
+            
+            # If the new current player is the human player, break out of the loop
+            if game.current_player == 0:
+                break
+        
         current_player = game.current_player
+        
+        # Ensure current_player is valid (1, 2, or 3)
+        if current_player < 1 or current_player > 3:
+            print(f"Error: Invalid current_player: {current_player}")
+            break
+            
         ai_idx = current_player - 1
+        
+        # Ensure ai_idx is valid (0, 1, or 2)
+        if ai_idx < 0 or ai_idx >= len(ai_agents):
+            print(f"Error: Invalid AI index: {ai_idx} (current_player: {current_player})")
+            break
+            
         agent = ai_agents[ai_idx]
         
         # Handle both class-based and function-based agents
@@ -214,6 +278,7 @@ def ai_play_turn(game_id):
                 
                 # Check if the AI player revealed their team by playing a Queen of Clubs
                 if action.suit == Suit.CLUBS and action.rank == Rank.QUEEN:
+                    print(f"AI player {current_player} revealed team by playing Queen of Clubs (tuple case)")
                     games[game_id]['revealed_teams'][current_player] = True
             elif action_type == 'announce':
                 # Make an announcement
@@ -227,11 +292,20 @@ def ai_play_turn(game_id):
                 continue
         else:
             # Assume it's a card action (for backward compatibility with random agent)
+            # Check if action_result is None (which can happen if the agent returns None)
+            if action_result is None:
+                # Fallback to random action if the agent returns None
+                print(f"Warning: AI player {current_player} returned None action, falling back to random action")
+                action_result = select_random_action(game, current_player)
+                
             game.play_card(current_player, action_result)
             
             # Check if the AI player revealed their team by playing a Queen of Clubs
-            if action_result.suit == Suit.CLUBS and action_result.rank == Rank.QUEEN:
-                games[game_id]['revealed_teams'][current_player] = True
+            if action_result is not None:
+                # Debug output to help diagnose team revelation
+                if action_result.suit == Suit.CLUBS and action_result.rank == Rank.QUEEN:
+                    print(f"AI player {current_player} revealed team by playing Queen of Clubs")
+                    games[game_id]['revealed_teams'][current_player] = True
         
         # Emit game state update after each AI move
         socketio.emit('game_update', get_game_state(game_id), room=game_id)
@@ -270,11 +344,17 @@ def ai_play_turn(game_id):
             games[game_id]['last_trick_winner'] = trick_winner
             games[game_id]['last_trick_points'] = trick_points
             
-            # Emit the trick completed event with points
+            # Check if there was a Diamond Ace capture
+            diamond_ace_bonus = getattr(game, 'last_trick_diamond_ace_bonus', 0)
+            diamond_ace_captured = hasattr(game, 'diamond_ace_captured')
+            
+            # Emit the trick completed event with points and Diamond Ace capture info
             socketio.emit('trick_completed', {
                 'winner': trick_winner,
                 'is_player': trick_winner == 0,
-                'trick_points': trick_points
+                'trick_points': trick_points,
+                'diamond_ace_bonus': diamond_ace_bonus,
+                'diamond_ace_captured': diamond_ace_captured
             }, room=game_id)
             
             # Pause for 0.3 seconds to show the completed trick
@@ -449,7 +529,13 @@ def new_game():
         'last_trick_points': 0,
         're_announced': False,
         'contra_announced': False,
-        'multiplier': 1,  # Score multiplier (doubled for Re/Contra)
+        'no90_announced': False,
+        'no60_announced': False,
+        'no30_announced': False,
+        'black_announced': False,
+        're_announcement_card': -1,  # Card number when Re was announced (-1 means not announced)
+        'contra_announcement_card': -1,  # Card number when Contra was announced (-1 means not announced)
+        'multiplier': 1,  # Score multiplier (doubled for Re/Contra and additional announcements)
         'starting_player': next_starting_player,  # Track the starting player for this game
         'player_variants': player_variants,  # Store player variant selections
         'revealed_teams': [False, False, False, False]  # Track which players have revealed their team
@@ -615,11 +701,17 @@ def play_card():
         games[game_id]['last_trick_winner'] = trick_winner
         games[game_id]['last_trick_points'] = trick_points
         
-        # Emit the trick completed event with points
+        # Check if there was a Diamond Ace capture
+        diamond_ace_bonus = getattr(game, 'last_trick_diamond_ace_bonus', 0)
+        diamond_ace_captured = hasattr(game, 'diamond_ace_captured')
+        
+        # Emit the trick completed event with points and Diamond Ace capture info
         socketio.emit('trick_completed', {
             'winner': trick_winner,
             'is_player': trick_winner == 0,
-            'trick_points': trick_points
+            'trick_points': trick_points,
+            'diamond_ace_bonus': diamond_ace_bonus,
+            'diamond_ace_captured': diamond_ace_captured
         }, room=game_id)
         
         # Clear the current trick and set the current player to the trick winner
@@ -736,10 +828,10 @@ def get_last_trick():
 
 @app.route('/announce', methods=['POST'])
 def announce():
-    """Announce Re or Contra."""
+    """Announce Re, Contra, or additional announcements (No 90, No 60, No 30, Black)."""
     data = request.json
     game_id = data.get('game_id')
-    announcement = data.get('announcement')  # 're' or 'contra'
+    announcement = data.get('announcement')  # 're', 'contra', 'no90', 'no60', 'no30', 'black'
     
     if game_id not in games:
         return jsonify({'error': 'Game not found'}), 404
@@ -747,39 +839,100 @@ def announce():
     game_data = games[game_id]
     game = game_data['game']
     
-    # Check if more than 5 cards have been played
-    # Count cards in completed tricks plus current trick
+    # Count cards played
     cards_played = len(game.current_trick)
     for trick in game.tricks:
         cards_played += len(trick)
     
-    if cards_played >= 5:
-        return jsonify({'error': 'Cannot announce after the fifth card has been played'}), 400
-    
     # Check if the player is in the appropriate team for the announcement
     player_team = game.teams[0]  # Player is always index 0
     
-    if announcement == 're' and player_team != PlayerTeam.RE:
-        return jsonify({'error': 'Only RE team members can announce Re'}), 400
-    elif announcement == 'contra' and player_team != PlayerTeam.KONTRA:
-        return jsonify({'error': 'Only KONTRA team members can announce Contra'}), 400
+    # Handle Re and Contra announcements
+    if announcement in ['re', 'contra']:
+        # Check if more than 5 cards have been played
+        if cards_played >= 5:
+            return jsonify({'error': 'Cannot announce Re or Contra after the fifth card has been played'}), 400
+        
+        # Check if the player is in the appropriate team
+        if announcement == 're' and player_team != PlayerTeam.RE:
+            return jsonify({'error': 'Only RE team members can announce Re'}), 400
+        elif announcement == 'contra' and player_team != PlayerTeam.KONTRA:
+            return jsonify({'error': 'Only KONTRA team members can announce Contra'}), 400
+        
+        # Update the game data based on the announcement
+        if announcement == 're':
+            game_data['re_announced'] = True
+            game_data['re_announcement_card'] = cards_played  # Track when Re was announced
+            game_data['multiplier'] = 2  # Set multiplier to 2 for Re
+        elif announcement == 'contra':
+            game_data['contra_announced'] = True
+            game_data['contra_announcement_card'] = cards_played  # Track when Contra was announced
+            game_data['multiplier'] = 2  # Set multiplier to 2 for Contra
     
-    # Update the game data based on the announcement
-    if announcement == 're':
-        game_data['re_announced'] = True
-        game_data['multiplier'] *= 2
-    elif announcement == 'contra':
-        game_data['contra_announced'] = True
-        game_data['multiplier'] *= 2
+    # Handle additional announcements (No 90, No 60, No 30, Black)
+    elif announcement in ['no90', 'no60', 'no30', 'black']:
+        # Check if the player has announced Re or Contra
+        if player_team == PlayerTeam.RE and not game_data.get('re_announced', False):
+            return jsonify({'error': 'You must announce Re before making additional announcements'}), 400
+        elif player_team == PlayerTeam.KONTRA and not game_data.get('contra_announced', False):
+            return jsonify({'error': 'You must announce Contra before making additional announcements'}), 400
+        
+        # Check if the announcement was made within 5 cards after Re or Contra
+        re_announced_card = game_data.get('re_announcement_card', -1)
+        contra_announced_card = game_data.get('contra_announcement_card', -1)
+        
+        if player_team == PlayerTeam.RE and (re_announced_card < 0 or cards_played > re_announced_card + 5):
+            return jsonify({'error': 'Additional announcements must be made within 5 cards after Re'}), 400
+        elif player_team == PlayerTeam.KONTRA and (contra_announced_card < 0 or cards_played > contra_announced_card + 5):
+            return jsonify({'error': 'Additional announcements must be made within 5 cards after Contra'}), 400
+        
+        # Check if the announcements are made in the correct order
+        if announcement == 'no90' and not game_data.get('no90_announced', False):
+            game_data['no90_announced'] = True
+            game_data['multiplier'] = 3  # Set multiplier to 3 for No 90
+        elif announcement == 'no60' and game_data.get('no90_announced', False) and not game_data.get('no60_announced', False):
+            game_data['no60_announced'] = True
+            game_data['multiplier'] = 4  # Set multiplier to 4 for No 60
+        elif announcement == 'no30' and game_data.get('no60_announced', False) and not game_data.get('no30_announced', False):
+            game_data['no30_announced'] = True
+            game_data['multiplier'] = 5  # Set multiplier to 5 for No 30
+        elif announcement == 'black' and game_data.get('no30_announced', False) and not game_data.get('black_announced', False):
+            game_data['black_announced'] = True
+            game_data['multiplier'] = 6  # Set multiplier to 6 for Black
+        else:
+            return jsonify({'error': 'Invalid announcement order'}), 400
     else:
         return jsonify({'error': 'Invalid announcement'}), 400
     
     return jsonify({
         'state': get_game_state(game_id),
-        're_announced': game_data['re_announced'],
-        'contra_announced': game_data['contra_announced'],
-        'multiplier': game_data['multiplier']
+        're_announced': game_data.get('re_announced', False),
+        'contra_announced': game_data.get('contra_announced', False),
+        'no90_announced': game_data.get('no90_announced', False),
+        'no60_announced': game_data.get('no60_announced', False),
+        'no30_announced': game_data.get('no30_announced', False),
+        'black_announced': game_data.get('black_announced', False),
+        'multiplier': game_data.get('multiplier', 1)
     })
+
+@app.route('/get_ai_hands', methods=['GET'])
+def get_ai_hands():
+    """Get the hands of AI players for debugging purposes."""
+    game_id = request.args.get('game_id')
+    
+    if game_id not in games:
+        return jsonify({'error': 'Game not found'}), 404
+    
+    game = games[game_id]['game']
+    
+    # Get the AI hands (players 1, 2, and 3)
+    ai_hands = {
+        'player1': [card_to_dict(card) for card in game.hands[1]],
+        'player2': [card_to_dict(card) for card in game.hands[2]],
+        'player3': [card_to_dict(card) for card in game.hands[3]]
+    }
+    
+    return jsonify(ai_hands)
 
 @app.route('/get_scoreboard', methods=['GET'])
 def get_scoreboard():

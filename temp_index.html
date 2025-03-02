@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Doppelkopf</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="/static/css/style.css">
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
 </head>
 <body>
@@ -54,7 +54,7 @@
         <!-- Game variant selection screen - Removed as a separate screen -->
         
         <!-- Main game screen -->
-        <div id="game-board" class="screen">
+        <div id="game-board" class="screen hidden">
             <!-- Left sidebar with player scores and announcements -->
             <div class="left-sidebar">
                 <h3>Game Scores</h3>
@@ -84,10 +84,6 @@
                     <div id="game-announcements">
                         <p id="game-re-status" class="hidden">Re announced!</p>
                         <p id="game-contra-status" class="hidden">Contra announced!</p>
-                        <p id="game-no90-status" class="hidden">No 90 announced!</p>
-                        <p id="game-no60-status" class="hidden">No 60 announced!</p>
-                        <p id="game-no30-status" class="hidden">No 30 announced!</p>
-                        <p id="game-black-status" class="hidden">Black announced!</p>
                     </div>
                 </div>
                 
@@ -98,6 +94,7 @@
                         <button id="game-re-btn" class="btn announcement-btn">Re (2x)</button>
                         <button id="game-contra-btn" class="btn announcement-btn">Contra (2x)</button>
                     </div>
+                    <p>Current multiplier: <span id="game-announcement-multiplier">1x</span></p>
                 </div>
             </div>
             
@@ -131,32 +128,31 @@
                     
                     <div id="current-trick" class="trick-cards" style="display: none;"></div>
                     
-                        <!-- Debug section -->
-                        <div id="debug-section" style="margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px;">
-                            <h4>Debug Info</h4>
-                            <div id="debug-trick" style="text-align: left; font-family: monospace; background: #f5f5f5; padding: 10px; border-radius: 5px; overflow: auto; max-height: 200px;"></div>
-                            <button id="debug-btn" style="margin-top: 10px; padding: 5px 10px; background: #3498db; color: white; border: none; border-radius: 3px; cursor: pointer;">Show Raw Trick Data</button>
-                            
-                            <!-- AI Card Visualization -->
-                            <div style="margin-top: 15px;">
-                                <h4>AI Card Visualization</h4>
-                                <button id="reveal-ai-hands-btn" style="margin-bottom: 10px; padding: 5px 10px; background: #e74c3c; color: white; border: none; border-radius: 3px; cursor: pointer;">Reveal AI Hands</button>
-                                <div id="ai-card-visualization" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
-                                    <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; flex: 1;">
-                                        <h5>Player 1</h5>
-                                        <div id="player1-cards" class="ai-cards"></div>
-                                    </div>
-                                    <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; flex: 1;">
-                                        <h5>Player 2</h5>
-                                        <div id="player2-cards" class="ai-cards"></div>
-                                    </div>
-                                    <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; flex: 1;">
-                                        <h5>Player 3</h5>
-                                        <div id="player3-cards" class="ai-cards"></div>
-                                    </div>
+                    <!-- Debug section -->
+                    <div id="debug-section" style="margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px;">
+                        <h4>Debug Info</h4>
+                        <div id="debug-trick" style="text-align: left; font-family: monospace; background: #f5f5f5; padding: 10px; border-radius: 5px; overflow: auto; max-height: 200px;"></div>
+                        <button id="debug-btn" style="margin-top: 10px; padding: 5px 10px; background: #3498db; color: white; border: none; border-radius: 3px; cursor: pointer;">Show Raw Trick Data</button>
+                        
+                        <!-- AI Card Visualization -->
+                        <div style="margin-top: 15px;">
+                            <h4>AI Card Visualization</h4>
+                            <div id="ai-card-visualization" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
+                                <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; flex: 1;">
+                                    <h5>Player 1</h5>
+                                    <div id="player1-cards" class="ai-cards"></div>
+                                </div>
+                                <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; flex: 1;">
+                                    <h5>Player 2</h5>
+                                    <div id="player2-cards" class="ai-cards"></div>
+                                </div>
+                                <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; flex: 1;">
+                                    <h5>Player 3</h5>
+                                    <div id="player3-cards" class="ai-cards"></div>
                                 </div>
                             </div>
                         </div>
+                    </div>
                 </div>
                 
                 <div class="last-trick-container hidden">
@@ -181,6 +177,20 @@
                         <button id="fleshless-btn" class="btn variant-btn">Fleshless</button>
                         <button id="trump-btn" class="btn variant-btn">Trump Solo</button>
                     </div>
+                    
+                    <!-- Re/Contra announcement options -->
+                    <div class="announcement-options">
+                        <h3>Announcements</h3>
+                        <div class="announcement-buttons" style="display: flex; flex-direction: column; gap: 10px; width: 100px; margin: 0 auto;">
+                            <button id="re-btn" class="btn announcement-btn">Re (2x)</button>
+                            <button id="contra-btn" class="btn announcement-btn">Contra (2x)</button>
+                        </div>
+                        <div id="announcement-status" class="announcement-status">
+                            <p>Current multiplier: <span id="multiplier">1x</span></p>
+                            <p id="re-status" class="hidden">Re announced!</p>
+                            <p id="contra-status" class="hidden">Contra announced!</p>
+                        </div>
+                    </div>
                 </div>
                 
                 <h3>Your Hand</h3>
@@ -199,10 +209,6 @@
                 <div id="final-announcements">
                     <p id="final-re-status" class="hidden">Re announced!</p>
                     <p id="final-contra-status" class="hidden">Contra announced!</p>
-                    <p id="final-no90-status" class="hidden">No 90 announced!</p>
-                    <p id="final-no60-status" class="hidden">No 60 announced!</p>
-                    <p id="final-no30-status" class="hidden">No 30 announced!</p>
-                    <p id="final-black-status" class="hidden">Black announced!</p>
                 </div>
             </div>
             
@@ -233,6 +239,6 @@
         </div>
     </div>
     
-    <script src="{{ url_for('static', filename='js/game.js') }}"></script>
+    <script src="/static/js/game.js"></script>
 </body>
 </html>

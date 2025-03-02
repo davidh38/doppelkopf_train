@@ -1,0 +1,303 @@
+#+TITLE: Doppelkopf AI and Web Game
+#+AUTHOR: 
+#+DATE: 2025-03-02
+
+* Doppelkopf AI Training and Web Game
+
+This project implements a comprehensive Doppelkopf card game system with multiple components:
+- A reinforcement learning AI that learns to play Doppelkopf
+- A web-based game interface for playing against AI opponents
+- Special scenario scripts for experiencing specific game situations
+
+** Overview
+
+Doppelkopf is a trick-taking card game for four players, played with a double deck of 48 cards (two copies of each card from 9 to Ace in four suits). Players are divided into two teams, typically determined by who holds the Queens of Clubs. The goal is to score more points than the opposing team by winning tricks containing valuable cards.
+
+This project uses Deep Q-Learning to train an AI agent to play Doppelkopf effectively. The agent learns by playing against random agents and gradually improves its strategy through experience. The web interface allows human players to play against these AI agents.
+
+** Features
+
+*** AI Training System
+- Deep Q-Learning implementation for training AI agents
+- Experience replay for efficient learning
+- Evaluation metrics to track AI performance
+- Model saving and loading capabilities
+
+*** Web Game Interface
+- Play Doppelkopf against AI opponents through a browser
+- Beautiful card interface using open source card images
+- Real-time updates using WebSockets
+- Responsive design that works on desktop and mobile
+
+*** Game Variants
+- Normal game
+- Hochzeit (Marriage)
+- Queen Solo
+- Jack Solo
+- Fleshless
+
+*** Special Scenarios
+- Final card scenarios to experience game-deciding moments
+- Re wins and Kontra wins scenarios
+
+** Requirements
+
+- Python 3.7+
+- PyTorch (for AI training)
+- Flask and Flask-SocketIO (for web interface)
+- NumPy
+- Other dependencies listed in =requirements.txt=
+
+** Installation
+
+1. Clone the repository:
+   #+BEGIN_SRC bash
+   git clone https://github.com/yourusername/doppelkopf-ai.git
+   cd doppelkopf-ai
+   #+END_SRC
+
+2. Install the required packages:
+   #+BEGIN_SRC bash
+   pip install -r requirements.txt
+   #+END_SRC
+
+** Usage
+
+*** Training the AI
+
+To train the AI, run:
+
+#+BEGIN_SRC bash
+python main.py --episodes 10000 --eval-interval 1000 --save-interval 1000
+#+END_SRC
+
+Options:
+- =--episodes=: Number of episodes to train for (default: 10000)
+- =--eval-interval=: Evaluate the agent every N episodes (default: 1000)
+- =--save-interval=: Save the agent every N episodes (default: 1000)
+- =--load-model=: Path to a saved model to load (optional)
+- =--log-dir=: Directory to save logs (default: 'logs')
+- =--model-dir=: Directory to save models (default: 'models')
+
+**** Announcement Training
+
+The AI is trained to make strategic Re and Contra announcements that optimize for game scores:
+
+1. *Score-Driven Decision Making*: The AI learns to make announcements only when they are likely to increase the team's final score.
+
+2. *Extended Action Space*: The AI's action space includes not just playing cards but also making Re/Contra announcements as tools to maximize points.
+
+3. *Team-Aware Decision Making*: The AI learns which announcements it can make based on its team (Re or Kontra).
+
+4. *Timing Considerations*: The AI learns that announcements must be made before the fifth card is played and evaluates the optimal timing.
+
+5. *Risk-Reward Assessment*: Through reinforcement learning, the AI learns to balance the risk of doubling the stakes against the potential reward in terms of final score.
+
+6. *Contextual Learning*: The AI considers its hand strength, the current game state, and previous plays when deciding whether an announcement will lead to a higher score.
+
+Each AI agent independently learns when to make announcements based on its experiences, leading to diverse announcement strategies among different trained models. The training process ensures that announcements are used as strategic tools to maximize the team's score, not as goals in themselves.
+
+*** Playing Against the AI (Command Line)
+
+To play against a trained AI in the command line, run:
+
+#+BEGIN_SRC bash
+python play.py --model models/final_model.pt
+#+END_SRC
+
+Options:
+- =--model=: Path to a trained model (required)
+
+*** Playing in the Web Interface
+
+To start the web-based game interface:
+
+#+BEGIN_SRC bash
+python app.py
+#+END_SRC
+
+Then open your web browser and navigate to:
+#+BEGIN_SRC
+http://localhost:5007
+#+END_SRC
+
+1. Click "New Game" to start a game
+2. Select a game variant
+3. Play cards by clicking on them when it's your turn
+
+*** Running Final Card Scenarios
+
+To experience the excitement of playing the final card that determines the game outcome:
+
+#+BEGIN_SRC bash
+python final_card_game.py --scenario re_wins
+#+END_SRC
+
+or
+
+#+BEGIN_SRC bash
+python final_card_game.py --scenario kontra_wins
+#+END_SRC
+
+Then open your web browser and navigate to:
+#+BEGIN_SRC
+http://localhost:5008
+#+END_SRC
+
+** Game Rules
+
+*** Basic Rules
+
+Doppelkopf is a trick-taking card game for four players. The deck consists of 48 cards (two copies of each card from 9 to Ace in four suits). Players are divided into two teams: Re and Kontra, typically determined by who holds the Queens of Clubs.
+
+*** Trump Cards
+
+In the normal game:
+- All Queens and Jacks are trump cards
+- All Diamond cards are trump cards
+- The Ten of Hearts is also a trump card
+
+In special variants:
+- Queen Solo: Only Queens are trump
+- Jack Solo: Only Jacks are trump
+- Fleshless: Only Queens and Jacks are trump
+
+*** Announcements
+
+Players can make special announcements during the game to increase the stakes:
+
+- *Re*: Can only be announced by players on the Re team (those with Queens of Clubs)
+- *Contra*: Can only be announced by players on the Kontra team (those without Queens of Clubs)
+
+Announcements must be made before the fifth card is played. When a team makes an announcement:
+- It doubles the game's value
+- It signals confidence in winning
+- It can be followed by additional announcements (No 90, No 60, No 30, Black) for even higher stakes
+
+The AI is trained to strategically make these announcements based on its hand strength and game state.
+
+*** Scoring
+
+The game is played until all cards are played. The team with more points wins. A total of 240 points are available in the game, so a team needs at least 121 points to win.
+
+**** Doppelkopf Bonus
+
+A special scoring rule called "doppelkopf" (namesake of the game) applies in normal game and hochzeit variants:
+
+- When a trick contains 40 or more points, it is called a "doppelkopf"
+- If the winning team takes a doppelkopf, they get +1 to their score multiplier
+- If the non-winning team takes a doppelkopf, 1 is subtracted from the winning team's multiplier
+- This bonus affects the final score calculation and can significantly impact the game outcome
+- The AI learns to recognize and strategize around potential doppelkopf tricks
+
+*** Card Values
+
+- Ace: 11 points
+- Ten: 10 points
+- King: 4 points
+- Queen: 3 points
+- Jack: 2 points
+- Nine: 0 points
+
+** Project Structure
+
+- =main.py=: Entry point for training the AI
+- =play.py=: Script to play Doppelkopf against a trained AI in the command line
+- =app.py=: Main Flask application for the web interface
+- =final_card_game.py=: Script for running final card scenarios
+- =game/=: Implementation of the Doppelkopf game rules and mechanics
+- =agents/=: Implementation of different agents (RL agent and random agent)
+- =training/=: Training process for the RL agent
+- =utils/=: Utility functions and classes
+- =templates/=: HTML templates for the web interface
+- =static/=: Static files (CSS, JavaScript, images)
+- =tests/=: Test scripts for various game scenarios
+
+** How the AI Works
+
+The AI uses Deep Q-Learning, a reinforcement learning technique that combines Q-learning with deep neural networks. The key components are:
+
+*** State Representation
+The game state is represented as a vector that includes only information that would be available to a human player:
+- The player's own hand (which cards they have)
+- The current trick (cards that have been played)
+- The current player
+- Variant selection phase status
+- Re and Contra announcement status
+- Whether announcements are still allowed
+- The player's own team (Re or Kontra)
+- Game variant (normal, hochzeit, queen solo, etc.)
+- Current trick point value (for doppelkopf tracking)
+- Doppelkopf tricks won by each team
+- Current score multipliers
+
+Importantly, the AI agent has the following limitations to ensure fair play:
+1. It does NOT have access to the cards of other players
+2. It does NOT know which other players are on Re or Kontra teams until this information is revealed through play (e.g., when a player plays a Queen of Clubs or makes a Re/Contra announcement)
+
+These limitations ensure realistic learning, as the AI must make decisions based only on information that would be available to a human player: its own cards, the cards played in the current trick, its own team, and the game state information.
+
+*** Action Selection
+The AI's action space includes:
+- Playing cards (48 possible cards)
+- Making announcements (Re or Contra)
+- Selecting game variants (Normal, Hochzeit, Queen Solo, etc.)
+
+The AI selects actions using an epsilon-greedy policy:
+- With probability epsilon, it selects a random legal action
+- With probability 1-epsilon, it selects the action with the highest Q-value
+
+When selecting an action, the AI considers:
+- Which cards are legal to play
+- Whether it can make an announcement (based on its team and whether less than 5 cards have been played)
+- The expected value (Q-value) of each possible action
+
+*** Announcement Strategy
+The AI develops a score-optimizing strategy for Re and Contra announcements:
+- Re announcements can only be made by players on the Re team (with Queens of Clubs)
+- Contra announcements can only be made by players on the Kontra team (without Queens of Clubs)
+- The AI evaluates each potential announcement based on its expected impact on the final score
+- Strong hands with high-value cards are more likely to justify announcements
+- The AI learns to avoid announcements when the risk of losing with doubled stakes outweighs the potential gain
+- Each AI agent develops its own risk assessment model through reinforcement learning
+- The announcement strategy evolves to maximize the team's expected score across many games
+
+*** Reward Structure
+The AI is trained to optimize for game scores and winning:
+- Primary rewards come from winning tricks with high point values
+- Winning the game provides a large positive reward
+- Losing the game results in a large negative reward
+- Announcements are evaluated based on their contribution to the final score
+- The AI learns to make announcements only when they increase the expected team score
+- Special bonus rewards are given for winning doppelkopf tricks (tricks worth 40+ points)
+- The AI learns to strategically play for or defend against potential doppelkopf tricks
+- In normal game and hochzeit variants, the AI considers the multiplier impact of doppelkopf tricks
+
+This score-focused reward structure ensures that the AI prioritizes winning the game over making announcements. Announcements and doppelkopf tricks are treated as strategic tools to maximize the team's score, not as goals in themselves.
+
+*** Neural Network
+A deep neural network is used to approximate the Q-function:
+- Input: The state representation
+- Output: Q-values for each possible action (cards, announcements, and variants)
+- Architecture: Multiple fully-connected layers with ReLU activations
+
+*** Experience Replay
+The AI stores experiences in a replay buffer and learns from random batches to break correlations between consecutive samples.
+
+** Future Improvements
+
+- Implement more sophisticated agents (e.g., rule-based agents)
+- Add support for additional Doppelkopf variants
+- Improve the state representation to include more information
+- Experiment with different neural network architectures
+- Enhance the web interface with more features
+- Add multiplayer support for human vs. human games
+
+** Credits
+
+- Card images: [[https://github.com/richardschneider/cardsJS][cardsJS]]
+- Game logic based on traditional Doppelkopf rules
+
+** License
+
+This project is licensed under the MIT License - see the LICENSE file for details.

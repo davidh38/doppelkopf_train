@@ -558,18 +558,108 @@ class DoppelkopfGame:
         # Calculate points for the trick
         trick_points = sum(card.get_value() for card in self.current_trick)
         
+        # Check for Diamond Ace capture in normal or hochzeit game
+        diamond_ace_bonus = 0
+        diamond_aces_captured = []
+        
+        if (self.game_variant == GameVariant.NORMAL or self.game_variant == GameVariant.HOCHZEIT):
+            # Check if there are Diamond Aces in the trick
+            for i, card in enumerate(self.current_trick):
+                if card.suit == Suit.DIAMONDS and card.rank == Rank.ACE:
+                    # Calculate which player played this card
+                    card_player = (self.current_player - (self.num_players - i)) % self.num_players
+                    # Check if the card player's team is different from the trick winner's team
+                    if self.teams[card_player] != self.teams[self.trick_winner]:
+                        # Award a bonus point for capturing opponent's Diamond Ace
+                        diamond_ace_bonus += 1
+                        # Store information about this Diamond Ace capture
+                        diamond_aces_captured.append({
+                            'winner': self.trick_winner,
+                            'winner_team': self.teams[self.trick_winner].name,
+                            'loser': card_player,
+                            'loser_team': self.teams[card_player].name,
+                            'is_second': card.is_second,  # Track which copy of the Diamond Ace
+                            'type': 'diamond_ace'
+                        })
+        
+        # Check for 40+ point trick
+        forty_plus_bonus = 0
+        if trick_points >= 40:
+            # Award a bonus point for a 40+ point trick
+            forty_plus_bonus = 1
+            # Store information about the 40+ point trick
+            if not hasattr(self, 'special_tricks'):
+                self.special_tricks = []
+            
+            self.special_tricks.append({
+                'winner': self.trick_winner,
+                'winner_team': self.teams[self.trick_winner].name,
+                'points': trick_points,
+                'type': 'forty_plus'
+            })
+        
+        # Store information about Diamond Ace captures if any occurred
+        if diamond_aces_captured:
+            self.diamond_ace_captured = diamond_aces_captured
+            
+        # Store information about the 40+ point trick if it occurred
+        if forty_plus_bonus > 0:
+            # If we already have diamond_ace_captured, add the 40+ trick to it
+            if hasattr(self, 'diamond_ace_captured'):
+                # Add a special entry for the 40+ trick
+                self.diamond_ace_captured.append({
+                    'winner': self.trick_winner,
+                    'winner_team': self.teams[self.trick_winner].name,
+                    'points': trick_points,
+                    'type': 'forty_plus'
+                })
+            else:
+                # Create a new list with just the 40+ trick
+                self.diamond_ace_captured = [{
+                    'winner': self.trick_winner,
+                    'winner_team': self.teams[self.trick_winner].name,
+                    'points': trick_points,
+                    'type': 'forty_plus'
+                }]
+        
         # Add points to the winner's team
         winner_team = self.teams[self.trick_winner]
         if winner_team == PlayerTeam.RE:
             self.scores[0] += trick_points
+            # Add bonus points for Diamond Ace capture
+            if diamond_ace_bonus > 0:
+                self.scores[0] += diamond_ace_bonus
+                # Subtract from the other team
+                self.scores[1] -= diamond_ace_bonus
+            # Add bonus point for 40+ point trick
+            if forty_plus_bonus > 0:
+                self.scores[0] += forty_plus_bonus
         else:
             self.scores[1] += trick_points
+            # Add bonus points for Diamond Ace capture
+            if diamond_ace_bonus > 0:
+                self.scores[1] += diamond_ace_bonus
+                # Subtract from the other team
+                self.scores[0] -= diamond_ace_bonus
+            # Add bonus point for 40+ point trick
+            if forty_plus_bonus > 0:
+                self.scores[1] += forty_plus_bonus
             
         # Add points to the individual player's score
         self.player_scores[self.trick_winner] += trick_points
         
+        # Add bonus points for Diamond Ace capture to the winner's score
+        if diamond_ace_bonus > 0:
+            self.player_scores[self.trick_winner] += diamond_ace_bonus
+            
+        # Add bonus point for 40+ point trick to the winner's score
+        if forty_plus_bonus > 0:
+            self.player_scores[self.trick_winner] += forty_plus_bonus
+        
         # Store the last trick points for display
         self.last_trick_points = trick_points
+        # Store the Diamond Ace bonus for display
+        self.last_trick_diamond_ace_bonus = diamond_ace_bonus
         
         # Store the trick winner and set them as the next player to play
         # When a player wins a trick, it is their turn to play next
