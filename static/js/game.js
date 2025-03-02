@@ -974,20 +974,57 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        // Create a grid layout for the trick
+        hardcodedTrickEl.style.display = "grid";
+        hardcodedTrickEl.style.gridTemplateAreas = `
+            ".     top    ."
+            "left  .      right"
+            ".     bottom ."
+        `;
+        hardcodedTrickEl.style.gridTemplateColumns = "1fr 1fr 1fr";
+        hardcodedTrickEl.style.gridTemplateRows = "1fr 1fr 1fr";
+        hardcodedTrickEl.style.gap = "10px";
+        hardcodedTrickEl.style.width = "300px";
+        hardcodedTrickEl.style.height = "300px";
+        hardcodedTrickEl.style.margin = "0 auto";
+        
+        // Calculate the starting player for this trick
+        const startingPlayer = (gameState.currentPlayer - gameState.currentTrick.length) % 4;
+        
         // Create a container for each card with player information
         for (let i = 0; i < gameState.currentTrick.length; i++) {
             const card = gameState.currentTrick[i];
+            
+            // Calculate which player played this card
+            const playerIdx = (startingPlayer + i) % 4;
             
             // Create a container for the card and player label
             const cardContainer = document.createElement('div');
             cardContainer.className = 'trick-card-container';
             
+            // Position the card based on the player's position relative to the user
+            // Player 0 is the user (bottom), Player 1 is left, Player 2 is top, Player 3 is right
+            let position;
+            if (playerIdx === 0) {
+                position = "bottom";
+                cardContainer.style.gridArea = "bottom";
+                cardContainer.style.justifySelf = "center";
+            } else if (playerIdx === 1) {
+                position = "left";
+                cardContainer.style.gridArea = "left";
+                cardContainer.style.justifySelf = "start";
+            } else if (playerIdx === 2) {
+                position = "top";
+                cardContainer.style.gridArea = "top";
+                cardContainer.style.justifySelf = "center";
+            } else if (playerIdx === 3) {
+                position = "right";
+                cardContainer.style.gridArea = "right";
+                cardContainer.style.justifySelf = "end";
+            }
+            
             // Create the card element
             const cardElement = createCardElement(card, false); // Cards in the trick are not playable
-            
-            // Calculate which player played this card
-            const startingPlayer = (gameState.currentPlayer - gameState.currentTrick.length) % 4;
-            const playerIdx = (startingPlayer + i) % 4;
             
             // Create a player label
             const playerLabel = document.createElement('div');
@@ -1021,6 +1058,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 playerLabel.textContent = playerIdx === 0 ? 'You' : `Player ${playerIdx}`;
             }
             
+            // Position the label based on the player's position
+            if (position === "bottom") {
+                playerLabel.style.order = "1"; // Label below card
+            } else if (position === "top") {
+                playerLabel.style.order = "-1"; // Label above card
+            } else if (position === "left") {
+                cardContainer.style.flexDirection = "row";
+                playerLabel.style.marginRight = "10px";
+            } else if (position === "right") {
+                cardContainer.style.flexDirection = "row-reverse";
+                playerLabel.style.marginLeft = "10px";
+            }
+            
             // Add the player label and card to the container
             cardContainer.appendChild(playerLabel);
             cardContainer.appendChild(cardElement);
@@ -1028,9 +1078,6 @@ document.addEventListener('DOMContentLoaded', function() {
             // Add the container to the trick display
             hardcodedTrickEl.appendChild(cardContainer);
         }
-        
-        // Make sure the trick is visible
-        hardcodedTrickEl.style.display = "flex";
     }
     
     // Function to start a new game
