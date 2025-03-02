@@ -970,11 +970,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Clear the trick element
         hardcodedTrickEl.innerHTML = '';
         
-        if (!gameState.currentTrick || gameState.currentTrick.length === 0) {
-            return;
-        }
-        
-        // Create a grid layout for the trick
+        // Always set up the grid layout, even if there are no cards yet
+        // This ensures the layout doesn't change when it's the user's turn
         hardcodedTrickEl.style.display = "grid";
         hardcodedTrickEl.style.gridTemplateAreas = `
             ".     top    ."
@@ -987,6 +984,11 @@ document.addEventListener('DOMContentLoaded', function() {
         hardcodedTrickEl.style.width = "300px";
         hardcodedTrickEl.style.height = "300px";
         hardcodedTrickEl.style.margin = "0 auto";
+        
+        // If there are no cards in the trick, just return after setting up the grid
+        if (!gameState.currentTrick || gameState.currentTrick.length === 0) {
+            return;
+        }
         
         // Calculate the starting player for this trick
         const startingPlayer = (gameState.currentPlayer - gameState.currentTrick.length) % 4;
