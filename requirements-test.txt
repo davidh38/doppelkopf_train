@@ -1,0 +1,6 @@
+# Core dependencies from requirements.txt
+-r requirements.txt
+
+# Additional dependencies for testing
+selenium>=4.0.0
+requests>=2.25.0

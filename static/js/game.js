@@ -19,6 +19,97 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Connected to server');
     });
     
+    // Function to update the debug trick info
+    function updateDebugTrickInfo() {
+        const debugTrickEl = document.getElementById('debug-trick');
+        if (!debugTrickEl) return;
+        
+        // Add event listener to debug button if not already added
+        const debugBtn = document.getElementById('debug-btn');
+        if (debugBtn && !debugBtn.hasAttribute('data-listener-added')) {
+            debugBtn.addEventListener('click', () => {
+                // Get the current trick data
+                const trickData = {
+                    currentTrick: gameState.currentTrick,
+                    currentPlayer: gameState.currentPlayer,
+                    startingPlayer: gameState.currentTrick.length > 0 ? 
+                        (gameState.currentPlayer - gameState.currentTrick.length) % 4 : gameState.currentPlayer
+                };
+                
+                // Display the trick data in the debug element
+                debugTrickEl.textContent = JSON.stringify(trickData, null, 2);
+            });
+            
+            // Mark the button as having a listener added
+            debugBtn.setAttribute('data-listener-added', 'true');
+        }
+    }
+    
+    // Function to update the AI card visualization
+    function updateAICardVisualization() {
+        // Get the AI card visualization elements
+        const player1Cards = document.getElementById('player1-cards');
+        const player2Cards = document.getElementById('player2-cards');
+        const player3Cards = document.getElementById('player3-cards');
+        
+        if (!player1Cards || !player2Cards || !player3Cards) return;
+        
+        // Clear the AI card visualization
+        player1Cards.innerHTML = '';
+        player2Cards.innerHTML = '';
+        player3Cards.innerHTML = '';
+        
+        // Get the other players' info
+        if (!gameState.otherPlayers) return;
+        
+        // Update the AI card visualization
+        gameState.otherPlayers.forEach(player => {
+            const playerIdx = player.id;
+            const cardCount = player.card_count;
+            const isCurrent = player.is_current;
+            
+            // Get the corresponding element
+            let playerCardsEl;
+            if (playerIdx === 1) playerCardsEl = player1Cards;
+            else if (playerIdx === 2) playerCardsEl = player2Cards;
+            else if (playerIdx === 3) playerCardsEl = player3Cards;
+            else return;
+            
+            // Create a status element
+            const statusEl = document.createElement('div');
+            statusEl.className = 'player-status';
+            statusEl.textContent = isCurrent ? 'Current player' : 'Waiting';
+            statusEl.style.color = isCurrent ? 'green' : 'gray';
+            statusEl.style.fontWeight = 'bold';
+            statusEl.style.marginBottom = '5px';
+            
+            // Create a card count element
+            const cardCountEl = document.createElement('div');
+            cardCountEl.className = 'card-count';
+            cardCountEl.textContent = `Cards: ${cardCount}`;
+            cardCountEl.style.marginBottom = '5px';
+            
+            // Add the elements to the player cards element
+            playerCardsEl.appendChild(statusEl);
+            playerCardsEl.appendChild(cardCountEl);
+            
+            // Create card back elements for each card
+            for (let i = 0; i < cardCount; i++) {
+                const cardBackEl = document.createElement('div');
+                cardBackEl.className = 'card-back';
+                cardBackEl.style.width = '30px';
+                cardBackEl.style.height = '45px';
+                cardBackEl.style.backgroundColor = '#3498db';
+                cardBackEl.style.border = '1px solid #2980b9';
+                cardBackEl.style.borderRadius = '3px';
+                cardBackEl.style.display = 'inline-block';
+                cardBackEl.style.margin = '2px';
+                
+                playerCardsEl.appendChild(cardBackEl);
+            }
+        });
+    }
+    
     socket.on('game_update', function(data) {
         console.log('Received game update:', data);
         
@@ -33,11 +124,19 @@ document.addEventListener('DOMContentLoaded', function() {
             gameState.gameOver = data.game_over;
             gameState.winner = data.winner;
             gameState.legalActions = data.legal_actions || [];
+            gameState.otherPlayers = data.other_players || [];
             
             console.log("Updated hand:", gameState.hand);
             console.log("Current trick:", gameState.currentTrick);
             console.log("Current player:", gameState.currentPlayer);
             console.log("Legal actions:", gameState.legalActions);
+            console.log("Other players:", gameState.otherPlayers);
+            
+            // Update debug trick info
+            updateDebugTrickInfo();
+            
+            // Update AI card visualization
+            updateAICardVisualization();
         }
         
         // Render the player's hand and current trick
@@ -112,57 +211,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Render the player's hand in the variant selection screen
                     renderVariantSelectionHand();
                     
-                // Log the game state to help debug
-                console.log("Game state at game_ready:", gameState);
-                console.log("Hand length:", gameState.hand ? gameState.hand.length : 0);
-                
-                // Force a new game request
-                console.log("Making a new game request on game_ready event");
-                fetch('/new_game', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    console.log("New game response:", data);
-                    
-                    gameState.gameId = data.game_id;
-                    
-                    // Join the Socket.IO room for this game
-                    socket.emit('join', { game_id: gameState.gameId });
-                    console.log("Joining room:", gameState.gameId);
-                    
-                    // Update game state with the response data
-                    if (data.state) {
-                        gameState.hand = data.state.hand || [];
-                        gameState.currentPlayer = data.state.current_player;
-                        gameState.playerTeam = data.state.player_team;
-                        gameState.gameVariant = data.state.game_variant;
-                        gameState.legalActions = data.state.legal_actions || [];
-                        console.log("Player's hand:", gameState.hand);
-                        console.log("Current player:", gameState.currentPlayer);
-                        console.log("Legal actions:", gameState.legalActions);
-                    }
-                    
-                    // Render the player's hand in the variant selection screen
-                    renderVariantSelectionHand();
-                    
-                    // Show the variant selection screen
-                    if (gameSetupScreen) {
-                        console.log("Hiding game setup screen");
-                        gameSetupScreen.classList.add('hidden');
-                    }
-                    
-                    if (variantSelectionScreen) {
-                        console.log("Showing variant selection screen");
-                        variantSelectionScreen.classList.remove('hidden');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error starting new game:', error);
-                });
+                    // Log the game state to help debug
+                    console.log("Game state at game_ready:", gameState);
+                    console.log("Hand length:", gameState.hand ? gameState.hand.length : 0);
                 }
                 break;
         }
@@ -546,7 +597,53 @@ document.addEventListener('DOMContentLoaded', function() {
                 variant: variant
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                console.log(`Server returned ${response.status}: ${response.statusText}`);
+                // If we get a 400 error, the game is likely not in variant selection phase anymore
+                // Just show the game board
+                if (response.status === 400) {
+                    console.log("Got 400 response, showing game board anyway");
+                    if (variantSelectionScreen) {
+                        variantSelectionScreen.classList.add('hidden');
+                    }
+                    
+                    if (gameBoard) {
+                        // First make sure the element is visible in the DOM
+                        gameBoard.style.display = "grid";
+                        
+                        // Then remove the hidden class
+                        gameBoard.classList.remove('hidden');
+                        
+                        // Force a reflow to ensure the DOM updates
+                        void gameBoard.offsetWidth;
+                        
+                        console.log("gameBoard classes after showing:", gameBoard.className);
+                        console.log("gameBoard style.display:", gameBoard.style.display);
+                    }
+                    
+                    // Make a direct request to get the current game state
+                    fetch(`/get_current_trick?game_id=${gameState.gameId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log("Current trick data:", data);
+                            // Update game state with the current player
+                            gameState.currentPlayer = data.current_player;
+                            
+                            // Render the player's hand
+                            renderHand();
+                            
+                            // Update turn indicator
+                            updateTurnIndicator();
+                        })
+                        .catch(error => console.error('Error getting current trick:', error));
+                    
+                    return Promise.resolve({state: {}}); // Return an empty state object to avoid errors
+                }
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             console.log("Set variant response:", data);
             
@@ -581,11 +678,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 if (gameBoard) {
-                    gameBoard.classList.remove('hidden');
+                    // First set the display style
                     gameBoard.style.display = "grid"; // Force grid display for game board
+                    
+                    // Then remove the hidden class
+                    gameBoard.classList.remove('hidden');
+                    
+                    // Force a reflow to ensure the DOM updates
+                    void gameBoard.offsetWidth;
+                    
+                    // Add a debug element to show the game board is visible
+                    const debugElement = document.createElement('div');
+                    debugElement.textContent = "Game board should be visible now";
+                    debugElement.style.color = "red";
+                    debugElement.style.fontWeight = "bold";
+                    debugElement.style.fontSize = "24px";
+                    debugElement.style.position = "absolute";
+                    debugElement.style.top = "10px";
+                    debugElement.style.left = "50%";
+                    debugElement.style.transform = "translateX(-50%)";
+                    debugElement.style.zIndex = "9999";
+                    document.body.appendChild(debugElement);
+                    
                     console.log("gameBoard classes after showing:", gameBoard.className);
-                    console.log("Set gameBoard display style to grid");
+                    console.log("gameBoard style.display:", gameBoard.style.display);
                 }
+                
+                // Render the player's hand
+                renderHand();
+                
+                // Update turn indicator
+                updateTurnIndicator();
             } else {
                 // Variant selection phase is still active
                 console.log("Variant selection phase is still active, waiting for other players");
@@ -599,13 +722,131 @@ document.addEventListener('DOMContentLoaded', function() {
                         variantSelectionStatusEl.textContent = `Waiting for Player ${gameState.currentPlayer} to select a variant...`;
                     }
                 }
+                
+                // Only make another request if we're still in variant selection phase
+                if (variantSelectionPhase) {
+                    console.log("Still in variant selection phase, making request for AI players");
+                    fetch('/set_variant', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            game_id: gameState.gameId,
+                            variant: 'normal'
+                        })
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            console.log(`Server returned ${response.status}: ${response.statusText}`);
+                            // If we get a 400 error, the game is likely not in variant selection phase anymore
+                            // Just show the game board
+                            if (response.status === 400) {
+                                console.log("Got 400 response, showing game board anyway");
+                                if (variantSelectionScreen) {
+                                    variantSelectionScreen.classList.add('hidden');
+                                }
+                                
+                                if (gameBoard) {
+                                    // First make sure the element is visible in the DOM
+                                    gameBoard.style.display = "grid";
+                                    
+                                    // Then remove the hidden class
+                                    gameBoard.classList.remove('hidden');
+                                    
+                                    // Force a reflow to ensure the DOM updates
+                                    void gameBoard.offsetWidth;
+                                    
+                                    console.log("gameBoard classes after showing:", gameBoard.className);
+                                    console.log("gameBoard style.display:", gameBoard.style.display);
+                                }
+                                
+                                // Make a direct request to get the current game state
+                                fetch(`/get_current_trick?game_id=${gameState.gameId}`)
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        console.log("Current trick data:", data);
+                                        // Update game state with the current player
+                                        gameState.currentPlayer = data.current_player;
+                                        
+                                        // Render the player's hand
+                                        renderHand();
+                                        
+                                        // Update turn indicator
+                                        updateTurnIndicator();
+                                    })
+                                    .catch(error => console.error('Error getting current trick:', error));
+                                
+                                return null;
+                            }
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (!data) return; // Skip if we already handled the error
+                        console.log("Second set variant response:", data);
+                    
+                        // Check if the variant selection phase is now over
+                        const variantSelectionPhase = data.variant_selection_phase !== undefined ? 
+                            data.variant_selection_phase : true;
+                        
+                        if (!variantSelectionPhase) {
+                            // Variant selection phase is now over, show game board
+                            console.log("Variant selection phase is now over, showing game board");
+                            
+                            if (variantSelectionScreen) {
+                                variantSelectionScreen.classList.add('hidden');
+                            }
+                            
+                            if (gameBoard) {
+                                // First make sure the element is visible in the DOM
+                                gameBoard.style.display = "grid";
+                                
+                                // Then remove the hidden class
+                                gameBoard.classList.remove('hidden');
+                                
+                                // Force a reflow to ensure the DOM updates
+                                void gameBoard.offsetWidth;
+                                
+                                console.log("gameBoard classes after showing:", gameBoard.className);
+                                console.log("gameBoard style.display:", gameBoard.style.display);
+                                
+                                // Add a debug element to show the game board is visible
+                                const debugElement = document.createElement('div');
+                                debugElement.textContent = "Game board should be visible now";
+                                debugElement.style.color = "red";
+                                debugElement.style.fontWeight = "bold";
+                                debugElement.style.fontSize = "24px";
+                                debugElement.style.position = "absolute";
+                                debugElement.style.top = "10px";
+                                debugElement.style.left = "50%";
+                                debugElement.style.transform = "translateX(-50%)";
+                                debugElement.style.zIndex = "9999";
+                                document.body.appendChild(debugElement);
+                            }
+                            
+                            // Update game state with the response data
+                            if (data.state) {
+                                gameState.hand = data.state.hand || [];
+                                gameState.gameVariant = data.state.game_variant;
+                                gameState.legalActions = data.state.legal_actions || [];
+                                
+                                if (data.state.current_player !== undefined) {
+                                    gameState.currentPlayer = data.state.current_player;
+                                }
+                            }
+                            
+                            // Render the player's hand
+                            renderHand();
+                            
+                            // Update turn indicator
+                            updateTurnIndicator();
+                        }
+                    })
+                    .catch(error => console.error('Error setting variant for AI players:', error));
+                }
             }
-            
-            // Render the player's hand
-            renderHand();
-            
-            // Update turn indicator
-            updateTurnIndicator();
         })
         .catch(error => console.error('Error setting game variant:', error));
     }

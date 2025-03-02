@@ -95,6 +95,11 @@ body {
     margin: 0 auto;
 }
 
+/* Ensure game board is visible when not hidden */
+#game-board:not(.hidden) {
+    display: grid !important;
+}
+
 #game-board .other-players-area {
     grid-area: players;
     margin-bottom: 10px;

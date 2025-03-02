@@ -177,20 +177,38 @@ def ai_play_turn(game_id):
         # Handle both class-based and function-based agents
         try:
             if hasattr(agent, 'select_action'):
-                action = agent.select_action(game, current_player)
+                action_result = agent.select_action(game, current_player)
             else:
-                action = agent(game, current_player)
+                action_result = agent(game, current_player)
             
             # Debug output to help diagnose AI actions
-            print(f"AI player {current_player} selected action: {action}")
+            print(f"AI player {current_player} selected action: {action_result}")
         except Exception as e:
             print(f"Error in AI action selection: {str(e)}")
             # Fallback to random action if there's an error
-            action = select_random_action(game, current_player)
-            print(f"Falling back to random action: {action}")
+            action_result = select_random_action(game, current_player)
+            print(f"Falling back to random action: {action_result}")
         
-        # Play the card
-        game.play_card(current_player, action)
+        # Handle different action types
+        if isinstance(action_result, tuple) and len(action_result) == 2:
+            action_type, action = action_result
+            
+            if action_type == 'card':
+                # Play the card
+                game.play_card(current_player, action)
+            elif action_type == 'announce':
+                # Make an announcement
+                game.announce(current_player, action)
+                # Continue the turn after announcement
+                continue
+            elif action_type == 'variant':
+                # Set a game variant
+                game.set_variant(action, current_player)
+                # Continue the turn after setting variant
+                continue
+        else:
+            # Assume it's a card action (for backward compatibility with random agent)
+            game.play_card(current_player, action_result)
         
         # Emit game state update after each AI move
         socketio.emit('game_update', get_game_state(game_id), room=game_id)
@@ -378,6 +396,19 @@ def new_game():
     socketio.emit('progress_update', {'step': 'game_ready', 'message': 'Game ready!'})
     print(f"Sending progress update: game_ready")
     
+    # Have AI players choose variants immediately
+    while game.variant_selection_phase and game.current_player != 0:
+        # AI players always choose normal for simplicity
+        game.set_variant('normal', game.current_player)
+    
+    # Only end the variant selection phase if it's not the human player's turn
+    if game.variant_selection_phase and game.current_player != 0:
+        # Force the variant selection phase to end
+        game.variant_selection_phase = False
+        # Set a default game variant if none was selected
+        if game.game_variant == GameVariant.NORMAL:
+            print("Setting default game variant to NORMAL")
+    
     # Store game state
     games[game_id] = {
         'game': game,
@@ -400,6 +431,11 @@ def new_game():
     
     # If it's not the player's turn, have AI play
     if game.current_player != 0:
+        print(f"GAME STATE: Starting AI turns from new_game. Current player: {game.current_player}")
+        print(f"GAME STATE: Game variant: {game.game_variant.name}")
+        print(f"GAME STATE: Teams: {[team.name for team in game.teams]}")
+        print(f"GAME STATE: Hands: {[len(hand) for hand in game.hands]}")
+        print(f"GAME STATE: AI agents: {ai_agents}")
         ai_play_turn(game_id)
     
     # Return initial game state
@@ -430,6 +466,11 @@ def set_variant():
     
     # If the variant selection phase is over, have AI play if it's not the player's turn
     if not game.variant_selection_phase and game.current_player != 0:
+        print(f"GAME STATE: Starting AI turns from set_variant. Current player: {game.current_player}")
+        print(f"GAME STATE: Game variant: {game.game_variant.name}")
+        print(f"GAME STATE: Teams: {[team.name for team in game.teams]}")
+        print(f"GAME STATE: Hands: {[len(hand) for hand in game.hands]}")
+        print(f"GAME STATE: AI agents: {games[game_id]['ai_agents']}")
         ai_play_turn(game_id)
     
     # If we're still in variant selection phase, have AI players make their choices
@@ -532,10 +573,10 @@ def play_card():
             'trick_points': trick_points
         }, room=game_id)
         
-        # IMPORTANT: Do not clear the current trick here
-        # The current trick will be cleared by the game logic after the tests check it
-        # Just set the current player to the trick winner
+        # Clear the current trick and set the current player to the trick winner
+        game.current_trick = []
         game.current_player = trick_winner  # Set the current player to the trick winner
+        game.trick_winner = None
     
     # Have AI players take their turns
     ai_play_turn(game_id)
