@@ -109,9 +109,11 @@ def get_game_state(game_id, player_id=0):
                 'team': game.teams[i].name,
                 'card_count': len(game.hands[i]),
                 'is_current': game.current_player == i,
-                'score': game.player_scores[i]
+                'score': game.player_scores[i],
+                'revealed_team': game_data['revealed_teams'][i]
             } for i in range(1, game.num_players)
         ],
+        'revealed_teams': game_data['revealed_teams'],
         'player_score': game.player_scores[player_id],
         'last_trick_points': getattr(game, 'last_trick_points', 0),
         're_announced': game_data.get('re_announced', False),
@@ -120,6 +122,17 @@ def get_game_state(game_id, player_id=0):
         # Can announce until the fifth card is played
         'can_announce': (len(game.current_trick) + sum(len(trick) for trick in game.tricks)) < 5
     }
+    
+    # Add player variant selections if available
+    if 'player_variants' in game_data:
+        state['player_variants'] = game_data['player_variants']
+    
+    # Add announcements if available
+    if 're_announced' in game_data or 'contra_announced' in game_data:
+        state['announcements'] = {
+            're': game_data.get('re_announced', False),
+            'contra': game_data.get('contra_announced', False)
+        }
     
     # Add current trick with player information - VERY simplified approach
     if game.current_trick:
@@ -196,6 +209,10 @@ def ai_play_turn(game_id):
             if action_type == 'card':
                 # Play the card
                 game.play_card(current_player, action)
+                
+                # Check if the AI player revealed their team by playing a Queen of Clubs
+                if action.suit == Suit.CLUBS and action.rank == Rank.QUEEN:
+                    games[game_id]['revealed_teams'][current_player] = True
             elif action_type == 'announce':
                 # Make an announcement
                 game.announce(current_player, action)
@@ -209,6 +226,10 @@ def ai_play_turn(game_id):
         else:
             # Assume it's a card action (for backward compatibility with random agent)
             game.play_card(current_player, action_result)
+            
+            # Check if the AI player revealed their team by playing a Queen of Clubs
+            if action_result.suit == Suit.CLUBS and action_result.rank == Rank.QUEEN:
+                games[game_id]['revealed_teams'][current_player] = True
         
         # Emit game state update after each AI move
         socketio.emit('game_update', get_game_state(game_id), room=game_id)
@@ -396,10 +417,17 @@ def new_game():
     socketio.emit('progress_update', {'step': 'game_ready', 'message': 'Game ready!'})
     print(f"Sending progress update: game_ready")
     
+    # Initialize player variants dictionary
+    player_variants = {}
+    
     # Have AI players choose variants immediately
     while game.variant_selection_phase and game.current_player != 0:
         # AI players always choose normal for simplicity
-        game.set_variant('normal', game.current_player)
+        current_player = game.current_player
+        game.set_variant('normal', current_player)
+        
+        # Store the AI player's variant selection
+        player_variants[current_player] = 'normal'
     
     # Only end the variant selection phase if it's not the human player's turn
     if game.variant_selection_phase and game.current_player != 0:
@@ -420,7 +448,9 @@ def new_game():
         're_announced': False,
         'contra_announced': False,
         'multiplier': 1,  # Score multiplier (doubled for Re/Contra)
-        'starting_player': next_starting_player  # Track the starting player for this game
+        'starting_player': next_starting_player,  # Track the starting player for this game
+        'player_variants': player_variants,  # Store player variant selections
+        'revealed_teams': [False, False, False, False]  # Track which players have revealed their team
     }
     
     # Return initial game state
@@ -464,6 +494,13 @@ def set_variant():
     if not result:
         return jsonify({'error': 'Invalid variant or not in variant selection phase'}), 400
     
+    # Store the player's variant selection
+    if 'player_variants' not in games[game_id]:
+        games[game_id]['player_variants'] = {}
+    
+    # Store the variant selection for this player
+    games[game_id]['player_variants'][player_idx] = variant
+    
     # If the variant selection phase is over, have AI play if it's not the player's turn
     if not game.variant_selection_phase and game.current_player != 0:
         print(f"GAME STATE: Starting AI turns from set_variant. Current player: {game.current_player}")
@@ -478,7 +515,13 @@ def set_variant():
         # Have AI players choose variants until it's the human's turn again or the phase is over
         while game.variant_selection_phase and game.current_player != 0:
             # AI players always choose normal for simplicity
-            game.set_variant('normal', game.current_player)
+            current_player = game.current_player
+            game.set_variant('normal', current_player)
+            
+            # Store the AI player's variant selection
+            if 'player_variants' not in games[game_id]:
+                games[game_id]['player_variants'] = {}
+            games[game_id]['player_variants'][current_player] = 'normal'
         
         # If the variant selection phase is now over, have AI play if it's not the player's turn
         if not game.variant_selection_phase and game.current_player != 0:
@@ -532,6 +575,10 @@ def play_card():
     
     # Play the card
     game.play_card(0, selected_card)
+    
+    # Check if the player revealed their team by playing a Queen of Clubs
+    if selected_card.suit == Suit.CLUBS and selected_card.rank == Rank.QUEEN:
+        games[game_id]['revealed_teams'][0] = True
     
     # Check if a trick was completed
     trick_completed = game.trick_winner is not None

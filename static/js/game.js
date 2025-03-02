@@ -148,12 +148,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 playerCardsEl.appendChild(cardImg);
             }
             
-            // Add team information if available
-            if (gameState.otherPlayers && gameState.otherPlayers[i-1]) {
+            // Show team information only if the player has revealed their team (by playing a Queen of Clubs)
+            if (gameState.otherPlayers && 
+                gameState.otherPlayers[i-1] && 
+                gameState.otherPlayers[i-1].team && 
+                gameState.otherPlayers[i-1].revealed_team) {
+                const team = gameState.otherPlayers[i-1].team;
+                
                 const teamInfo = document.createElement('div');
-                teamInfo.textContent = `Team: ${gameState.otherPlayers[i-1].team}`;
+                teamInfo.textContent = `Team: ${team}`;
                 teamInfo.style.marginTop = '5px';
                 teamInfo.style.fontWeight = 'bold';
+                
+                // Add color coding for teams
+                if (team === 'RE') {
+                    teamInfo.style.color = '#2ecc71'; // Green for RE
+                } else if (team === 'KONTRA') {
+                    teamInfo.style.color = '#e74c3c'; // Red for KONTRA
+                }
+                
                 playerCardsEl.appendChild(teamInfo);
             }
         }
