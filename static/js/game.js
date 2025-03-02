@@ -61,6 +61,17 @@ document.addEventListener('DOMContentLoaded', function() {
     if (jackSoloBtn) jackSoloBtn.addEventListener('click', () => setGameVariant('jack_solo'));
     if (fleshlessBtn) fleshlessBtn.addEventListener('click', () => setGameVariant('fleshless'));
     
+    // Add event listeners for Re and Contra announcement buttons
+    const reBtn = document.getElementById('re-btn');
+    const contraBtn = document.getElementById('contra-btn');
+    const gameReBtn = document.getElementById('game-re-btn');
+    const gameContraBtn = document.getElementById('game-contra-btn');
+    
+    if (reBtn) reBtn.addEventListener('click', () => makeAnnouncement('re'));
+    if (contraBtn) contraBtn.addEventListener('click', () => makeAnnouncement('contra'));
+    if (gameReBtn) gameReBtn.addEventListener('click', () => makeAnnouncement('re'));
+    if (gameContraBtn) gameContraBtn.addEventListener('click', () => makeAnnouncement('contra'));
+    
     // Add event listener for the Show Last Trick button
     const showLastTrickBtn = document.getElementById('show-last-trick-btn');
     if (showLastTrickBtn) {
@@ -87,6 +98,8 @@ document.addEventListener('DOMContentLoaded', function() {
             gameState.winner = data.winner;
             gameState.legalActions = data.legal_actions || [];
             gameState.otherPlayers = data.other_players || [];
+            gameState.canAnnounceRe = data.can_announce_re || false;
+            gameState.canAnnounceContra = data.can_announce_contra || false;
             
             // Store player announcements if available
             if (data.announcements) {
@@ -97,6 +110,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.player_variants) {
                 gameState.playerVariants = data.player_variants;
             }
+            
+            // Update announcement buttons visibility
+            updateAnnouncementButtons();
         }
         
         // Render the player's hand and current trick
@@ -465,6 +481,151 @@ document.addEventListener('DOMContentLoaded', function() {
                 const rankOrder = { 'ACE': 0, 'TEN': 1, 'KING': 2, 'QUEEN': 3, 'JACK': 4, 'NINE': 5 };
                 return rankOrder[a.rank] - rankOrder[b.rank];
             }
+        });
+    }
+    
+    // Function to update the announcement buttons visibility
+    function updateAnnouncementButtons() {
+        // Get the announcement buttons
+        const reBtn = document.getElementById('re-btn');
+        const contraBtn = document.getElementById('contra-btn');
+        const gameReBtn = document.getElementById('game-re-btn');
+        const gameContraBtn = document.getElementById('game-contra-btn');
+        
+        // Get the announcement areas
+        const announcementOptions = document.querySelector('.announcement-options');
+        const gameAnnouncementArea = document.getElementById('game-announcement-area');
+        
+        // Update the Re button visibility
+        if (reBtn) {
+            reBtn.disabled = !gameState.canAnnounceRe;
+            reBtn.style.opacity = gameState.canAnnounceRe ? '1' : '0.5';
+        }
+        
+        if (gameReBtn) {
+            gameReBtn.disabled = !gameState.canAnnounceRe;
+            gameReBtn.style.opacity = gameState.canAnnounceRe ? '1' : '0.5';
+        }
+        
+        // Update the Contra button visibility
+        if (contraBtn) {
+            contraBtn.disabled = !gameState.canAnnounceContra;
+            contraBtn.style.opacity = gameState.canAnnounceContra ? '1' : '0.5';
+        }
+        
+        if (gameContraBtn) {
+            gameContraBtn.disabled = !gameState.canAnnounceContra;
+            gameContraBtn.style.opacity = gameState.canAnnounceContra ? '1' : '0.5';
+        }
+        
+        // Show/hide the announcement areas based on whether announcements are allowed
+        if (announcementOptions) {
+            announcementOptions.style.display = (gameState.canAnnounceRe || gameState.canAnnounceContra) ? 'block' : 'none';
+        }
+        
+        if (gameAnnouncementArea) {
+            gameAnnouncementArea.classList.toggle('hidden', !(gameState.canAnnounceRe || gameState.canAnnounceContra));
+        }
+        
+        // Update announcement status displays
+        const reStatus = document.getElementById('re-status');
+        const contraStatus = document.getElementById('contra-status');
+        const gameReStatus = document.getElementById('game-re-status');
+        const gameContraStatus = document.getElementById('game-contra-status');
+        
+        if (reStatus && gameState.announcements && gameState.announcements.re) {
+            reStatus.classList.remove('hidden');
+        } else if (reStatus) {
+            reStatus.classList.add('hidden');
+        }
+        
+        if (contraStatus && gameState.announcements && gameState.announcements.contra) {
+            contraStatus.classList.remove('hidden');
+        } else if (contraStatus) {
+            contraStatus.classList.add('hidden');
+        }
+        
+        if (gameReStatus && gameState.announcements && gameState.announcements.re) {
+            gameReStatus.classList.remove('hidden');
+        } else if (gameReStatus) {
+            gameReStatus.classList.add('hidden');
+        }
+        
+        if (gameContraStatus && gameState.announcements && gameState.announcements.contra) {
+            gameContraStatus.classList.remove('hidden');
+        } else if (gameContraStatus) {
+            gameContraStatus.classList.add('hidden');
+        }
+        
+        // Update multiplier displays
+        const multiplierEl = document.getElementById('multiplier');
+        const gameMultiplierEl = document.getElementById('game-announcement-multiplier');
+        
+        if (multiplierEl) {
+            multiplierEl.textContent = `${gameState.multiplier || 1}x`;
+        }
+        
+        if (gameMultiplierEl) {
+            gameMultiplierEl.textContent = `${gameState.multiplier || 1}x`;
+        }
+    }
+    
+    // Function to make an announcement (Re or Contra)
+    function makeAnnouncement(announcement) {
+        console.log(`Making announcement: ${announcement}`);
+        
+        fetch('/announce', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                game_id: gameState.gameId,
+                announcement: announcement
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || `HTTP error! status: ${response.status}`);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("Announcement response:", data);
+            
+            // Update game state with the response data
+            if (data.state) {
+                // Update the game state
+                gameState.hand = data.state.hand || gameState.hand;
+                gameState.currentTrick = data.state.current_trick || gameState.currentTrick;
+                gameState.currentPlayer = data.state.current_player;
+                gameState.legalActions = data.state.legal_actions || gameState.legalActions;
+                gameState.canAnnounceRe = data.state.can_announce_re || false;
+                gameState.canAnnounceContra = data.state.can_announce_contra || false;
+                
+                // Update announcements
+                if (!gameState.announcements) {
+                    gameState.announcements = {};
+                }
+                
+                if (announcement === 're') {
+                    gameState.announcements.re = true;
+                } else if (announcement === 'contra') {
+                    gameState.announcements.contra = true;
+                }
+                
+                // Update multiplier
+                gameState.multiplier = data.multiplier || gameState.multiplier;
+            }
+            
+            // Update the announcement buttons
+            updateAnnouncementButtons();
+        })
+        .catch(error => {
+            console.error('Error making announcement:', error);
+            alert(`Error: ${error.message}`);
         });
     }
     

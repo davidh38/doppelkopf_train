@@ -120,7 +120,9 @@ def get_game_state(game_id, player_id=0):
         'contra_announced': game_data.get('contra_announced', False),
         'multiplier': game_data.get('multiplier', 1),
         # Can announce until the fifth card is played
-        'can_announce': (len(game.current_trick) + sum(len(trick) for trick in game.tricks)) < 5
+        'can_announce': (len(game.current_trick) + sum(len(trick) for trick in game.tricks)) < 5,
+        'can_announce_re': game.teams[player_id] == PlayerTeam.RE and (len(game.current_trick) + sum(len(trick) for trick in game.tricks)) < 5,
+        'can_announce_contra': game.teams[player_id] == PlayerTeam.KONTRA and (len(game.current_trick) + sum(len(trick) for trick in game.tricks)) < 5
     }
     
     # Add player variant selections if available
