@@ -970,23 +970,32 @@ document.addEventListener('DOMContentLoaded', function() {
         // Clear the trick element
         hardcodedTrickEl.innerHTML = '';
         
-        // Always set up the grid layout, even if there are no cards yet
+        // ALWAYS set up the grid layout, even if there are no cards yet
         // This ensures the layout doesn't change when it's the user's turn
-        hardcodedTrickEl.style.display = "grid";
-        hardcodedTrickEl.style.gridTemplateAreas = `
-            ".     top    ."
-            "left  .      right"
-            ".     bottom ."
+        // Force grid display with !important to override any other styles
+        hardcodedTrickEl.style.cssText = `
+            display: grid !important;
+            grid-template-areas: 
+                ".     top    ."
+                "left  .      right"
+                ".     bottom .";
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+            gap: 10px;
+            width: 300px;
+            height: 300px;
+            margin: 0 auto;
         `;
-        hardcodedTrickEl.style.gridTemplateColumns = "1fr 1fr 1fr";
-        hardcodedTrickEl.style.gridTemplateRows = "1fr 1fr 1fr";
-        hardcodedTrickEl.style.gap = "10px";
-        hardcodedTrickEl.style.width = "300px";
-        hardcodedTrickEl.style.height = "300px";
-        hardcodedTrickEl.style.margin = "0 auto";
         
         // If there are no cards in the trick, just return after setting up the grid
         if (!gameState.currentTrick || gameState.currentTrick.length === 0) {
+            // Add placeholder divs for each position to maintain the grid structure
+            const positions = ["top", "left", "right", "bottom"];
+            positions.forEach(position => {
+                const placeholderDiv = document.createElement('div');
+                placeholderDiv.style.gridArea = position;
+                hardcodedTrickEl.appendChild(placeholderDiv);
+            });
             return;
         }
         
