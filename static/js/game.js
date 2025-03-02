@@ -1271,7 +1271,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Calculate the points for each player based on the winner
         const winningTeam = gameState.winner;
-        const pointsPerPlayer = 2; // +2 for winners, -2 for losers
+        const pointsPerPlayer = 1; // +1 for winners, -1 for losers
         
         // Update player scores in the game over screen
         for (let i = 0; i < 4; i++) {
