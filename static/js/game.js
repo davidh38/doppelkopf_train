@@ -5,110 +5,72 @@ document.addEventListener('DOMContentLoaded', function() {
     // Store model path
     let MODEL_PATH = 'the server';
     
-    // Fetch model info from the server
-    fetch('/model_info')
-        .then(response => response.json())
-        .then(data => {
-            MODEL_PATH = data.model_path || 'the server';
-            console.log("Using model:", MODEL_PATH);
-        })
-        .catch(error => console.error('Error fetching model info:', error));
+    // Game state
+    let gameState = {
+        gameId: null,
+        currentPlayer: 0,
+        playerTeam: null,
+        gameVariant: null,
+        hand: [],
+        currentTrick: [],
+        legalActions: [],
+        scores: [0, 0],
+        gameOver: false,
+        winner: null,
+        revealed_team: false,
+        revealed_teams: [false, false, false, false],
+        player_team_type: '',
+        player_team_types: ['', '', '', '']
+    };
+    
+    // DOM elements
+    const gameSetupScreen = document.getElementById('game-setup');
+    const gameBoard = document.getElementById('game-board');
+    const gameOverScreen = document.getElementById('game-over');
+    
+    console.log("DOM elements initialized:");
+    console.log("gameSetupScreen:", gameSetupScreen);
+    console.log("gameBoard:", gameBoard);
+    console.log("gameOverScreen:", gameOverScreen);
+    
+    const newGameBtn = document.getElementById('new-game-btn');
+    const normalBtn = document.getElementById('normal-btn');
+    const hochzeitBtn = document.getElementById('hochzeit-btn');
+    const queenSoloBtn = document.getElementById('queen-solo-btn');
+    const jackSoloBtn = document.getElementById('jack-solo-btn');
+    const fleshlessBtn = document.getElementById('fleshless-btn');
+    const playAgainBtn = document.getElementById('play-again-btn');
+    
+    const playerTeamEl = document.getElementById('player-team');
+    const gameVariantEl = document.getElementById('game-variant');
+    const reScoreEl = document.getElementById('re-score');
+    const kontraScoreEl = document.getElementById('kontra-score');
+    const turnIndicatorEl = document.getElementById('turn-indicator');
+    
+    const otherPlayersEl = document.getElementById('other-players');
+    const playerHandEl = document.getElementById('player-hand');
+    const currentTrickEl = document.getElementById('current-trick');
+    
+    // Event listeners
+    if (newGameBtn) newGameBtn.addEventListener('click', startNewGame);
+    
+    // Add event listeners for variant selection buttons
+    if (normalBtn) normalBtn.addEventListener('click', () => setGameVariant('normal'));
+    if (hochzeitBtn) hochzeitBtn.addEventListener('click', () => setGameVariant('hochzeit'));
+    if (queenSoloBtn) queenSoloBtn.addEventListener('click', () => setGameVariant('queen_solo'));
+    if (jackSoloBtn) jackSoloBtn.addEventListener('click', () => setGameVariant('jack_solo'));
+    if (fleshlessBtn) fleshlessBtn.addEventListener('click', () => setGameVariant('fleshless'));
+    
+    // Add event listener for the Show Last Trick button
+    const showLastTrickBtn = document.getElementById('show-last-trick-btn');
+    if (showLastTrickBtn) {
+        showLastTrickBtn.addEventListener('click', showLastTrick);
+    }
     
     // Socket.IO event handlers
     socket.on('connect', function() {
         console.log('Connected to server');
     });
-    
-    // Function to update the debug trick info
-    function updateDebugTrickInfo() {
-        const debugTrickEl = document.getElementById('debug-trick');
-        if (!debugTrickEl) return;
-        
-        // Add event listener to debug button if not already added
-        const debugBtn = document.getElementById('debug-btn');
-        if (debugBtn && !debugBtn.hasAttribute('data-listener-added')) {
-            debugBtn.addEventListener('click', () => {
-                // Get the current trick data
-                const trickData = {
-                    currentTrick: gameState.currentTrick,
-                    currentPlayer: gameState.currentPlayer,
-                    startingPlayer: gameState.currentTrick.length > 0 ? 
-                        (gameState.currentPlayer - gameState.currentTrick.length) % 4 : gameState.currentPlayer
-                };
-                
-                // Display the trick data in the debug element
-                debugTrickEl.textContent = JSON.stringify(trickData, null, 2);
-            });
-            
-            // Mark the button as having a listener added
-            debugBtn.setAttribute('data-listener-added', 'true');
-        }
-    }
-    
-    // Function to update the AI card visualization
-    function updateAICardVisualization() {
-        // Get the AI card visualization elements
-        const player1Cards = document.getElementById('player1-cards');
-        const player2Cards = document.getElementById('player2-cards');
-        const player3Cards = document.getElementById('player3-cards');
-        
-        if (!player1Cards || !player2Cards || !player3Cards) return;
-        
-        // Clear the AI card visualization
-        player1Cards.innerHTML = '';
-        player2Cards.innerHTML = '';
-        player3Cards.innerHTML = '';
-        
-        // Get the other players' info
-        if (!gameState.otherPlayers) return;
-        
-        // Update the AI card visualization
-        gameState.otherPlayers.forEach(player => {
-            const playerIdx = player.id;
-            const cardCount = player.card_count;
-            const isCurrent = player.is_current;
-            
-            // Get the corresponding element
-            let playerCardsEl;
-            if (playerIdx === 1) playerCardsEl = player1Cards;
-            else if (playerIdx === 2) playerCardsEl = player2Cards;
-            else if (playerIdx === 3) playerCardsEl = player3Cards;
-            else return;
-            
-            // Create a status element
-            const statusEl = document.createElement('div');
-            statusEl.className = 'player-status';
-            statusEl.textContent = isCurrent ? 'Current player' : 'Waiting';
-            statusEl.style.color = isCurrent ? 'green' : 'gray';
-            statusEl.style.fontWeight = 'bold';
-            statusEl.style.marginBottom = '5px';
-            
-            // Create a card count element
-            const cardCountEl = document.createElement('div');
-            cardCountEl.className = 'card-count';
-            cardCountEl.textContent = `Cards: ${cardCount}`;
-            cardCountEl.style.marginBottom = '5px';
-            
-            // Add the elements to the player cards element
-            playerCardsEl.appendChild(statusEl);
-            playerCardsEl.appendChild(cardCountEl);
-            
-            // Create card back elements for each card
-            for (let i = 0; i < cardCount; i++) {
-                const cardBackEl = document.createElement('div');
-                cardBackEl.className = 'card-back';
-                cardBackEl.style.width = '30px';
-                cardBackEl.style.height = '45px';
-                cardBackEl.style.backgroundColor = '#3498db';
-                cardBackEl.style.border = '1px solid #2980b9';
-                cardBackEl.style.borderRadius = '3px';
-                cardBackEl.style.display = 'inline-block';
-                cardBackEl.style.margin = '2px';
-                
-                playerCardsEl.appendChild(cardBackEl);
-            }
-        });
-    }
     
     socket.on('game_update', function(data) {
         console.log('Received game update:', data);
@@ -126,17 +88,15 @@ document.addEventListener('DOMContentLoaded', function() {
             gameState.legalActions = data.legal_actions || [];
             gameState.otherPlayers = data.other_players || [];
             
-            console.log("Updated hand:", gameState.hand);
-            console.log("Current trick:", gameState.currentTrick);
-            console.log("Current player:", gameState.currentPlayer);
-            console.log("Legal actions:", gameState.legalActions);
-            console.log("Other players:", gameState.otherPlayers);
+            // Store player announcements if available
+            if (data.announcements) {
+                gameState.announcements = data.announcements;
+            }
             
-            // Update debug trick info
-            updateDebugTrickInfo();
-            
-            // Update AI card visualization
-            updateAICardVisualization();
+            // Store player variant selections if available
+            if (data.player_variants) {
+                gameState.playerVariants = data.player_variants;
+            }
         }
         
         // Render the player's hand and current trick
@@ -145,7 +105,141 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Update turn indicator
         updateTurnIndicator();
+        
+        // Update game variant display
+        updateGameVariantDisplay();
+        
+        // Update AI card visualization
+        updateAICardVisualization();
     });
+    
+    // Function to update AI card visualization
+    function updateAICardVisualization() {
+        // Get the AI card visualization containers
+        const player1Cards = document.getElementById('player1-cards');
+        const player2Cards = document.getElementById('player2-cards');
+        const player3Cards = document.getElementById('player3-cards');
+        
+        if (!player1Cards || !player2Cards || !player3Cards) return;
+        
+        // Clear previous content
+        player1Cards.innerHTML = '';
+        player2Cards.innerHTML = '';
+        player3Cards.innerHTML = '';
+        
+        // Create mock cards for AI players
+        for (let i = 1; i <= 3; i++) {
+            const playerCardsEl = document.getElementById(`player${i}-cards`);
+            if (!playerCardsEl) continue;
+            
+            // Get the number of cards for this AI player
+            const cardCount = gameState.otherPlayers && gameState.otherPlayers[i-1] ? 
+                              gameState.otherPlayers[i-1].card_count : 10;
+            
+            // Create card back images
+            for (let j = 0; j < cardCount; j++) {
+                const cardImg = document.createElement('img');
+                cardImg.src = '/static/images/cards/back.png';
+                cardImg.alt = 'Card back';
+                cardImg.className = 'ai-card';
+                cardImg.style.width = '30px';
+                cardImg.style.height = 'auto';
+                cardImg.style.margin = '2px';
+                playerCardsEl.appendChild(cardImg);
+            }
+            
+            // Add team information if available
+            if (gameState.otherPlayers && gameState.otherPlayers[i-1]) {
+                const teamInfo = document.createElement('div');
+                teamInfo.textContent = `Team: ${gameState.otherPlayers[i-1].team}`;
+                teamInfo.style.marginTop = '5px';
+                teamInfo.style.fontWeight = 'bold';
+                playerCardsEl.appendChild(teamInfo);
+            }
+        }
+    }
+    
+    // Function to update the game variant display
+    function updateGameVariantDisplay() {
+        const gameVariantEl = document.getElementById('game-variant');
+        if (!gameVariantEl) return;
+        
+        // Create a more detailed variant display
+        let variantText = gameState.gameVariant || 'NORMAL';
+        gameVariantEl.textContent = variantText;
+        
+        // Add player variant selections in a more visible way
+        if (gameState.playerVariants && Object.keys(gameState.playerVariants).length > 0) {
+            // Create or get the player variants container
+            let variantsContainer = document.getElementById('player-variants-container');
+            if (!variantsContainer) {
+                variantsContainer = document.createElement('div');
+                variantsContainer.id = 'player-variants-container';
+                variantsContainer.style.marginTop = '15px';
+                variantsContainer.style.padding = '10px';
+                variantsContainer.style.backgroundColor = '#f8f9fa';
+                variantsContainer.style.borderRadius = '5px';
+                variantsContainer.style.border = '1px solid #ddd';
+                
+                // Add a title
+                const title = document.createElement('h4');
+                title.textContent = 'Player Variant Selections';
+                title.style.marginTop = '0';
+                title.style.marginBottom = '10px';
+                title.style.color = '#3498db';
+                variantsContainer.appendChild(title);
+                
+                // Add the container after the game variant element
+                const rightSidebar = document.querySelector('.right-sidebar');
+                if (rightSidebar) {
+                    rightSidebar.appendChild(variantsContainer);
+                }
+            }
+            
+            // Clear previous content
+            variantsContainer.innerHTML = '';
+            
+            // Add the title back
+            const title = document.createElement('h4');
+            title.textContent = 'Player Variant Selections';
+            title.style.marginTop = '0';
+            title.style.marginBottom = '10px';
+            title.style.color = '#3498db';
+            variantsContainer.appendChild(title);
+            
+            // Create a list of player variants
+            const variantsList = document.createElement('ul');
+            variantsList.style.listStyleType = 'none';
+            variantsList.style.padding = '0';
+            variantsList.style.margin = '0';
+            
+            for (let i = 0; i < 4; i++) {
+                const playerVariant = gameState.playerVariants[i];
+                if (playerVariant) {
+                    const listItem = document.createElement('li');
+                    listItem.style.padding = '5px 0';
+                    listItem.style.borderBottom = i < 3 ? '1px solid #eee' : 'none';
+                    
+                    // Format the variant name to be more readable
+                    const formattedVariant = playerVariant.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    
+                    listItem.textContent = i === 0 ? 
+                        `You: ${formattedVariant}` : 
+                        `Player ${i}: ${formattedVariant}`;
+                    
+                    // Highlight the player's own selection
+                    if (i === 0) {
+                        listItem.style.fontWeight = 'bold';
+                        listItem.style.color = '#2ecc71';
+                    }
+                    
+                    variantsList.appendChild(listItem);
+                }
+            }
+            
+            variantsContainer.appendChild(variantsList);
+        }
+    }
     
     // Handle progress updates from the server
     socket.on('progress_update', function(data) {
@@ -171,13 +265,11 @@ document.addEventListener('DOMContentLoaded', function() {
             case 'model_loading_success':
                 progressBarFill.style.width = '40%';
                 progressMessage.style.color = "#2ecc71"; // Green color for success
-                console.log("Model loaded successfully!");
                 break;
             case 'model_loading_error':
             case 'model_loading_fallback':
                 progressBarFill.style.width = '40%';
                 progressMessage.style.color = "#e74c3c"; // Red color for error
-                console.log("Error loading model:", data.message);
                 break;
             case 'setup_other_agents':
                 progressBarFill.style.width = '60%';
@@ -194,9 +286,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     progressContainer.classList.add('hidden');
                 }
                 
-                // Show the game board directly if we have a game ID
+                // Show the game board with variant selection if we have a game ID
                 if (gameState.gameId) {
-                    console.log("Game ready, showing game board directly");
+                    console.log("Game ready, showing game board with variant selection");
                     
                     if (gameSetupScreen) {
                         console.log("Hiding game setup screen");
@@ -214,8 +306,19 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Force a reflow to ensure the DOM updates
                         void gameBoard.offsetWidth;
                         
-                        console.log("gameBoard classes after showing:", gameBoard.className);
-                        console.log("gameBoard style.display:", gameBoard.style.display);
+                        // Make sure the variant selection is visible
+                        const gameVariantSelection = document.getElementById('game-variant-selection');
+                        if (gameVariantSelection) {
+                            console.log("Showing variant selection");
+                            gameVariantSelection.classList.remove('hidden');
+                            gameVariantSelection.style.display = "block";
+                            
+                            // Force a reflow to ensure the DOM updates
+                            void gameVariantSelection.offsetWidth;
+                            
+                            console.log("Variant selection display:", gameVariantSelection.style.display);
+                            console.log("Variant selection classes:", gameVariantSelection.className);
+                        }
                     }
                     
                     // Render the player's hand
@@ -223,89 +326,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Update turn indicator
                     updateTurnIndicator();
-                    
-                    // Log the game state to help debug
-                    console.log("Game state at game_ready:", gameState);
-                    console.log("Hand length:", gameState.hand ? gameState.hand.length : 0);
                 }
                 break;
-        }
-        
-        // If there's an error, change the color
-        if (data.step === 'model_loading_error') {
-            progressMessage.style.color = "#e74c3c";
         }
     });
     
     socket.on('trick_completed', function(data) {
         console.log('Trick completed:', data);
-        
-        // Show a message about who won the trick
-        const message = data.is_player ? 
-            `You won the trick! (${data.trick_points} points)` : 
-            `Player ${data.winner} won the trick (${data.trick_points} points)`;
-        
-        console.log(message);
     });
-    // Game state
-    let gameState = {
-        gameId: null,
-        currentPlayer: 0,
-        playerTeam: null,
-        gameVariant: null,
-        hand: [],
-        currentTrick: [],
-        legalActions: [],
-        scores: [0, 0],
-        gameOver: false,
-        winner: null,
-        revealed_team: false,
-        revealed_teams: [false, false, false, false],
-        player_team_type: '',
-        player_team_types: ['', '', '', '']
-    };
-    
-    // DOM elements
-    const gameSetupScreen = document.getElementById('game-setup');
-    const variantSelectionScreen = document.getElementById('variant-selection');
-    const gameBoard = document.getElementById('game-board');
-    const gameOverScreen = document.getElementById('game-over');
-    
-    console.log("DOM elements initialized:");
-    console.log("gameSetupScreen:", gameSetupScreen);
-    console.log("variantSelectionScreen:", variantSelectionScreen);
-    console.log("gameBoard:", gameBoard);
-    console.log("gameOverScreen:", gameOverScreen);
-    
-    const newGameBtn = document.getElementById('new-game-btn');
-    const normalBtn = document.getElementById('normal-btn');
-    const hochzeitBtn = document.getElementById('hochzeit-btn');
-    const queenSoloBtn = document.getElementById('queen-solo-btn');
-    const jackSoloBtn = document.getElementById('jack-solo-btn');
-    const fleshlessBtn = document.getElementById('fleshless-btn');
-    const playAgainBtn = document.getElementById('play-again-btn');
-    
-    const variantSelectionHandEl = document.getElementById('variant-selection-hand');
-    
-    const playerTeamEl = document.getElementById('player-team');
-    const gameVariantEl = document.getElementById('game-variant');
-    const reScoreEl = document.getElementById('re-score');
-    const kontraScoreEl = document.getElementById('kontra-score');
-    const turnIndicatorEl = document.getElementById('turn-indicator');
-    
-    const otherPlayersEl = document.getElementById('other-players');
-    const playerHandEl = document.getElementById('player-hand');
-    const currentTrickEl = document.getElementById('current-trick');
-    
-    // Event listeners
-    newGameBtn.addEventListener('click', startNewGame);
-    
-    // Add event listeners for variant selection buttons
-    if (normalBtn) normalBtn.addEventListener('click', () => setGameVariant('normal'));
-    if (hochzeitBtn) hochzeitBtn.addEventListener('click', () => setGameVariant('hochzeit'));
-    if (queenSoloBtn) queenSoloBtn.addEventListener('click', () => setGameVariant('queen_solo'));
-    if (jackSoloBtn) jackSoloBtn.addEventListener('click', () => setGameVariant('jack_solo'));
-    if (fleshlessBtn) fleshlessBtn.addEventListener('click', () => setGameVariant('fleshless'));
     
     // Function to check if a card is a trump card
     function isTrumpCard(card) {
@@ -338,8 +366,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to create a card element
     function createCardElement(card, isPlayable) {
-        console.log("Creating card element for:", card);
-        
         const cardContainer = document.createElement('div');
         cardContainer.className = 'card-container';
         cardContainer.dataset.cardId = card.id;
@@ -348,7 +374,6 @@ document.addEventListener('DOMContentLoaded', function() {
         cardElement.className = 'card';
         
         // Use the card's suit and rank to determine the image path
-        // Use the format without the blue "2" markers
         const suitMap = {
             'CLUBS': 'C',
             'SPADES': 'S',
@@ -368,7 +393,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Use the format without the blue "2" markers (e.g., "9C.png" instead of "9_of_clubs.png")
         const cardCode = rankMap[card.rank] + suitMap[card.suit];
         const cardSrc = `/static/images/cards/${cardCode}.png`;
-        console.log("Card image src:", cardSrc);
         
         cardElement.src = cardSrc;
         cardElement.alt = `${card.rank} of ${card.suit}`;
@@ -431,161 +455,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Game functions
-    function startNewGame() {
-        console.log("Starting new game...");
-        
-        // Show progress container and hide the new game button
-        const newGameBtn = document.getElementById('new-game-btn');
-        const progressContainer = document.getElementById('progress-container');
-        const progressBarFill = document.getElementById('progress-bar-fill');
-        const progressMessage = document.getElementById('progress-message');
-        
-        if (newGameBtn) newGameBtn.classList.add('hidden');
-        if (progressContainer) progressContainer.classList.remove('hidden');
-        
-        // Define progress steps
-        const progressSteps = [
-            { message: "Initializing game...", progress: 10 },
-            { message: "Loading AI model...", progress: 30 },
-            { message: "Shuffling cards...", progress: 50 },
-            { message: "Dealing cards...", progress: 70 },
-            { message: "Determining teams...", progress: 90 },
-            { message: "Ready to play!", progress: 100 }
-        ];
-        
-        // Function to update progress
-        let currentStep = 0;
-        function updateProgress() {
-            if (currentStep < progressSteps.length) {
-                const step = progressSteps[currentStep];
-                progressMessage.textContent = step.message;
-                progressBarFill.style.width = step.progress + '%';
-                currentStep++;
-                
-                // If not the last step, schedule the next update
-                if (currentStep < progressSteps.length) {
-                    setTimeout(updateProgress, 500);
-                } else {
-                    // Last step - make the API call
-                    makeNewGameRequest();
-                }
-            }
-        }
-        
-        // Start the progress updates
-        updateProgress();
-        
-        // Function to make the actual API request
-        function makeNewGameRequest() {
-            // Set a timeout for the API call
-            const apiTimeout = setTimeout(() => {
-                // If the API call takes too long, show a detailed message about what's happening
-                progressMessage.textContent = "Game initialization is taking longer than expected. The server is currently:";
-                progressMessage.style.color = "#e67e22";
-                
-                // Create a detailed explanation element
-                const detailsElement = document.createElement('div');
-                detailsElement.className = 'initialization-details';
-                detailsElement.innerHTML = `
-                    <ul>
-                        <li>Creating a new game instance and shuffling cards</li>
-                        <li>Loading the trained AI model from ${MODEL_PATH}</li>
-                        <li>Dealing cards to all players and determining teams</li>
-                        <li>Having AI players select their game variants</li>
-                        <li>Preparing the initial game state</li>
-                    </ul>
-                    <p>This may take a few moments, especially if the AI model is large.</p>
-                `;
-                progressContainer.appendChild(detailsElement);
-            }, 3000); // 3 seconds timeout
-            
-            // Add a retry button to the progress container
-            const retryButton = document.createElement('button');
-            retryButton.className = 'btn hidden';
-            retryButton.textContent = 'Retry';
-            retryButton.id = 'retry-button';
-            retryButton.addEventListener('click', () => {
-                // Hide the retry button
-                retryButton.classList.add('hidden');
-                // Reset the progress bar
-                progressBarFill.style.width = '0%';
-                // Start the progress updates again
-                currentStep = 0;
-                updateProgress();
-            });
-            progressContainer.appendChild(retryButton);
-            
-            fetch('/new_game', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => {
-                clearTimeout(apiTimeout);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log("New game response:", data);
-                
-                gameState.gameId = data.game_id;
-                
-                // Join the Socket.IO room for this game
-                socket.emit('join', { game_id: gameState.gameId });
-                console.log("Joining room:", gameState.gameId);
-                
-                // Update game state with the response data
-                if (data.state) {
-                    gameState.hand = data.state.hand || [];
-                    gameState.currentPlayer = data.state.current_player;
-                    gameState.playerTeam = data.state.player_team;
-                    gameState.gameVariant = data.state.game_variant;
-                    gameState.legalActions = data.state.legal_actions || [];
-                    console.log("Player's hand:", gameState.hand);
-                    console.log("Current player:", gameState.currentPlayer);
-                    console.log("Legal actions:", gameState.legalActions);
-                }
-                
-                // Render the player's hand in the variant selection screen
-                renderVariantSelectionHand();
-                
-                // Show the variant selection screen
-                console.log("Showing variant selection screen");
-                
-                if (gameSetupScreen) {
-                    console.log("Hiding game setup screen");
-                    gameSetupScreen.classList.add('hidden');
-                }
-                
-                if (variantSelectionScreen) {
-                    console.log("Showing variant selection screen");
-                    variantSelectionScreen.classList.remove('hidden');
-                }
-                
-                // Update turn indicator
-                updateTurnIndicator();
-            })
-            .catch(error => {
-                clearTimeout(apiTimeout);
-                console.error('Error starting new game:', error);
-                
-                // Show error message
-                progressMessage.textContent = "Error starting game. Please try again.";
-                progressMessage.style.color = "#e74c3c";
-                
-                // Show the retry button
-                retryButton.classList.remove('hidden');
-                
-                // Show the new game button again
-                if (newGameBtn) newGameBtn.classList.remove('hidden');
-            });
-        }
-    }
-    
     // Function to update the turn indicator
     function updateTurnIndicator() {
         if (!turnIndicatorEl) return;
@@ -597,6 +466,170 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // Function to render the player's hand
+    function renderHand() {
+        if (!playerHandEl) return;
+        
+        playerHandEl.innerHTML = '';
+        
+        // Sort the cards: trumps first, then clubs, spades, hearts
+        const sortedHand = sortCards(gameState.hand);
+        
+        // Render the sorted hand
+        sortedHand.forEach(card => {
+            // Check if the card is in the legal actions
+            const isPlayable = gameState.currentPlayer === 0 && 
+                               gameState.legalActions.some(legalCard => legalCard.id === card.id);
+            
+            // Only make cards playable if they are legal moves
+            const cardElement = createCardElement(card, isPlayable);
+            playerHandEl.appendChild(cardElement);
+        });
+    }
+    
+    // Function to render the current trick
+    function renderCurrentTrick() {
+        // Get the hardcoded trick element
+        const hardcodedTrickEl = document.getElementById('hardcoded-trick');
+        if (!hardcodedTrickEl) return;
+        
+        // Clear the trick element
+        hardcodedTrickEl.innerHTML = '';
+        
+        if (!gameState.currentTrick || gameState.currentTrick.length === 0) {
+            return;
+        }
+        
+        // Create a container for each card with player information
+        for (let i = 0; i < gameState.currentTrick.length; i++) {
+            const card = gameState.currentTrick[i];
+            
+            // Create a container for the card and player label
+            const cardContainer = document.createElement('div');
+            cardContainer.className = 'trick-card-container';
+            
+            // Create the card element
+            const cardElement = createCardElement(card, false); // Cards in the trick are not playable
+            
+            // Calculate which player played this card
+            const startingPlayer = (gameState.currentPlayer - gameState.currentTrick.length) % 4;
+            const playerIdx = (startingPlayer + i) % 4;
+            
+            // Create a player label
+            const playerLabel = document.createElement('div');
+            playerLabel.className = 'player-label';
+            
+            // Determine if this is the first round (trick)
+            const isFirstRound = gameState.currentTrick.length <= 4;
+            
+            // Add team information for the first round
+            if (isFirstRound) {
+                // Determine the player's team based on their cards
+                let teamInfo = "";
+                
+                // Check if the card is a Queen of Clubs (indicates RE team)
+                if (card.suit === 'CLUBS' && card.rank === 'QUEEN') {
+                    teamInfo = " (RE)";
+                } else if (card.suit === 'SPADES' && card.rank === 'QUEEN') {
+                    teamInfo = " (likely RE)";
+                } else if (card.suit === 'HEARTS' && card.rank === 'QUEEN') {
+                    teamInfo = " (likely RE)";
+                } else if (card.suit === 'DIAMONDS' && card.rank === 'QUEEN') {
+                    teamInfo = " (likely RE)";
+                } else if (card.rank === 'JACK') {
+                    teamInfo = " (unknown)";
+                } else {
+                    teamInfo = " (likely KONTRA)";
+                }
+                
+                playerLabel.textContent = playerIdx === 0 ? `You${teamInfo}` : `Player ${playerIdx}${teamInfo}`;
+            } else {
+                playerLabel.textContent = playerIdx === 0 ? 'You' : `Player ${playerIdx}`;
+            }
+            
+            // Add the player label and card to the container
+            cardContainer.appendChild(playerLabel);
+            cardContainer.appendChild(cardElement);
+            
+            // Add the container to the trick display
+            hardcodedTrickEl.appendChild(cardContainer);
+        }
+        
+        // Make sure the trick is visible
+        hardcodedTrickEl.style.display = "flex";
+    }
+    
+    // Function to start a new game
+    function startNewGame() {
+        console.log("Starting new game...");
+        
+        // Show progress container and hide the new game button
+        const newGameBtn = document.getElementById('new-game-btn');
+        const progressContainer = document.getElementById('progress-container');
+        const progressBarFill = document.getElementById('progress-bar-fill');
+        const progressMessage = document.getElementById('progress-message');
+        const gameSetupScreen = document.getElementById('game-setup');
+        const gameBoard = document.getElementById('game-board');
+        
+        if (newGameBtn) newGameBtn.classList.add('hidden');
+        if (progressContainer) progressContainer.classList.remove('hidden');
+        
+        // Hide the game setup screen and show the game board
+        if (gameSetupScreen) gameSetupScreen.classList.add('hidden');
+        if (gameBoard) {
+            gameBoard.style.display = 'grid';
+            console.log("Game board display set to grid");
+        }
+        
+        // Reset progress bar
+        if (progressBarFill) progressBarFill.style.width = '10%';
+        if (progressMessage) progressMessage.textContent = "Initializing game...";
+        
+        // Make the API request
+        fetch('/new_game', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("New game response:", data);
+            
+            gameState.gameId = data.game_id;
+            
+            // Join the Socket.IO room for this game
+            socket.emit('join', { game_id: gameState.gameId });
+            
+            // Update game state with the response data
+            if (data.state) {
+                gameState.hand = data.state.hand || [];
+                gameState.currentPlayer = data.state.current_player;
+                gameState.playerTeam = data.state.player_team;
+                gameState.gameVariant = data.state.game_variant;
+                gameState.legalActions = data.state.legal_actions || [];
+            }
+        })
+        .catch(error => {
+            console.error('Error starting new game:', error);
+            
+            // Show error message
+            if (progressMessage) {
+                progressMessage.textContent = "Error starting game. Please try again.";
+                progressMessage.style.color = "#e74c3c";
+            }
+            
+            // Show the new game button again
+            if (newGameBtn) newGameBtn.classList.remove('hidden');
+        });
+    }
+    
+    // Function to set the game variant
     function setGameVariant(variant) {
         console.log("Setting game variant:", variant);
         
@@ -617,11 +650,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Just show the game board
                 if (response.status === 400) {
                     console.log("Got 400 response, showing game board anyway");
-                    if (variantSelectionScreen) {
-                        variantSelectionScreen.classList.add('hidden');
-                    }
                     
+                    // Make sure the game board is visible
                     if (gameBoard) {
+                        console.log("Showing game board");
                         // First make sure the element is visible in the DOM
                         gameBoard.style.display = "grid";
                         
@@ -635,25 +667,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         console.log("gameBoard style.display:", gameBoard.style.display);
                     }
                     
-                    // Make a direct request to get the current game state
-                    fetch(`/get_current_trick?game_id=${gameState.gameId}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            console.log("Current trick data:", data);
-                            // Update game state with the current player
-                            gameState.currentPlayer = data.current_player;
-                            
-                            // Render the player's hand
-                            renderHand();
-                            
-                            // Update turn indicator
-                            updateTurnIndicator();
-                        })
-                        .catch(error => console.error('Error getting current trick:', error));
-                    
-                    return Promise.resolve({state: {}}); // Return an empty state object to avoid errors
+                    // Hide the variant selection area in the game board
+                    const gameVariantSelection = document.getElementById('game-variant-selection');
+                    if (gameVariantSelection) {
+                        gameVariantSelection.classList.add('hidden');
+                    }
                 }
-                throw new Error(`HTTP error! status: ${response.status}`);
+                return Promise.resolve({state: {}}); // Return an empty state object to avoid errors
             }
             return response.json();
         })
@@ -665,311 +685,135 @@ document.addEventListener('DOMContentLoaded', function() {
                 gameState.hand = data.state.hand || [];
                 gameState.gameVariant = data.state.game_variant;
                 gameState.legalActions = data.state.legal_actions || [];
-                console.log("Updated hand:", gameState.hand);
-                console.log("Game variant:", gameState.gameVariant);
-                console.log("Legal actions:", gameState.legalActions);
-            }
-            
-            // Update current player
-            if (data.state.current_player !== undefined) {
-                gameState.currentPlayer = data.state.current_player;
-            }
-            
-            // Check if the variant selection phase is over
-            const variantSelectionPhase = data.variant_selection_phase !== undefined ? 
-                data.variant_selection_phase : true;
-            
-            if (!variantSelectionPhase) {
-                // Variant selection phase is over, show game board
-                console.log("Variant selection phase is over, showing game board");
-                console.log("variantSelectionScreen classes before hiding:", variantSelectionScreen ? variantSelectionScreen.className : "null");
-                console.log("gameBoard classes before showing:", gameBoard ? gameBoard.className : "null");
                 
-                if (variantSelectionScreen) {
-                    variantSelectionScreen.classList.add('hidden');
-                    console.log("variantSelectionScreen classes after hiding:", variantSelectionScreen.className);
-                }
-                
-                if (gameBoard) {
-                    // First set the display style
-                    gameBoard.style.display = "grid"; // Force grid display for game board
-                    
-                    // Then remove the hidden class
-                    gameBoard.classList.remove('hidden');
-                    
-                    // Force a reflow to ensure the DOM updates
-                    void gameBoard.offsetWidth;
-                    
-                    // Add a debug element to show the game board is visible
-                    const debugElement = document.createElement('div');
-                    debugElement.textContent = "Game board should be visible now";
-                    debugElement.style.color = "red";
-                    debugElement.style.fontWeight = "bold";
-                    debugElement.style.fontSize = "24px";
-                    debugElement.style.position = "absolute";
-                    debugElement.style.top = "10px";
-                    debugElement.style.left = "50%";
-                    debugElement.style.transform = "translateX(-50%)";
-                    debugElement.style.zIndex = "9999";
-                    document.body.appendChild(debugElement);
-                    
-                    console.log("gameBoard classes after showing:", gameBoard.className);
-                    console.log("gameBoard style.display:", gameBoard.style.display);
-                }
-                
-                // Render the player's hand
-                renderHand();
-                
-                // Update turn indicator
-                updateTurnIndicator();
-            } else {
-                // Variant selection phase is still active
-                console.log("Variant selection phase is still active, waiting for other players");
-                
-                // Update the variant selection screen to show the current player
-                const variantSelectionStatusEl = document.getElementById('variant-selection-status');
-                if (variantSelectionStatusEl) {
-                    if (gameState.currentPlayer === 0) {
-                        variantSelectionStatusEl.textContent = "Please select a game variant";
-                    } else {
-                        variantSelectionStatusEl.textContent = `Waiting for Player ${gameState.currentPlayer} to select a variant...`;
-                    }
-                }
-                
-                // Only make another request if we're still in variant selection phase
-                if (variantSelectionPhase) {
-                    console.log("Still in variant selection phase, making request for AI players");
-                    fetch('/set_variant', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            game_id: gameState.gameId,
-                            variant: 'normal'
-                        })
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            console.log(`Server returned ${response.status}: ${response.statusText}`);
-                            // If we get a 400 error, the game is likely not in variant selection phase anymore
-                            // Just show the game board
-                            if (response.status === 400) {
-                                console.log("Got 400 response, showing game board anyway");
-                                if (variantSelectionScreen) {
-                                    variantSelectionScreen.classList.add('hidden');
-                                }
-                                
-                                if (gameBoard) {
-                                    // First make sure the element is visible in the DOM
-                                    gameBoard.style.display = "grid";
-                                    
-                                    // Then remove the hidden class
-                                    gameBoard.classList.remove('hidden');
-                                    
-                                    // Force a reflow to ensure the DOM updates
-                                    void gameBoard.offsetWidth;
-                                    
-                                    console.log("gameBoard classes after showing:", gameBoard.className);
-                                    console.log("gameBoard style.display:", gameBoard.style.display);
-                                }
-                                
-                                // Make a direct request to get the current game state
-                                fetch(`/get_current_trick?game_id=${gameState.gameId}`)
-                                    .then(response => response.json())
-                                    .then(data => {
-                                        console.log("Current trick data:", data);
-                                        // Update game state with the current player
-                                        gameState.currentPlayer = data.current_player;
-                                        
-                                        // Render the player's hand
-                                        renderHand();
-                                        
-                                        // Update turn indicator
-                                        updateTurnIndicator();
-                                    })
-                                    .catch(error => console.error('Error getting current trick:', error));
-                                
-                                return null;
-                            }
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        if (!data) return; // Skip if we already handled the error
-                        console.log("Second set variant response:", data);
-                    
-                        // Check if the variant selection phase is now over
-                        const variantSelectionPhase = data.variant_selection_phase !== undefined ? 
-                            data.variant_selection_phase : true;
-                        
-                        if (!variantSelectionPhase) {
-                            // Variant selection phase is now over, show game board
-                            console.log("Variant selection phase is now over, showing game board");
-                            
-                            if (variantSelectionScreen) {
-                                variantSelectionScreen.classList.add('hidden');
-                            }
-                            
-                            if (gameBoard) {
-                                // First make sure the element is visible in the DOM
-                                gameBoard.style.display = "grid";
-                                
-                                // Then remove the hidden class
-                                gameBoard.classList.remove('hidden');
-                                
-                                // Force a reflow to ensure the DOM updates
-                                void gameBoard.offsetWidth;
-                                
-                                console.log("gameBoard classes after showing:", gameBoard.className);
-                                console.log("gameBoard style.display:", gameBoard.style.display);
-                                
-                                // Add a debug element to show the game board is visible
-                                const debugElement = document.createElement('div');
-                                debugElement.textContent = "Game board should be visible now";
-                                debugElement.style.color = "red";
-                                debugElement.style.fontWeight = "bold";
-                                debugElement.style.fontSize = "24px";
-                                debugElement.style.position = "absolute";
-                                debugElement.style.top = "10px";
-                                debugElement.style.left = "50%";
-                                debugElement.style.transform = "translateX(-50%)";
-                                debugElement.style.zIndex = "9999";
-                                document.body.appendChild(debugElement);
-                            }
-                            
-                            // Update game state with the response data
-                            if (data.state) {
-                                gameState.hand = data.state.hand || [];
-                                gameState.gameVariant = data.state.game_variant;
-                                gameState.legalActions = data.state.legal_actions || [];
-                                
-                                if (data.state.current_player !== undefined) {
-                                    gameState.currentPlayer = data.state.current_player;
-                                }
-                            }
-                            
-                            // Render the player's hand
-                            renderHand();
-                            
-                            // Update turn indicator
-                            updateTurnIndicator();
-                        }
-                    })
-                    .catch(error => console.error('Error setting variant for AI players:', error));
+                if (data.state.current_player !== undefined) {
+                    gameState.currentPlayer = data.state.current_player;
                 }
             }
+            
+            // Make sure the game board is visible
+            if (gameBoard) {
+                console.log("Showing game board");
+                // First make sure the element is visible in the DOM
+                gameBoard.style.display = "grid";
+                
+                // Then remove the hidden class
+                gameBoard.classList.remove('hidden');
+                
+                // Force a reflow to ensure the DOM updates
+                void gameBoard.offsetWidth;
+                
+                console.log("gameBoard classes after showing:", gameBoard.className);
+                console.log("gameBoard style.display:", gameBoard.style.display);
+            }
+            
+            // Hide the variant selection area in the game board
+            const gameVariantSelection = document.getElementById('game-variant-selection');
+            if (gameVariantSelection) {
+                gameVariantSelection.classList.add('hidden');
+            }
+            
+            // Render the player's hand
+            renderHand();
+            
+            // Update turn indicator
+            updateTurnIndicator();
         })
-        .catch(error => console.error('Error setting game variant:', error));
-    }
-    
-    function renderVariantSelectionHand() {
-        console.log("Rendering variant selection hand...");
-        
-        if (!variantSelectionHandEl) {
-            console.error("Variant selection hand element not found");
-            return;
-        }
-        
-        variantSelectionHandEl.innerHTML = '';
-        
-        // Sort the cards: trumps first, then clubs, spades, hearts
-        const sortedHand = sortCards(gameState.hand);
-        
-        // Render the sorted hand
-        sortedHand.forEach(card => {
-            const cardElement = createCardElement(card, false); // Cards are not playable in variant selection
-            variantSelectionHandEl.appendChild(cardElement);
+        .catch(error => {
+            console.error('Error setting game variant:', error);
+            
+            // Even if there's an error, make sure the game board is visible
+            if (gameBoard) {
+                console.log("Showing game board despite error");
+                gameBoard.style.display = "grid";
+                gameBoard.classList.remove('hidden');
+            }
         });
     }
     
-    function renderHand() {
-        console.log("Rendering hand...");
-        console.log("Current player:", gameState.currentPlayer);
-        console.log("Legal actions:", gameState.legalActions);
+    // Function to show the last trick
+    function showLastTrick() {
+        console.log('Showing last trick');
         
-        if (!playerHandEl) {
-            console.error("Player hand element not found");
+        // Get the last trick container
+        const lastTrickContainer = document.querySelector('.last-trick-container');
+        const lastTrickEl = document.getElementById('last-trick');
+        const trickWinnerEl = document.getElementById('trick-winner');
+        
+        if (!lastTrickContainer || !lastTrickEl || !trickWinnerEl) {
+            console.error('Last trick elements not found');
             return;
         }
         
-        playerHandEl.innerHTML = '';
-        
-        // Sort the cards: trumps first, then clubs, spades, hearts
-        const sortedHand = sortCards(gameState.hand);
-        
-        // Debug: Log all legal action IDs
-        const legalActionIds = gameState.legalActions.map(card => card.id);
-        console.log("Legal action IDs:", legalActionIds);
-        
-        // Render the sorted hand
-        sortedHand.forEach(card => {
-            // Check if the card is in the legal actions
-            const isPlayable = gameState.currentPlayer === 0 && 
-                               gameState.legalActions.some(legalCard => legalCard.id === card.id);
-            
-            console.log(`Card ${card.id} playable: ${isPlayable}`);
-            
-            // Only make cards playable if they are legal moves
-            const cardElement = createCardElement(card, isPlayable);
-            playerHandEl.appendChild(cardElement);
-        });
+        // Make an API request to get the last trick
+        fetch(`/get_last_trick?game_id=${gameState.gameId}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Last trick data:', data);
+                
+                // Clear the last trick element
+                lastTrickEl.innerHTML = '';
+                
+                // If there's no last trick, show a message
+                if (!data.last_trick || data.last_trick.length === 0) {
+                    trickWinnerEl.textContent = 'No last trick available';
+                    return;
+                }
+                
+                // Create a container for each card with player information
+                for (let i = 0; i < data.last_trick.length; i++) {
+                    const card = data.last_trick[i];
+                    
+                    // Create the card element
+                    const cardElement = createCardElement(card, false); // Cards in the last trick are not playable
+                    
+                    // Add the card to the last trick display
+                    lastTrickEl.appendChild(cardElement);
+                }
+                
+                // Show the trick winner
+                const winnerName = data.winner === 0 ? 'You' : `Player ${data.winner}`;
+                trickWinnerEl.textContent = `Winner: ${winnerName} (${data.trick_points} points)`;
+                
+                // Show the last trick container
+                lastTrickContainer.classList.remove('hidden');
+                
+                // Hide the current trick container
+                const trickArea = document.querySelector('.trick-area');
+                if (trickArea) {
+                    trickArea.style.display = 'none';
+                }
+                
+                // Add a close button
+                const closeButton = document.createElement('button');
+                closeButton.textContent = 'Close';
+                closeButton.className = 'btn';
+                closeButton.style.marginTop = '10px';
+                closeButton.addEventListener('click', () => {
+                    // Hide the last trick container
+                    lastTrickContainer.classList.add('hidden');
+                    
+                    // Show the current trick container
+                    if (trickArea) {
+                        trickArea.style.display = 'block';
+                    }
+                });
+                
+                // Add the close button to the last trick container
+                lastTrickContainer.appendChild(closeButton);
+            })
+            .catch(error => {
+                console.error('Error getting last trick:', error);
+                trickWinnerEl.textContent = 'Error getting last trick';
+            });
     }
     
-    function renderCurrentTrick() {
-        console.log("Rendering current trick...");
-        console.log("Current trick:", gameState.currentTrick);
-        
-        // Get the hardcoded trick element
-        const hardcodedTrickEl = document.getElementById('hardcoded-trick');
-        if (!hardcodedTrickEl) {
-            console.error("Hardcoded trick element not found");
-            return;
-        }
-        
-        // Clear the trick element
-        hardcodedTrickEl.innerHTML = '';
-        
-        if (!gameState.currentTrick || gameState.currentTrick.length === 0) {
-            console.log("No current trick to render");
-            return;
-        }
-        
-        console.log("Rendering current trick with " + gameState.currentTrick.length + " cards");
-        
-        // Create a container for each card with player information
-        for (let i = 0; i < gameState.currentTrick.length; i++) {
-            const card = gameState.currentTrick[i];
-            
-            // Create a container for the card and player label
-            const cardContainer = document.createElement('div');
-            cardContainer.className = 'trick-card-container';
-            
-            // Create the card element
-            const cardElement = createCardElement(card, false); // Cards in the trick are not playable
-            
-            // Calculate which player played this card
-            const startingPlayer = (gameState.currentPlayer - gameState.currentTrick.length) % 4;
-            const playerIdx = (startingPlayer + i) % 4;
-            
-            // Create a player label
-            const playerLabel = document.createElement('div');
-            playerLabel.className = 'player-label';
-            playerLabel.textContent = playerIdx === 0 ? 'You' : `Player ${playerIdx}`;
-            
-            // Add the player label and card to the container
-            cardContainer.appendChild(playerLabel);
-            cardContainer.appendChild(cardElement);
-            
-            // Add the container to the trick display
-            hardcodedTrickEl.appendChild(cardContainer);
-        }
-        
-        // Make sure the trick is visible
-        hardcodedTrickEl.style.display = "flex";
-    }
-    
+    // Function to play a card
     function playCard(cardId) {
         console.log('Playing card:', cardId);
         
@@ -979,8 +823,6 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error("Card not found in hand:", cardId);
             return;
         }
-        
-        console.log("Found card in hand:", card);
         
         // Optimistically update the UI to show the card being played
         // Add the card to the current trick
@@ -1016,10 +858,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 gameState.currentTrick = data.state.current_trick || [];
                 gameState.currentPlayer = data.state.current_player;
                 gameState.legalActions = data.state.legal_actions || [];
-                console.log("Updated hand:", gameState.hand);
-                console.log("Current trick:", gameState.currentTrick);
-                console.log("Current player:", gameState.currentPlayer);
-                console.log("Legal actions:", gameState.legalActions);
             }
             
             // Render the player's hand and current trick
@@ -1041,4 +879,13 @@ document.addEventListener('DOMContentLoaded', function() {
             renderCurrentTrick();
         });
     }
+    
+    // Fetch model info from the server
+    fetch('/model_info')
+        .then(response => response.json())
+        .then(data => {
+            MODEL_PATH = data.model_path || 'the server';
+            console.log("Using model:", MODEL_PATH);
+        })
+        .catch(error => console.error('Error fetching model info:', error));
 });
