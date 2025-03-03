@@ -173,6 +173,68 @@ document.addEventListener('DOMContentLoaded', function() {
         player2Cards.innerHTML = '';
         player3Cards.innerHTML = '';
         
+        // Get the current trick container
+        const hardcodedTrickEl = document.getElementById('hardcoded-trick');
+        if (!hardcodedTrickEl) return;
+        
+        // Set up the trick area as a relative positioning context
+        const trickArea = document.querySelector('.trick-area');
+        if (trickArea) {
+            trickArea.style.position = 'relative';
+            
+            // Get the parent containers for each player
+            const player1Container = player1Cards.parentElement;
+            const player2Container = player2Cards.parentElement;
+            const player3Container = player3Cards.parentElement;
+            
+            if (player1Container && player2Container && player3Container) {
+                // Move the player containers out of the AI card visualization and into the trick area
+                trickArea.appendChild(player1Container);
+                trickArea.appendChild(player2Container);
+                trickArea.appendChild(player3Container);
+                
+                // Style the containers to position them around the current trick
+                // Position Player 2 above the current trick
+                player2Container.style.position = 'absolute';
+                player2Container.style.top = '40px'; // Position above the "Current Trick" heading
+                player2Container.style.left = '50%';
+                player2Container.style.transform = 'translateX(-50%)';
+                player2Container.style.width = '80%'; // Reduced from 100% to center more
+                player2Container.style.textAlign = 'center';
+                player2Container.style.zIndex = '10';
+                
+                // Position Player 1 on the left side of the current trick
+                player1Container.style.position = 'absolute';
+                player1Container.style.left = '25px'; // Moved more to the center (was 10px)
+                player1Container.style.top = '50%';
+                player1Container.style.transform = 'translateY(-50%)';
+                player1Container.style.zIndex = '10';
+                
+                // Position Player 3 on the right side of the current trick
+                player3Container.style.position = 'absolute';
+                player3Container.style.right = '25px'; // Moved more to the center (was 10px)
+                player3Container.style.top = '50%';
+                player3Container.style.transform = 'translateY(-50%)';
+                player3Container.style.zIndex = '10';
+                
+                // Adjust the styling of the player containers
+                player1Container.style.border = 'none';
+                player2Container.style.border = 'none';
+                player3Container.style.border = 'none';
+                player1Container.style.background = 'transparent';
+                player2Container.style.background = 'transparent';
+                player3Container.style.background = 'transparent';
+                
+                // Hide the headings
+                const headings = [player1Container, player2Container, player3Container].map(
+                    container => container.querySelector('h5')
+                );
+                headings.forEach(heading => {
+                    if (heading) heading.style.display = 'none';
+                });
+            }
+        }
+        
         // Create mock cards for AI players
         for (let i = 1; i <= 3; i++) {
             const playerCardsEl = document.getElementById(`player${i}-cards`);
@@ -182,17 +244,47 @@ document.addEventListener('DOMContentLoaded', function() {
             const cardCount = gameState.otherPlayers && gameState.otherPlayers[i-1] ? 
                               gameState.otherPlayers[i-1].card_count : 10;
             
+            // Create a container for the cards
+            const cardsContainer = document.createElement('div');
+            
+            // Set different layout for each player
+            if (i === 1 || i === 3) {
+                // Vertical layout for Players 1 and 3
+                cardsContainer.style.display = 'flex';
+                cardsContainer.style.flexDirection = 'column';
+                cardsContainer.style.gap = '2px';
+                cardsContainer.style.alignItems = 'center';
+            } else {
+                // Horizontal layout for Player 2
+                cardsContainer.style.display = 'flex';
+                cardsContainer.style.flexDirection = 'row';
+                cardsContainer.style.gap = '2px';
+                cardsContainer.style.justifyContent = 'center';
+            }
+            
             // Create card back images
             for (let j = 0; j < cardCount; j++) {
                 const cardImg = document.createElement('img');
                 cardImg.src = '/static/images/cards/back.png';
                 cardImg.alt = 'Card back';
                 cardImg.className = 'ai-card';
-                cardImg.style.width = '30px';
-                cardImg.style.height = 'auto';
-                cardImg.style.margin = '2px';
-                playerCardsEl.appendChild(cardImg);
+                
+                if (i === 1 || i === 3) {
+                    // Smaller cards for vertical layout
+                    cardImg.style.width = '25px';
+                    cardImg.style.height = 'auto';
+                    cardImg.style.margin = '1px';
+                } else {
+                    // Normal size for horizontal layout
+                    cardImg.style.width = '30px';
+                    cardImg.style.height = 'auto';
+                    cardImg.style.margin = '2px';
+                }
+                
+                cardsContainer.appendChild(cardImg);
             }
+            
+            playerCardsEl.appendChild(cardsContainer);
             
             // Show team information only if the player has revealed their team (by playing a Queen of Clubs)
             if (gameState.otherPlayers && 
@@ -1010,33 +1102,35 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Calculate the starting player for this trick
-        const startingPlayer = (gameState.currentPlayer - gameState.currentTrick.length) % 4;
+        // Use ((n % m) + m) % m to ensure positive modulo result
+        const startingPlayer = ((gameState.currentPlayer - gameState.currentTrick.length) % 4 + 4) % 4;
         
         // Create a container for each card with player information
         for (let i = 0; i < gameState.currentTrick.length; i++) {
             const card = gameState.currentTrick[i];
             
             // Calculate which player played this card
-            const playerIdx = (startingPlayer + i) % 4;
+            // Use ((n % m) + m) % m to ensure positive modulo result
+            const playerIdx = ((startingPlayer + i) % 4 + 4) % 4;
             
             // Create a container for the card and player label
             const cardContainer = document.createElement('div');
             cardContainer.className = 'trick-card-container';
             
             // Position the card based on the player's position relative to the user
-            // Player 0 is the user (top), Player 1 is left, Player 2 is bottom, Player 3 is right
+            // Player 0 is the user (bottom), Player 1 is left, Player 2 is top, Player 3 is right
             let position;
             if (playerIdx === 0) {
-                position = "top";
-                cardContainer.style.gridArea = "top";
+                position = "bottom";
+                cardContainer.style.gridArea = "bottom";
                 cardContainer.style.justifySelf = "center";
             } else if (playerIdx === 1) {
                 position = "left";
                 cardContainer.style.gridArea = "left";
                 cardContainer.style.justifySelf = "start";
             } else if (playerIdx === 2) {
-                position = "bottom";
-                cardContainer.style.gridArea = "bottom";
+                position = "top";
+                cardContainer.style.gridArea = "top";
                 cardContainer.style.justifySelf = "center";
             } else if (playerIdx === 3) {
                 position = "right";
