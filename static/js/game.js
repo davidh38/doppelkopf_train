@@ -1089,6 +1089,10 @@ document.addEventListener('DOMContentLoaded', function() {
             height: 300px;
             margin: 0 auto;
             position: relative;
+            background-color: #e8f4fc;
+            border-radius: 10px;
+            border: 2px solid #3498db;
+            padding: 15px;
         `;
         
         // Calculate the starting player for this trick
@@ -1168,11 +1172,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Add the card to the container
                 cardContainer.appendChild(cardElement);
             } else {
-                // Add an empty placeholder for the card
-                const emptyCard = document.createElement('div');
-                emptyCard.style.width = '120px';
-                emptyCard.style.height = '170px';
-                emptyCard.style.visibility = 'hidden';
+            // Add an empty placeholder for the card with a visible outline
+            const emptyCard = document.createElement('div');
+            emptyCard.style.width = '120px';
+            emptyCard.style.height = '170px';
+            emptyCard.style.border = '2px dashed #3498db';
+            emptyCard.style.borderRadius = '10px';
+            emptyCard.style.backgroundColor = '#f8f9fa';
                 cardContainer.appendChild(emptyCard);
             }
             
