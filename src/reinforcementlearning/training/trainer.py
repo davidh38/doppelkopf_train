@@ -83,11 +83,20 @@ def calculate_reward(game, player_idx: int, action_type: str = 'card', announcem
     # Basic reward structure
     reward = 0
     
+    # Get the player's team
+    player_team = game.teams[player_idx]
+    team_idx = 0 if player_team.name == 'RE' else 1
+    
     # Reward for winning a trick (only applies to card actions)
     if action_type == 'card' and game.trick_winner == player_idx:
         # Get the points in the trick
         trick_points = sum(card.get_value() for card in game.tricks[-1])
-        reward += trick_points / 10  # Scale down the points
+        reward += trick_points / 5  # Scale down the points but give more weight than before
+        
+        # Additional reward for capturing high-value cards
+        for card in game.tricks[-1]:
+            if card.get_value() >= 10:  # Ten, Queen, King, Ace
+                reward += 0.5  # Extra reward for capturing high-value cards
     
     # Reward for making announcements
     if action_type == 'announce':
@@ -95,10 +104,14 @@ def calculate_reward(game, player_idx: int, action_type: str = 'card', announcem
         reward += 1.0
         
         # Additional reward based on the player's team
-        player_team = game.teams[player_idx]
         if (announcement == 're' and player_team.name == 'RE') or \
            (announcement == 'contra' and player_team.name == 'KONTRA'):
             # Correct team announcement
+            reward += 1.0
+            
+        # Reward based on current score advantage
+        if game.scores[team_idx] > game.scores[1 - team_idx]:
+            # If player's team is ahead, announcing is good
             reward += 1.0
     
     # Reward for selecting game variants
@@ -123,6 +136,15 @@ def calculate_reward(game, player_idx: int, action_type: str = 'card', announcem
             # Reward based on count (more queens/jacks = better for solo)
             if count >= 4:  # Having at least 4 queens/jacks is good for solo
                 reward += count / 2.0
+    
+    # Continuous reward based on score difference
+    if hasattr(game, 'scores') and len(game.scores) == 2:
+        # Get the score difference between the player's team and the opponent team
+        score_diff = game.scores[team_idx] - game.scores[1 - team_idx]
+        
+        # Give a small continuous reward based on the score difference
+        # This encourages the agent to maximize the score difference throughout the game
+        reward += score_diff / 50.0  # Scale down to avoid overshadowing other rewards
     
     return reward
 
@@ -268,9 +290,22 @@ def play_episode(game, rl_agent, opponents) -> Tuple[float, bool]:
     rl_team = game.teams[rl_player_idx]
     win = game.winner == rl_team
     
-    # Add a win/loss reward
-    win_reward = 10 if win else -10
-    total_reward += win_reward
+    # Get the player's team index
+    team_idx = 0 if rl_team.name == 'RE' else 1
+    
+    # Calculate score difference
+    score_diff = game.scores[team_idx] - game.scores[1 - team_idx]
+    
+    # Add a reward based on score difference
+    # This encourages maximizing the score difference, not just winning
+    score_reward = score_diff / 10.0  # Scale appropriately
+    
+    # Still give a bonus for winning, but make it smaller compared to score difference
+    win_bonus = 5 if win else -5
+    
+    # Total end-game reward
+    end_game_reward = score_reward + win_bonus
+    total_reward += end_game_reward
     
     return total_reward, win
 
@@ -398,9 +433,22 @@ def play_evaluation_episode(game, rl_agent, opponents) -> Tuple[float, bool]:
     rl_team = game.teams[rl_player_idx]
     win = game.winner == rl_team
     
-    # Add a win/loss reward
-    win_reward = 10 if win else -10
-    total_reward += win_reward
+    # Get the player's team index
+    team_idx = 0 if rl_team.name == 'RE' else 1
+    
+    # Calculate score difference
+    score_diff = game.scores[team_idx] - game.scores[1 - team_idx]
+    
+    # Add a reward based on score difference
+    # This encourages maximizing the score difference, not just winning
+    score_reward = score_diff / 10.0  # Scale appropriately
+    
+    # Still give a bonus for winning, but make it smaller compared to score difference
+    win_bonus = 5 if win else -5
+    
+    # Total end-game reward
+    end_game_reward = score_reward + win_bonus
+    total_reward += end_game_reward
     
     return total_reward, win
 
