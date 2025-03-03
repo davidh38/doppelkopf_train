@@ -907,23 +907,60 @@ def play_card():
                     summary_text += f"- {winner_name} ({capture['winner_team']}) won a trick worth {capture['points']} points\n"
                 summary_text += f"  This adds/subtracts 1 point per 40+ trick to the trick points\n"
         
+        # Check for special achievements (no 90, no 60, no 30, black)
+        re_score = game.scores[0]
+        kontra_score = game.scores[1]
+        
+        # Add special achievements section
+        summary_text += "\nSpecial Achievements:\n"
+        
+        # Base points for winning
+        if game.winner.name == 'RE':
+            summary_text += f"- RE wins: +1\n"
+        else:
+            summary_text += f"- KONTRA wins: +1\n"
+        
+        # Check for no 90 achievement (opponent got less than 90 points)
+        if game.winner.name == 'RE' and kontra_score < 90:
+            summary_text += f"- RE plays no 90: +1 (KONTRA got {kontra_score} points)\n"
+        elif game.winner.name == 'KONTRA' and re_score < 90:
+            summary_text += f"- KONTRA plays no 90: +1 (RE got {re_score} points)\n"
+        
+        # Check for no 60 achievement (opponent got less than 60 points)
+        if game.winner.name == 'RE' and kontra_score < 60:
+            summary_text += f"- RE plays no 60: +1 (KONTRA got {kontra_score} points)\n"
+        elif game.winner.name == 'KONTRA' and re_score < 60:
+            summary_text += f"- KONTRA plays no 60: +1 (RE got {re_score} points)\n"
+        
+        # Check for no 30 achievement (opponent got less than 30 points)
+        if game.winner.name == 'RE' and kontra_score < 30:
+            summary_text += f"- RE plays no 30: +1 (KONTRA got {kontra_score} points)\n"
+        elif game.winner.name == 'KONTRA' and re_score < 30:
+            summary_text += f"- KONTRA plays no 30: +1 (RE got {re_score} points)\n"
+        
+        # Check for black achievement (opponent got 0 points)
+        if game.winner.name == 'RE' and kontra_score == 0:
+            summary_text += f"- RE plays black: +1 (KONTRA got 0 points)\n"
+        elif game.winner.name == 'KONTRA' and re_score == 0:
+            summary_text += f"- KONTRA plays black: +1 (RE got 0 points)\n"
+        
         summary_text += "\nScore Calculation:\n"
         
         # Add announcement information if any
         if game_data.get('re_announced', False) or game_data.get('contra_announced', False):
             summary_text += "Announcements:\n"
             if game_data.get('re_announced', False):
-                summary_text += "- RE announced\n"
+                summary_text += "- RE announced: +1\n"
             if game_data.get('contra_announced', False):
-                summary_text += "- CONTRA announced\n"
+                summary_text += "- CONTRA announced: +1\n"
             if game_data.get('no90_announced', False):
-                summary_text += "- No 90 announced\n"
+                summary_text += "- No 90 announced: +1\n"
             if game_data.get('no60_announced', False):
-                summary_text += "- No 60 announced\n"
+                summary_text += "- No 60 announced: +1\n"
             if game_data.get('no30_announced', False):
-                summary_text += "- No 30 announced\n"
+                summary_text += "- No 30 announced: +1\n"
             if game_data.get('black_announced', False):
-                summary_text += "- Black announced\n"
+                summary_text += "- Black announced: +1\n"
             
             summary_text += f"- Score multiplier: {multiplier}x\n\n"
         
