@@ -8,9 +8,9 @@ import json
 import argparse
 from flask import Flask, render_template, request, jsonify, session
 from flask_socketio import SocketIO, emit, join_room
-from game.doppelkopf import DoppelkopfGame, Card, Suit, Rank, GameVariant, PlayerTeam
-from agents.random_agent import select_random_action
-from agents.rl_agent import RLAgent
+from src.backend.game.doppelkopf import DoppelkopfGame, Card, Suit, Rank, GameVariant, PlayerTeam
+from src.reinforcementlearning.agents.random_agent import select_random_action
+from src.reinforcementlearning.agents.rl_agent import RLAgent
 
 # Parse command line arguments
 def parse_arguments():
