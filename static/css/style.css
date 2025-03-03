@@ -486,11 +486,11 @@ h1, h2, h3 {
 
 .trick-area, .last-trick-container {
     margin-bottom: 20px;
-    padding: 15px;
+    padding: 15px 15px 250px 15px; /* Extremely increased bottom padding */
     background-color: #e8f4fc;
     border-radius: 5px;
     text-align: center;
-    min-height: 200px; /* Ensure there's always space for cards */
+    min-height: 600px; /* Extremely increased min-height */
     border: 2px solid #3498db; /* Make the border more visible */
 }
 
