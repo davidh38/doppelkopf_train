@@ -190,7 +190,7 @@ class DoppelkopfBrowserTest(unittest.TestCase):
             print("Could not capture game ID")
         
         # Take a screenshot after progress bar completes
-        self.driver.save_screenshot("after_progress.png")
+        self.driver.save_screenshot("tests/screenshots/after_progress.png")
         
         # Check if we're on the variant selection screen
         variant_selection_visible = len(self.driver.find_elements(
@@ -264,13 +264,13 @@ class DoppelkopfBrowserTest(unittest.TestCase):
             print("Game board is visible")
             
             # Take a screenshot of the game board
-            self.driver.save_screenshot("game_board_visible.png")
+            self.driver.save_screenshot("tests/screenshots/game_board_visible.png")
             
             # Wait longer for the server to process the variant selection and show the game board
             time.sleep(5)
             
             # Take a screenshot after selecting the variant
-            self.driver.save_screenshot("after_variant_selection.png")
+            self.driver.save_screenshot("tests/screenshots/after_variant_selection.png")
             
             # Print the HTML source for debugging
             print("Page source after variant selection:", self.driver.page_source)
@@ -325,12 +325,12 @@ class DoppelkopfBrowserTest(unittest.TestCase):
             print("Test completed successfully")
             
         except TimeoutException as e:
-            self.driver.save_screenshot("test_failure.png")
+            self.driver.save_screenshot("tests/screenshots/test_failure.png")
             print("Page source at failure:", self.driver.page_source)
             self.fail(f"Test failed: Variant selection or game board not visible: {str(e)}")
         
         # Take a screenshot of the game board
-        self.driver.save_screenshot("game_board.png")
+        self.driver.save_screenshot("tests/screenshots/game_board.png")
         
         # Simulate a full game by playing cards from the player's hand
         # and letting the AI respond
@@ -345,7 +345,7 @@ class DoppelkopfBrowserTest(unittest.TestCase):
         # The test should fail if the game board is not visible
         game_board_visible = len(self.driver.find_elements(By.CSS_SELECTOR, "#game-board:not(.hidden)")) > 0
         if not game_board_visible:
-            self.driver.save_screenshot("game_board_not_visible.png")
+            self.driver.save_screenshot("tests/screenshots/game_board_not_visible.png")
             
             # Try one more time to make the game board visible using JavaScript
             self.driver.execute_script("""
@@ -417,7 +417,7 @@ class DoppelkopfBrowserTest(unittest.TestCase):
             
             if game_over_visible:
                 print("Game completed successfully!")
-                self.driver.save_screenshot("game_over.png")
+                self.driver.save_screenshot("tests/screenshots/game_over.png")
                 break
             
             # Wait for a moment to ensure the game state is updated
@@ -436,7 +436,7 @@ class DoppelkopfBrowserTest(unittest.TestCase):
             if card_played:
                 print(f"Player played: {played_card_id}")
                 # Take a screenshot after playing the card
-                self.driver.save_screenshot(f"round{round_num}.png")
+                self.driver.save_screenshot(f"tests/screenshots/round{round_num}.png")
                 
                 # Wait for AI to respond
                 time.sleep(3)
@@ -478,7 +478,7 @@ class DoppelkopfBrowserTest(unittest.TestCase):
                 self._print_current_trick()
             
             # Take a screenshot of the game state
-            self.driver.save_screenshot(f"game_state_round{round_num}.png")
+            self.driver.save_screenshot(f"tests/screenshots/game_state_round{round_num}.png")
             print(f"=== END OF ROUND {round_num} ===\n")
         
         # Final check if the game is over
@@ -488,10 +488,10 @@ class DoppelkopfBrowserTest(unittest.TestCase):
         
         if game_over_visible:
             print("Game completed successfully!")
-            self.driver.save_screenshot("game_over.png")
+            self.driver.save_screenshot("tests/screenshots/game_over.png")
         else:
             print("Game not over yet but test completed successfully")
-            self.driver.save_screenshot("game_in_progress.png")
+            self.driver.save_screenshot("tests/screenshots/game_in_progress.png")
     
     def _print_current_trick(self):
         """Print details about the current trick."""

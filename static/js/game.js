@@ -1826,11 +1826,14 @@ document.addEventListener('DOMContentLoaded', function() {
             gameOverScreen.classList.remove('hidden');
             
             // Get the winner display element
-            const winnerEl = document.getElementById('winner');
-            if (winnerEl) {
+            const gameResultEl = document.getElementById('game-result');
+            if (gameResultEl) {
                 const winnerTeam = gameState.winner === 'RE' ? 'RE' : 'KONTRA';
-                winnerEl.textContent = `Team ${winnerTeam} wins!`;
-                winnerEl.style.color = winnerTeam === 'RE' ? '#2ecc71' : '#e74c3c';
+                gameResultEl.innerHTML = `<h3 id="winner">Team ${winnerTeam} wins!</h3>`;
+                const winnerEl = document.getElementById('winner');
+                if (winnerEl) {
+                    winnerEl.style.color = winnerTeam === 'RE' ? '#2ecc71' : '#e74c3c';
+                }
             }
             
             // Update the final score elements
@@ -1882,16 +1885,52 @@ document.addEventListener('DOMContentLoaded', function() {
                 finalBlackStatus.classList.toggle('hidden', !(gameState.announcements && gameState.announcements.black));
             }
             
-            // Update the player scores in the game over screen
+            // Update the player scores in the game over screen - showing game points instead of trick scores
             for (let i = 0; i < 4; i++) {
                 const playerScoreEl = document.getElementById(`game-over-player-${i}-score`);
-                if (playerScoreEl && gameState.playerScores && gameState.playerScores.length > i) {
-                    playerScoreEl.textContent = gameState.playerScores[i];
+                if (playerScoreEl) {
+                    const playerTeam = i === 0 ? gameState.playerTeam : 
+                                      (gameState.otherPlayers && gameState.otherPlayers[i-1] ? 
+                                       gameState.otherPlayers[i-1].team : '');
+                    
+                    // Determine if player is on winning team
+                    const isWinningTeam = (gameState.winner === 'RE' && playerTeam === 'RE') || 
+                                         (gameState.winner === 'KONTRA' && playerTeam === 'KONTRA');
+                    
+                    // Count players in each team
+                    const rePlayers = gameState.otherPlayers ? 
+                                     gameState.otherPlayers.filter(p => p.team === 'RE').length + 
+                                     (gameState.playerTeam === 'RE' ? 1 : 0) : 
+                                     (gameState.playerTeam === 'RE' ? 1 : 0);
+                    
+                    const kontraPlayers = gameState.otherPlayers ? 
+                                         gameState.otherPlayers.filter(p => p.team === 'KONTRA').length + 
+                                         (gameState.playerTeam === 'KONTRA' ? 1 : 0) : 
+                                         (gameState.playerTeam === 'KONTRA' ? 1 : 0);
+                    
+                    // Calculate points based on winner and multiplier
+                    let points = 0;
+                    if (playerTeam === 'RE') {
+                        // RE team: +kontraPlayers if won, -kontraPlayers if lost
+                        points = isWinningTeam ? kontraPlayers : -kontraPlayers;
+                    } else if (playerTeam === 'KONTRA') {
+                        // KONTRA team: +rePlayers if won, -rePlayers if lost
+                        points = isWinningTeam ? rePlayers : -rePlayers;
+                    }
+                    
+                    // Apply multiplier
+                    points *= (gameState.multiplier || 1);
+                    
+                    // Display the points with a + sign for positive values
+                    playerScoreEl.textContent = points > 0 ? `+${points}` : points;
+                    
+                    // Add color coding for positive/negative points
+                    playerScoreEl.style.color = points > 0 ? '#2ecc71' : (points < 0 ? '#e74c3c' : 'inherit');
                 }
             }
             
             // Get the score calculation container
-            const scoreCalculationEl = document.getElementById('score-calculation');
+            const scoreCalculationEl = document.getElementById('score-calculation-details');
             if (scoreCalculationEl) {
                 // Clear previous content
                 scoreCalculationEl.innerHTML = '';
@@ -1900,53 +1939,281 @@ document.addEventListener('DOMContentLoaded', function() {
                 const scoreBreakdown = document.createElement('div');
                 scoreBreakdown.className = 'score-breakdown';
                 
-                // Add the formatted score calculation
-                const scoreCalcHeader = document.createElement('h3');
-                scoreCalcHeader.textContent = 'Score Calculation';
-                scoreBreakdown.appendChild(scoreCalcHeader);
-                
-                const scoreCalcDisplay = document.createElement('div');
-                scoreCalcDisplay.style.fontSize = '1.2em';
-                scoreCalcDisplay.style.fontWeight = 'bold';
-                scoreCalcDisplay.style.marginBottom = '15px';
-                scoreCalcDisplay.style.padding = '10px';
-                scoreCalcDisplay.style.backgroundColor = '#f8f9fa';
-                scoreCalcDisplay.style.borderRadius = '5px';
-                scoreCalcDisplay.style.border = '1px solid #ddd';
-                
                 // Format the score calculation based on the winner and announcements
-                let scoreCalcText = '';
+                let basePoints = 1; // Start with 1 point for winning
+                let scoreCalcHTML = '';
                 
-                if (gameState.winner === 'RE') {
-                    scoreCalcText = 're 1';
-                    
-                    // Add announcements if any were made
-                    if (gameState.announcements) {
-                        if (gameState.announcements.no90) {
-                            scoreCalcText += ' no 90 2';
-                        }
-                        if (gameState.announcements.no60) {
-                            scoreCalcText += ' no 60 3';
-                        }
-                        if (gameState.announcements.no30) {
-                            scoreCalcText += ' no 30 4';
-                        }
-                        if (gameState.announcements.black) {
-                            scoreCalcText += ' black 5';
-                        }
+                // Count players in each team for point calculation
+                const rePlayers = gameState.otherPlayers ? 
+                                 gameState.otherPlayers.filter(p => p.team === 'RE').length + 
+                                 (gameState.playerTeam === 'RE' ? 1 : 0) : 
+                                 (gameState.playerTeam === 'RE' ? 1 : 0);
+                
+                const kontraPlayers = gameState.otherPlayers ? 
+                                     gameState.otherPlayers.filter(p => p.team === 'KONTRA').length + 
+                                     (gameState.playerTeam === 'KONTRA' ? 1 : 0) : 
+                                     (gameState.playerTeam === 'KONTRA' ? 1 : 0);
+                
+                // Create a table for the score calculation
+                const table = document.createElement('table');
+                table.style.width = '100%';
+                table.style.borderCollapse = 'collapse';
+                table.style.marginBottom = '15px';
+                
+                // Add table header
+                const thead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+                
+                const announcementHeader = document.createElement('th');
+                announcementHeader.textContent = 'Announcement';
+                announcementHeader.style.padding = '8px';
+                announcementHeader.style.borderBottom = '2px solid #ddd';
+                announcementHeader.style.textAlign = 'left';
+                
+                const pointsHeader = document.createElement('th');
+                pointsHeader.textContent = 'Points';
+                pointsHeader.style.padding = '8px';
+                pointsHeader.style.borderBottom = '2px solid #ddd';
+                pointsHeader.style.textAlign = 'right';
+                
+                headerRow.appendChild(announcementHeader);
+                headerRow.appendChild(pointsHeader);
+                thead.appendChild(headerRow);
+                table.appendChild(thead);
+                
+                // Add table body
+                const tbody = document.createElement('tbody');
+                
+                // Add base win row
+                const baseRow = document.createElement('tr');
+                
+                const baseLabel = document.createElement('td');
+                baseLabel.textContent = gameState.winner === 'RE' ? 'RE win' : 'KONTRA win';
+                baseLabel.style.padding = '8px';
+                baseLabel.style.borderBottom = '1px solid #eee';
+                
+                const basePointsCell = document.createElement('td');
+                basePointsCell.textContent = '1 point';
+                basePointsCell.style.padding = '8px';
+                basePointsCell.style.borderBottom = '1px solid #eee';
+                basePointsCell.style.textAlign = 'right';
+                
+                baseRow.appendChild(baseLabel);
+                baseRow.appendChild(basePointsCell);
+                tbody.appendChild(baseRow);
+                
+                // Add rows for announcements
+                let totalPoints = 1; // Start with 1 for the win
+                
+                if (gameState.announcements) {
+                    // Re/Contra announcement
+                    if (gameState.announcements.re && gameState.winner === 'RE') {
+                        const reRow = document.createElement('tr');
+                        
+                        const reLabel = document.createElement('td');
+                        reLabel.textContent = 'RE announced';
+                        reLabel.style.padding = '8px';
+                        reLabel.style.borderBottom = '1px solid #eee';
+                        
+                        const rePoints = document.createElement('td');
+                        rePoints.textContent = '1 point';
+                        rePoints.style.padding = '8px';
+                        rePoints.style.borderBottom = '1px solid #eee';
+                        rePoints.style.textAlign = 'right';
+                        
+                        reRow.appendChild(reLabel);
+                        reRow.appendChild(rePoints);
+                        tbody.appendChild(reRow);
+                        
+                        totalPoints++;
                     }
                     
-                    // Add 'all' if applicable
-                    if (gameState.multiplier && gameState.multiplier > 1) {
-                        scoreCalcText += ` all ${gameState.multiplier}`;
+                    if (gameState.announcements.contra && gameState.winner === 'KONTRA') {
+                        const contraRow = document.createElement('tr');
+                        
+                        const contraLabel = document.createElement('td');
+                        contraLabel.textContent = 'CONTRA announced';
+                        contraLabel.style.padding = '8px';
+                        contraLabel.style.borderBottom = '1px solid #eee';
+                        
+                        const contraPoints = document.createElement('td');
+                        contraPoints.textContent = '1 point';
+                        contraPoints.style.padding = '8px';
+                        contraPoints.style.borderBottom = '1px solid #eee';
+                        contraPoints.style.textAlign = 'right';
+                        
+                        contraRow.appendChild(contraLabel);
+                        contraRow.appendChild(contraPoints);
+                        tbody.appendChild(contraRow);
+                        
+                        totalPoints++;
                     }
-                } else {
-                    // Contra wins
-                    scoreCalcText = `contra ${gameState.multiplier || 2}`;
+                    
+                    // Additional announcements
+                    if (gameState.announcements.no90) {
+                        const no90Row = document.createElement('tr');
+                        
+                        const no90Label = document.createElement('td');
+                        no90Label.textContent = 'No 90 announced';
+                        no90Label.style.padding = '8px';
+                        no90Label.style.borderBottom = '1px solid #eee';
+                        
+                        const no90Points = document.createElement('td');
+                        no90Points.textContent = '1 point';
+                        no90Points.style.padding = '8px';
+                        no90Points.style.borderBottom = '1px solid #eee';
+                        no90Points.style.textAlign = 'right';
+                        
+                        no90Row.appendChild(no90Label);
+                        no90Row.appendChild(no90Points);
+                        tbody.appendChild(no90Row);
+                        
+                        totalPoints++;
+                    }
+                    
+                    if (gameState.announcements.no60) {
+                        const no60Row = document.createElement('tr');
+                        
+                        const no60Label = document.createElement('td');
+                        no60Label.textContent = 'No 60 announced';
+                        no60Label.style.padding = '8px';
+                        no60Label.style.borderBottom = '1px solid #eee';
+                        
+                        const no60Points = document.createElement('td');
+                        no60Points.textContent = '1 point';
+                        no60Points.style.padding = '8px';
+                        no60Points.style.borderBottom = '1px solid #eee';
+                        no60Points.style.textAlign = 'right';
+                        
+                        no60Row.appendChild(no60Label);
+                        no60Row.appendChild(no60Points);
+                        tbody.appendChild(no60Row);
+                        
+                        totalPoints++;
+                    }
+                    
+                    if (gameState.announcements.no30) {
+                        const no30Row = document.createElement('tr');
+                        
+                        const no30Label = document.createElement('td');
+                        no30Label.textContent = 'No 30 announced';
+                        no30Label.style.padding = '8px';
+                        no30Label.style.borderBottom = '1px solid #eee';
+                        
+                        const no30Points = document.createElement('td');
+                        no30Points.textContent = '1 point';
+                        no30Points.style.padding = '8px';
+                        no30Points.style.borderBottom = '1px solid #eee';
+                        no30Points.style.textAlign = 'right';
+                        
+                        no30Row.appendChild(no30Label);
+                        no30Row.appendChild(no30Points);
+                        tbody.appendChild(no30Row);
+                        
+                        totalPoints++;
+                    }
+                    
+                    if (gameState.announcements.black) {
+                        const blackRow = document.createElement('tr');
+                        
+                        const blackLabel = document.createElement('td');
+                        blackLabel.textContent = 'Black announced';
+                        blackLabel.style.padding = '8px';
+                        blackLabel.style.borderBottom = '1px solid #eee';
+                        
+                        const blackPoints = document.createElement('td');
+                        blackPoints.textContent = '1 point';
+                        blackPoints.style.padding = '8px';
+                        blackPoints.style.borderBottom = '1px solid #eee';
+                        blackPoints.style.textAlign = 'right';
+                        
+                        blackRow.appendChild(blackLabel);
+                        blackRow.appendChild(blackPoints);
+                        tbody.appendChild(blackRow);
+                        
+                        totalPoints++;
+                    }
                 }
                 
-                scoreCalcDisplay.textContent = scoreCalcText;
-                scoreBreakdown.appendChild(scoreCalcDisplay);
+                // Add total row
+                const totalRow = document.createElement('tr');
+                totalRow.style.fontWeight = 'bold';
+                
+                const totalLabel = document.createElement('td');
+                totalLabel.textContent = 'Total base points';
+                totalLabel.style.padding = '8px';
+                totalLabel.style.borderTop = '2px solid #ddd';
+                totalLabel.style.borderBottom = '1px solid #ddd';
+                
+                const totalValueCell = document.createElement('td');
+                totalValueCell.textContent = `${totalPoints} point${totalPoints !== 1 ? 's' : ''}`;
+                totalValueCell.style.padding = '8px';
+                totalValueCell.style.borderTop = '2px solid #ddd';
+                totalValueCell.style.borderBottom = '1px solid #ddd';
+                totalValueCell.style.textAlign = 'right';
+                
+                totalRow.appendChild(totalLabel);
+                totalRow.appendChild(totalValueCell);
+                tbody.appendChild(totalRow);
+                
+                // Add multiplier row if applicable
+                if (gameState.multiplier && gameState.multiplier > 1) {
+                    const multiplierRow = document.createElement('tr');
+                    multiplierRow.style.fontWeight = 'bold';
+                    
+                    const multiplierLabel = document.createElement('td');
+                    multiplierLabel.textContent = 'Multiplier';
+                    multiplierLabel.style.padding = '8px';
+                    multiplierLabel.style.borderBottom = '1px solid #ddd';
+                    
+                    const multiplierValue = document.createElement('td');
+                    multiplierValue.textContent = `${gameState.multiplier}x`;
+                    multiplierValue.style.padding = '8px';
+                    multiplierValue.style.borderBottom = '1px solid #ddd';
+                    multiplierValue.style.textAlign = 'right';
+                    
+                    multiplierRow.appendChild(multiplierLabel);
+                    multiplierRow.appendChild(multiplierValue);
+                    tbody.appendChild(multiplierRow);
+                }
+                
+                // Add final score row
+                const finalRow = document.createElement('tr');
+                finalRow.style.fontWeight = 'bold';
+                finalRow.style.backgroundColor = '#f8f9fa';
+                
+                const finalLabel = document.createElement('td');
+                finalLabel.textContent = 'Final points per player';
+                finalLabel.style.padding = '8px';
+                finalLabel.style.borderBottom = '1px solid #ddd';
+                
+                const finalValue = document.createElement('td');
+                
+                // Calculate final points per player
+                let finalPoints = 0;
+                if (gameState.winner === 'RE') {
+                    // Each RE player gets +kontraPlayers points
+                    finalPoints = kontraPlayers * (gameState.multiplier || 1);
+                    finalValue.textContent = `+${finalPoints} for RE, -${finalPoints} for KONTRA`;
+                } else {
+                    // Each KONTRA player gets +rePlayers points
+                    finalPoints = rePlayers * (gameState.multiplier || 1);
+                    finalValue.textContent = `+${finalPoints} for KONTRA, -${finalPoints} for RE`;
+                }
+                
+                finalValue.style.padding = '8px';
+                finalValue.style.borderBottom = '1px solid #ddd';
+                finalValue.style.textAlign = 'right';
+                
+                finalRow.appendChild(finalLabel);
+                finalRow.appendChild(finalValue);
+                tbody.appendChild(finalRow);
+                
+                table.appendChild(tbody);
+                scoreBreakdown.appendChild(table);
+                
+                // Add the score breakdown to the score calculation container
+                scoreCalculationEl.appendChild(scoreBreakdown);
                 
                 // Add player scores - showing game points instead of trick scores
                 const playerScoresHeader = document.createElement('h3');
@@ -2109,7 +2376,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         revealed_team: false,
                         revealed_teams: [false, false, false, false],
                         player_team_type: '',
-                        player_team_types: ['', '', '', '']
+                        player_team_types: ['', '', '', ''],
+                        announcements: {}, // Reset announcements
+                        canAnnounceRe: false,
+                        canAnnounceContra: false,
+                        canAnnounceNo90: false,
+                        canAnnounceNo60: false,
+                        canAnnounceNo30: false,
+                        canAnnounceBlack: false,
+                        multiplier: 1
                     };
                     
                     // Start a new game
