@@ -169,15 +169,21 @@ document.addEventListener('DOMContentLoaded', function() {
             // Update the game scores
             updateGameScores();
             
-            // Check if the game is over
-            if (data.game_over) {
-                gameState.gameOver = true;
-                gameState.winner = data.winner;
-                
-                // Skip the modal and directly show the game over screen
-                console.log("Game over detected, showing game over screen directly");
-                showGameOverScreen();
-            }
+    // Check if the game is over
+    if (data.game_over) {
+        gameState.gameOver = true;
+        gameState.winner = data.winner;
+        
+        // Make sure we have the game summary if available
+        if (data.game_summary) {
+            gameState.gameSummary = data.game_summary;
+            console.log("Game summary received:", data.game_summary);
+        }
+        
+        // Skip the modal and directly show the game over screen
+        console.log("Game over detected, showing game over screen directly");
+        showGameOverScreen();
+    }
         }
         
         // Render the player's hand and current trick
@@ -1834,46 +1840,52 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
     
-    // Function to show the game over screen
-    function showGameOverScreen() {
-        console.log("Showing game over screen");
+// Function to show the game over screen
+function showGameOverScreen() {
+    console.log("Showing game over screen");
+    
+    // Hide the game board
+    if (gameBoard) {
+        gameBoard.classList.add('hidden');
+    }
+    
+    // Show the game over screen
+    if (gameOverScreen) {
+        gameOverScreen.classList.remove('hidden');
         
-        // Hide the game board
-        if (gameBoard) {
-            gameBoard.classList.add('hidden');
-        }
-        
-        // Show the game over screen
-        if (gameOverScreen) {
-            gameOverScreen.classList.remove('hidden');
+        // Get the winner display element
+        const gameResultEl = document.getElementById('game-result');
+        if (gameResultEl) {
+            // Clear any previous content
+            gameResultEl.innerHTML = '';
             
-            // Get the winner display element
-            const gameResultEl = document.getElementById('game-result');
-            if (gameResultEl) {
-                const winnerTeam = gameState.winner === 'RE' ? 'RE' : 'KONTRA';
-                gameResultEl.innerHTML = `<h3 id="winner">Team ${winnerTeam} wins!</h3>`;
-                const winnerEl = document.getElementById('winner');
-                if (winnerEl) {
-                    winnerEl.style.color = winnerTeam === 'RE' ? '#2ecc71' : '#e74c3c';
-                }
-                
-                // Add game summary if available
-                if (gameState.gameSummary) {
-                    const summaryEl = document.createElement('pre');
-                    summaryEl.textContent = gameState.gameSummary;
-                    summaryEl.style.textAlign = 'left';
-                    summaryEl.style.margin = '20px auto';
-                    summaryEl.style.padding = '15px';
-                    summaryEl.style.backgroundColor = '#f8f9fa';
-                    summaryEl.style.border = '1px solid #ddd';
-                    summaryEl.style.borderRadius = '5px';
-                    summaryEl.style.maxWidth = '600px';
-                    summaryEl.style.whiteSpace = 'pre-wrap';
-                    summaryEl.style.fontSize = '14px';
-                    summaryEl.style.fontFamily = 'monospace';
-                    gameResultEl.appendChild(summaryEl);
-                }
+            const winnerTeam = gameState.winner === 'RE' ? 'RE' : 'KONTRA';
+            const winnerHeader = document.createElement('h3');
+            winnerHeader.id = 'winner';
+            winnerHeader.textContent = `Team ${winnerTeam} wins!`;
+            winnerHeader.style.color = winnerTeam === 'RE' ? '#2ecc71' : '#e74c3c';
+            gameResultEl.appendChild(winnerHeader);
+            
+            // Add game summary if available
+            if (gameState.gameSummary) {
+                console.log("Adding game summary to game over screen");
+                const summaryEl = document.createElement('pre');
+                summaryEl.textContent = gameState.gameSummary;
+                summaryEl.style.textAlign = 'left';
+                summaryEl.style.margin = '20px auto';
+                summaryEl.style.padding = '15px';
+                summaryEl.style.backgroundColor = '#f8f9fa';
+                summaryEl.style.border = '1px solid #ddd';
+                summaryEl.style.borderRadius = '5px';
+                summaryEl.style.maxWidth = '600px';
+                summaryEl.style.whiteSpace = 'pre-wrap';
+                summaryEl.style.fontSize = '14px';
+                summaryEl.style.fontFamily = 'monospace';
+                gameResultEl.appendChild(summaryEl);
+            } else {
+                console.log("No game summary available");
             }
+        }
             
             // Update the final score elements
             const finalReScoreEl = document.getElementById('final-re-score');
