@@ -772,14 +772,102 @@ def play_card():
         else:
             scoreboard['ai_wins'] += 1
     
-    return jsonify({
+    # Create a response object
+    response_data = {
         'state': get_game_state(game_id),
         'trick_completed': trick_completed,
         'trick_winner': trick_winner,
         'is_player_winner': trick_winner == 0 if trick_winner is not None else False,
         'trick_points': trick_points if trick_completed else 0,
         'scoreboard': scoreboard
-    })
+    }
+    
+    # If the game is over, include the player scores in the state and add a game summary
+    if game.game_over:
+        # Make sure the player scores are included in the state
+        response_data['state']['player_scores'] = scoreboard['player_scores']
+        
+        # Also include the scoreboard in the state for easy access
+        response_data['state']['scoreboard'] = {
+            'player_wins': scoreboard['player_wins'],
+            'ai_wins': scoreboard['ai_wins'],
+            'player_scores': scoreboard['player_scores']
+        }
+        
+        # Create a detailed game summary
+        game_data = games[game_id]
+        multiplier = game_data.get('multiplier', 1)
+        
+        # Count players in each team
+        re_players = sum(1 for team in game.teams if team.name == 'RE')
+        kontra_players = sum(1 for team in game.teams if team.name == 'KONTRA')
+        
+        # Calculate points for each team
+        if game.winner.name == 'RE':
+            # RE team won
+            re_points = kontra_players  # Each RE player gets +kontra_players
+            kontra_points = -re_players  # Each KONTRA player gets -re_players
+        else:
+            # KONTRA team won
+            re_points = -kontra_players  # Each RE player gets -kontra_players
+            kontra_points = re_players  # Each KONTRA player gets +re_players
+        
+        # Apply multiplier
+        re_points_with_multiplier = re_points * multiplier
+        kontra_points_with_multiplier = kontra_points * multiplier
+        
+        # Create summary text
+        summary_text = f"Game Over! {game.winner.name} team wins!\n\n"
+        
+        # Add team composition
+        summary_text += "Team Composition:\n"
+        for i, team in enumerate(game.teams):
+            player_name = "You" if i == 0 else f"Player {i}"
+            summary_text += f"- {player_name}: {team.name}\n"
+        
+        summary_text += "\nScore Calculation:\n"
+        
+        # Add announcement information if any
+        if game_data.get('re_announced', False) or game_data.get('contra_announced', False):
+            summary_text += "Announcements:\n"
+            if game_data.get('re_announced', False):
+                summary_text += "- RE announced\n"
+            if game_data.get('contra_announced', False):
+                summary_text += "- CONTRA announced\n"
+            if game_data.get('no90_announced', False):
+                summary_text += "- No 90 announced\n"
+            if game_data.get('no60_announced', False):
+                summary_text += "- No 60 announced\n"
+            if game_data.get('no30_announced', False):
+                summary_text += "- No 30 announced\n"
+            if game_data.get('black_announced', False):
+                summary_text += "- Black announced\n"
+            
+            summary_text += f"- Score multiplier: {multiplier}x\n\n"
+        
+        # Add base point calculation
+        summary_text += "Base Points:\n"
+        summary_text += f"- RE team ({re_players} players): {re_points} points per player\n"
+        summary_text += f"- KONTRA team ({kontra_players} players): {kontra_points} points per player\n\n"
+        
+        # Add multiplier effect if applicable
+        if multiplier > 1:
+            summary_text += "With Multiplier:\n"
+            summary_text += f"- RE team: {re_points} × {multiplier} = {re_points_with_multiplier} points per player\n"
+            summary_text += f"- KONTRA team: {kontra_points} × {multiplier} = {kontra_points_with_multiplier} points per player\n\n"
+        
+        # Add final scores
+        summary_text += "Final Scores:\n"
+        for i, team in enumerate(game.teams):
+            player_name = "You" if i == 0 else f"Player {i}"
+            points = re_points_with_multiplier if team.name == 'RE' else kontra_points_with_multiplier
+            total_score = scoreboard['player_scores'][i]
+            summary_text += f"- {player_name}: {points} points (Total: {total_score})\n"
+        
+        # Add the summary to the response
+        response_data['game_summary'] = summary_text
+    
+    return jsonify(response_data)
 
 @app.route('/get_current_trick', methods=['GET'])
 def get_current_trick():

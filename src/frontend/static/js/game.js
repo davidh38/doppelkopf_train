@@ -1537,6 +1537,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 gameState.legalActions = data.state.legal_actions || [];
             }
             
+            // Store the game summary if available
+            if (data.game_summary) {
+                gameState.gameSummary = data.game_summary;
+            }
+            
             // Render the player's hand and current trick
             renderHand();
             renderCurrentTrick();
@@ -1833,6 +1838,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 const winnerEl = document.getElementById('winner');
                 if (winnerEl) {
                     winnerEl.style.color = winnerTeam === 'RE' ? '#2ecc71' : '#e74c3c';
+                }
+                
+                // Add game summary if available
+                if (gameState.gameSummary) {
+                    const summaryEl = document.createElement('pre');
+                    summaryEl.textContent = gameState.gameSummary;
+                    summaryEl.style.textAlign = 'left';
+                    summaryEl.style.margin = '20px auto';
+                    summaryEl.style.padding = '15px';
+                    summaryEl.style.backgroundColor = '#f8f9fa';
+                    summaryEl.style.border = '1px solid #ddd';
+                    summaryEl.style.borderRadius = '5px';
+                    summaryEl.style.maxWidth = '600px';
+                    summaryEl.style.whiteSpace = 'pre-wrap';
+                    summaryEl.style.fontSize = '14px';
+                    summaryEl.style.fontFamily = 'monospace';
+                    gameResultEl.appendChild(summaryEl);
                 }
             }
             
