@@ -3,6 +3,11 @@
 Test script to verify the Jack Solo variant with RE announcement and scoring.
 """
 
+import sys
+import os
+# Add the project root directory to the Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from src.backend.game.doppelkopf import DoppelkopfGame, Card, Suit, Rank, GameVariant, PlayerTeam
 
 def test_jack_solo_re_win():
@@ -188,6 +193,34 @@ def test_jack_solo_re_win():
     print(f"KONTRA team score after round 8: {game.scores[1]} points")
     print(f"Player scores after round 8: {game.player_scores}")
     
+    # Round 9: Player 0 (RE team) wins a trick worth 0 points
+    print("\nRound 9:")
+    # No points in this trick
+    
+    # Store scores after this round
+    round_scores_re.append(game.scores[0])
+    round_scores_kontra.append(game.scores[1])
+    for i in range(4):
+        player_scores_history[i].append(game.player_scores[i])
+    
+    print(f"RE team score after round 9: {game.scores[0]} points")
+    print(f"KONTRA team score after round 9: {game.scores[1]} points")
+    print(f"Player scores after round 9: {game.player_scores}")
+    
+    # Round 10: Player 2 (KONTRA team) wins a trick worth 0 points
+    print("\nRound 10:")
+    # No points in this trick
+    
+    # Store scores after this round
+    round_scores_re.append(game.scores[0])
+    round_scores_kontra.append(game.scores[1])
+    for i in range(4):
+        player_scores_history[i].append(game.player_scores[i])
+    
+    print(f"RE team score after round 10: {game.scores[0]} points")
+    print(f"KONTRA team score after round 10: {game.scores[1]} points")
+    print(f"Player scores after round 10: {game.player_scores}")
+    
     # End the game
     game._end_game()
     
@@ -201,40 +234,12 @@ def test_jack_solo_re_win():
     print(f"Final RE team score: {game.scores[0]} points")
     print(f"Final KONTRA team score: {game.scores[1]} points")
     
-    # Calculate game points awarded at the end of the game for each individual player
-    # In Jack Solo, the solo player (Player 0) gets 3 points per opponent if they win
-    # Each opponent gets -1 point if they lose
-    # Since RE was announced, the points are doubled
+    # Game points are now calculated in the _end_game method of the DoppelkopfGame class
+    # The game logic now properly implements a zero-sum approach for game points
+    # Each time points are awarded to one team, corresponding points are subtracted from the other team
     
-    # Create a list to store individual player game points
-    player_game_points = [0, 0, 0, 0]
-    
-    # Count players in each team
-    re_players = sum(1 for team in game.teams if team == PlayerTeam.RE)
-    kontra_players = sum(1 for team in game.teams if team == PlayerTeam.KONTRA)
-    
-    # Multiplier for RE announcement
-    multiplier = 2 if game.re_announced else 1
-    
-    # Assign game points based on the winner
-    if game.winner == PlayerTeam.RE:
-        # RE team won (solo player)
-        # Solo player gets 3 points per opponent, doubled for RE announcement
-        solo_points = kontra_players * multiplier
-        player_game_points[0] = solo_points
-        
-        # Each KONTRA player gets -1 point, doubled for RE announcement
-        for i in range(1, 4):
-            player_game_points[i] = -1 * multiplier
-    else:
-        # KONTRA team won
-        # Solo player gets -3 points per opponent, doubled for RE announcement
-        solo_points = -kontra_players * multiplier
-        player_game_points[0] = solo_points
-        
-        # Each KONTRA player gets 1 point, doubled for RE announcement
-        for i in range(1, 4):
-            player_game_points[i] = 1 * multiplier
+    # Get the game points calculated by the game logic
+    player_game_points = game.player_game_points
     
     print("\nGame points awarded to individual players:")
     for i, points in enumerate(player_game_points):

@@ -652,13 +652,19 @@ class DoppelkopfGame:
         # Add points to the individual player's score
         self.player_scores[self.trick_winner] += trick_points
         
-        # Add bonus points for Diamond Ace capture to the winner's score
+        # Add bonus points for Diamond Ace capture to all players on the winner's team
         if diamond_ace_bonus > 0:
-            self.player_scores[self.trick_winner] += diamond_ace_bonus
+            winner_team = self.teams[self.trick_winner]
+            for i, team in enumerate(self.teams):
+                if team == winner_team:
+                    self.player_scores[i] += diamond_ace_bonus
             
-        # Add bonus point for 40+ point trick to the winner's score
+        # Add bonus point for 40+ point trick to all players on the winner's team
         if forty_plus_bonus > 0:
-            self.player_scores[self.trick_winner] += forty_plus_bonus
+            winner_team = self.teams[self.trick_winner]
+            for i, team in enumerate(self.teams):
+                if team == winner_team:
+                    self.player_scores[i] += forty_plus_bonus
         
         # Store the last trick points for display
         self.last_trick_points = trick_points
@@ -690,6 +696,96 @@ class DoppelkopfGame:
             self.winner = PlayerTeam.RE
         else:
             self.winner = PlayerTeam.KONTRA
+            
+        # Calculate game points for each player (zero-sum)
+        self.player_game_points = [0, 0, 0, 0]
+        
+        # Count players in each team
+        re_players = sum(1 for team in self.teams if team == PlayerTeam.RE)
+        kontra_players = sum(1 for team in self.teams if team == PlayerTeam.KONTRA)
+        
+        # Check if this is a solo game (one player in RE team)
+        is_solo_game = re_players == 1
+        
+        # Special handling for solo variants
+        if is_solo_game and (self.game_variant == GameVariant.JACK_SOLO or 
+                             self.game_variant == GameVariant.QUEEN_SOLO or 
+                             self.game_variant == GameVariant.FLESHLESS):
+            # Multiplier for RE announcement
+            multiplier = 2 if self.re_announced else 1
+            
+            if self.winner == PlayerTeam.RE:
+                # RE team won (solo player)
+                # Find the solo player (the only RE player)
+                solo_player_idx = self.teams.index(PlayerTeam.RE)
+                
+                # Solo player gets 3 points per opponent, doubled for RE announcement
+                solo_points = kontra_players * multiplier
+                self.player_game_points[solo_player_idx] = solo_points
+                
+                # Each KONTRA player gets -1 point, doubled for RE announcement
+                for i, team in enumerate(self.teams):
+                    if team == PlayerTeam.KONTRA:
+                        self.player_game_points[i] = -1 * multiplier
+            else:
+                # KONTRA team won
+                # Find the solo player (the only RE player)
+                solo_player_idx = self.teams.index(PlayerTeam.RE)
+                
+                # Solo player gets -3 points per opponent, doubled for RE announcement
+                solo_points = -kontra_players * multiplier
+                self.player_game_points[solo_player_idx] = solo_points
+                
+                # Each KONTRA player gets 1 point, doubled for RE announcement
+                for i, team in enumerate(self.teams):
+                    if team == PlayerTeam.KONTRA:
+                        self.player_game_points[i] = 1 * multiplier
+        else:
+            # Normal game variant
+            # Base points for winning/losing
+            for i, team in enumerate(self.teams):
+                if team == self.winner:
+                    self.player_game_points[i] = 1  # Winning team players get +1
+                else:
+                    self.player_game_points[i] = -1  # Losing team players get -1
+                    
+            # Points for being KONTRA (zero-sum)
+            for i, team in enumerate(self.teams):
+                if team == PlayerTeam.KONTRA:
+                    self.player_game_points[i] += 1  # KONTRA team players get +1
+                else:
+                    self.player_game_points[i] -= 1  # RE team players get -1
+                    
+            # No 90 achievement (opponent got less than 90 points)
+            if self.winner == PlayerTeam.KONTRA and re_points < 90:
+                # KONTRA team prevented RE team from getting 90 points
+                for i, team in enumerate(self.teams):
+                    if team == PlayerTeam.KONTRA:
+                        self.player_game_points[i] += 1  # KONTRA team players get +1
+                    else:
+                        self.player_game_points[i] -= 1  # RE team players get -1
+                        
+            # Diamond ace captures - all players on the team get points
+            if hasattr(self, 'diamond_ace_captured'):
+                diamond_ace_captures = [capture for capture in self.diamond_ace_captured if capture.get('type') == 'diamond_ace']
+                for capture in diamond_ace_captures:
+                    winner_team = capture['winner_team']
+                    for i, team in enumerate(self.teams):
+                        if team.name == winner_team:
+                            self.player_game_points[i] += 1  # Each player on the team gets +1
+                        else:
+                            self.player_game_points[i] -= 1  # Each player on the opposing team gets -1
+                            
+            # 40+ tricks - all players on the team get points
+            if hasattr(self, 'diamond_ace_captured'):
+                forty_plus_tricks = [capture for capture in self.diamond_ace_captured if capture.get('type') == 'forty_plus']
+                for trick in forty_plus_tricks:
+                    winner_team = trick['winner_team']
+                    for i, team in enumerate(self.teams):
+                        if team.name == winner_team:
+                            self.player_game_points[i] += 1  # Each player on the team gets +1
+                        else:
+                            self.player_game_points[i] -= 1  # Each player on the opposing team gets -1
     
     def get_state(self) -> Dict:
         """
