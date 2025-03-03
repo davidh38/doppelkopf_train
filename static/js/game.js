@@ -1091,114 +1091,94 @@ document.addEventListener('DOMContentLoaded', function() {
             position: relative;
         `;
         
-        // Always add placeholder divs for each position to maintain the grid structure
-        const positions = ["top", "left", "right", "bottom"];
-        positions.forEach(position => {
-            const placeholderDiv = document.createElement('div');
-            placeholderDiv.className = 'trick-placeholder';
-            placeholderDiv.style.gridArea = position;
-            placeholderDiv.style.minWidth = '10px';
-            placeholderDiv.style.minHeight = '10px';
-            hardcodedTrickEl.appendChild(placeholderDiv);
-        });
-        
-        // If there are no cards in the trick, just return after setting up the grid
-        if (!gameState.currentTrick || gameState.currentTrick.length === 0) {
-            return;
-        }
-        
         // Calculate the starting player for this trick
         // Use ((n % m) + m) % m to ensure positive modulo result
         const startingPlayer = ((gameState.currentPlayer - gameState.currentTrick.length) % 4 + 4) % 4;
         
-        // Create a container for each card with player information
-        for (let i = 0; i < gameState.currentTrick.length; i++) {
-            const card = gameState.currentTrick[i];
-            
-            // Calculate which player played this card
-            // Use ((n % m) + m) % m to ensure positive modulo result
-            const playerIdx = ((startingPlayer + i) % 4 + 4) % 4;
-            
+        // Create placeholders for all four positions
+        const positions = [
+            { position: "bottom", playerIdx: 0, gridArea: "bottom", justifySelf: "center" },
+            { position: "left", playerIdx: 1, gridArea: "left", justifySelf: "start" },
+            { position: "top", playerIdx: 2, gridArea: "top", justifySelf: "center" },
+            { position: "right", playerIdx: 3, gridArea: "right", justifySelf: "end" }
+        ];
+        
+        // Create a container for each position (whether there's a card or not)
+        positions.forEach(pos => {
             // Create a container for the card and player label
             const cardContainer = document.createElement('div');
             cardContainer.className = 'trick-card-container';
-            
-            // Position the card based on the player's position relative to the user
-            // Player 0 is the user (bottom), Player 1 is left, Player 2 is top, Player 3 is right
-            let position;
-            if (playerIdx === 0) {
-                position = "bottom";
-                cardContainer.style.gridArea = "bottom";
-                cardContainer.style.justifySelf = "center";
-            } else if (playerIdx === 1) {
-                position = "left";
-                cardContainer.style.gridArea = "left";
-                cardContainer.style.justifySelf = "start";
-            } else if (playerIdx === 2) {
-                position = "top";
-                cardContainer.style.gridArea = "top";
-                cardContainer.style.justifySelf = "center";
-            } else if (playerIdx === 3) {
-                position = "right";
-                cardContainer.style.gridArea = "right";
-                cardContainer.style.justifySelf = "end";
-            }
-            
-            // Create the card element
-            const cardElement = createCardElement(card, false); // Cards in the trick are not playable
+            cardContainer.style.gridArea = pos.gridArea;
+            cardContainer.style.justifySelf = pos.justifySelf;
             
             // Create a player label
             const playerLabel = document.createElement('div');
             playerLabel.className = 'player-label';
+            playerLabel.textContent = pos.playerIdx === 0 ? 'You' : `Player ${pos.playerIdx}`;
             
-            // Determine if this is the first round (trick)
-            const isFirstRound = gameState.currentTrick.length <= 4;
-            
-            // Add team information for the first round
-            if (isFirstRound) {
-                // Determine the player's team based on their cards
-                let teamInfo = "";
-                
-                // Check if the card is a Queen of Clubs (indicates RE team)
-                if (card.suit === 'CLUBS' && card.rank === 'QUEEN') {
-                    teamInfo = " (RE)";
-                } else if (card.suit === 'SPADES' && card.rank === 'QUEEN') {
-                    teamInfo = " (likely RE)";
-                } else if (card.suit === 'HEARTS' && card.rank === 'QUEEN') {
-                    teamInfo = " (likely RE)";
-                } else if (card.suit === 'DIAMONDS' && card.rank === 'QUEEN') {
-                    teamInfo = " (likely RE)";
-                } else if (card.rank === 'JACK') {
-                    teamInfo = " (unknown)";
-                } else {
-                    teamInfo = " (likely KONTRA)";
-                }
-                
-                playerLabel.textContent = playerIdx === 0 ? `You${teamInfo}` : `Player ${playerIdx}${teamInfo}`;
-            } else {
-                playerLabel.textContent = playerIdx === 0 ? 'You' : `Player ${playerIdx}`;
-            }
-            
-            // Position the label based on the player's position
-            if (position === "bottom") {
+            // Position the label based on the position
+            if (pos.position === "bottom") {
+                cardContainer.style.flexDirection = "column";
                 playerLabel.style.order = "1"; // Label below card
-            } else if (position === "top") {
+            } else if (pos.position === "top") {
+                cardContainer.style.flexDirection = "column";
                 playerLabel.style.order = "-1"; // Label above card
-            } else if (position === "left") {
+            } else if (pos.position === "left") {
                 cardContainer.style.flexDirection = "row";
                 playerLabel.style.marginRight = "10px";
-            } else if (position === "right") {
+            } else if (pos.position === "right") {
                 cardContainer.style.flexDirection = "row-reverse";
                 playerLabel.style.marginLeft = "10px";
             }
             
-            // Add the player label and card to the container
+            // Add the player label to the container
             cardContainer.appendChild(playerLabel);
-            cardContainer.appendChild(cardElement);
+            
+            // Check if there's a card for this position
+            const cardIndex = (4 + pos.playerIdx - startingPlayer) % 4;
+            if (gameState.currentTrick && gameState.currentTrick.length > cardIndex) {
+                const card = gameState.currentTrick[cardIndex];
+                
+                // Create the card element
+                const cardElement = createCardElement(card, false); // Cards in the trick are not playable
+                
+                // Add team information for the first round
+                if (gameState.currentTrick.length <= 4) {
+                    // Determine the player's team based on their cards
+                    let teamInfo = "";
+                    
+                    // Check if the card is a Queen of Clubs (indicates RE team)
+                    if (card.suit === 'CLUBS' && card.rank === 'QUEEN') {
+                        teamInfo = " (RE)";
+                    } else if (card.suit === 'SPADES' && card.rank === 'QUEEN') {
+                        teamInfo = " (likely RE)";
+                    } else if (card.suit === 'HEARTS' && card.rank === 'QUEEN') {
+                        teamInfo = " (likely RE)";
+                    } else if (card.suit === 'DIAMONDS' && card.rank === 'QUEEN') {
+                        teamInfo = " (likely RE)";
+                    } else if (card.rank === 'JACK') {
+                        teamInfo = " (unknown)";
+                    } else {
+                        teamInfo = " (likely KONTRA)";
+                    }
+                    
+                    playerLabel.textContent = pos.playerIdx === 0 ? `You${teamInfo}` : `Player ${pos.playerIdx}${teamInfo}`;
+                }
+                
+                // Add the card to the container
+                cardContainer.appendChild(cardElement);
+            } else {
+                // Add an empty placeholder for the card
+                const emptyCard = document.createElement('div');
+                emptyCard.style.width = '120px';
+                emptyCard.style.height = '170px';
+                emptyCard.style.visibility = 'hidden';
+                cardContainer.appendChild(emptyCard);
+            }
             
             // Add the container to the trick display
             hardcodedTrickEl.appendChild(cardContainer);
-        }
+        });
     }
     
     // Function to start a new game
