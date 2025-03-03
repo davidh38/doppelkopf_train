@@ -130,6 +130,22 @@ document.addEventListener('DOMContentLoaded', function() {
             gameState.canAnnounceNo30 = data.can_announce_no30 || false;
             gameState.canAnnounceBlack = data.can_announce_black || false;
             gameState.multiplier = data.multiplier || 1;
+            gameState.playerScores = data.player_scores || [0, 0, 0, 0];
+            
+            // Store player announcements if available
+            if (data.announcements) {
+                gameState.announcements = data.announcements;
+            }
+            
+            // Store player variant selections if available
+            if (data.player_variants) {
+                gameState.playerVariants = data.player_variants;
+            }
+            
+            // Store special tricks information if available
+            if (data.diamond_ace_captured) {
+                gameState.diamondAceCaptured = data.diamond_ace_captured;
+            }
             
             // Store player announcements if available
             if (data.announcements) {
@@ -143,6 +159,25 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Update announcement buttons visibility
             updateAnnouncementButtons();
+            
+            // Make sure the game scores are visible
+            const gameScores = document.getElementById('game-scores');
+            if (gameScores) {
+                gameScores.classList.remove('hidden');
+            }
+            
+            // Update the game scores
+            updateGameScores();
+            
+            // Check if the game is over
+            if (data.game_over) {
+                gameState.gameOver = true;
+                gameState.winner = data.winner;
+                
+                // Skip the modal and directly show the game over screen
+                console.log("Game over detected, showing game over screen directly");
+                showGameOverScreen();
+            }
         }
         
         // Render the player's hand and current trick
@@ -1314,10 +1349,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 gameState.hand = data.state.hand || [];
                 gameState.gameVariant = data.state.game_variant;
                 gameState.legalActions = data.state.legal_actions || [];
-                
+
                 if (data.state.current_player !== undefined) {
                     gameState.currentPlayer = data.state.current_player;
                 }
+                
+                // Update announcement capabilities
+                gameState.canAnnounceRe = data.state.can_announce_re || false;
+                gameState.canAnnounceContra = data.state.can_announce_contra || false;
+                gameState.canAnnounceNo90 = data.state.can_announce_no90 || false;
+                gameState.canAnnounceNo60 = data.state.can_announce_no60 || false;
+                gameState.canAnnounceNo30 = data.state.can_announce_no30 || false;
+                gameState.canAnnounceBlack = data.state.can_announce_black || false;
             }
             
             // Make sure the game board is visible
@@ -1758,6 +1801,322 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error revealing AI hands:', error);
                 alert(`Error: ${error.message}`);
             });
+    }
+    
+    // Function to update the game scores
+    function updateGameScores() {
+        if (!reScoreEl || !kontraScoreEl) return;
+        
+        // Update the score displays
+        reScoreEl.textContent = gameState.scores[0];
+        kontraScoreEl.textContent = gameState.scores[1];
+    }
+    
+    // Function to show the game over screen
+    function showGameOverScreen() {
+        console.log("Showing game over screen");
+        
+        // Hide the game board
+        if (gameBoard) {
+            gameBoard.classList.add('hidden');
+        }
+        
+        // Show the game over screen
+        if (gameOverScreen) {
+            gameOverScreen.classList.remove('hidden');
+            
+            // Get the winner display element
+            const winnerEl = document.getElementById('winner');
+            if (winnerEl) {
+                const winnerTeam = gameState.winner === 'RE' ? 'RE' : 'KONTRA';
+                winnerEl.textContent = `Team ${winnerTeam} wins!`;
+                winnerEl.style.color = winnerTeam === 'RE' ? '#2ecc71' : '#e74c3c';
+            }
+            
+            // Update the final score elements
+            const finalReScoreEl = document.getElementById('final-re-score');
+            const finalKontraScoreEl = document.getElementById('final-kontra-score');
+            const finalMultiplierEl = document.getElementById('final-multiplier');
+            
+            if (finalReScoreEl) {
+                finalReScoreEl.textContent = gameState.scores[0];
+            }
+            
+            if (finalKontraScoreEl) {
+                finalKontraScoreEl.textContent = gameState.scores[1];
+            }
+            
+            if (finalMultiplierEl) {
+                finalMultiplierEl.textContent = `${gameState.multiplier || 1}x`;
+            }
+            
+            // Update the announcement status elements
+            const finalReStatus = document.getElementById('final-re-status');
+            const finalContraStatus = document.getElementById('final-contra-status');
+            const finalNo90Status = document.getElementById('final-no90-status');
+            const finalNo60Status = document.getElementById('final-no60-status');
+            const finalNo30Status = document.getElementById('final-no30-status');
+            const finalBlackStatus = document.getElementById('final-black-status');
+            
+            if (finalReStatus) {
+                finalReStatus.classList.toggle('hidden', !(gameState.announcements && gameState.announcements.re));
+            }
+            
+            if (finalContraStatus) {
+                finalContraStatus.classList.toggle('hidden', !(gameState.announcements && gameState.announcements.contra));
+            }
+            
+            if (finalNo90Status) {
+                finalNo90Status.classList.toggle('hidden', !(gameState.announcements && gameState.announcements.no90));
+            }
+            
+            if (finalNo60Status) {
+                finalNo60Status.classList.toggle('hidden', !(gameState.announcements && gameState.announcements.no60));
+            }
+            
+            if (finalNo30Status) {
+                finalNo30Status.classList.toggle('hidden', !(gameState.announcements && gameState.announcements.no30));
+            }
+            
+            if (finalBlackStatus) {
+                finalBlackStatus.classList.toggle('hidden', !(gameState.announcements && gameState.announcements.black));
+            }
+            
+            // Update the player scores in the game over screen
+            for (let i = 0; i < 4; i++) {
+                const playerScoreEl = document.getElementById(`game-over-player-${i}-score`);
+                if (playerScoreEl && gameState.playerScores && gameState.playerScores.length > i) {
+                    playerScoreEl.textContent = gameState.playerScores[i];
+                }
+            }
+            
+            // Get the score calculation container
+            const scoreCalculationEl = document.getElementById('score-calculation');
+            if (scoreCalculationEl) {
+                // Clear previous content
+                scoreCalculationEl.innerHTML = '';
+                
+                // Create a detailed score breakdown
+                const scoreBreakdown = document.createElement('div');
+                scoreBreakdown.className = 'score-breakdown';
+                
+                // Add the formatted score calculation
+                const scoreCalcHeader = document.createElement('h3');
+                scoreCalcHeader.textContent = 'Score Calculation';
+                scoreBreakdown.appendChild(scoreCalcHeader);
+                
+                const scoreCalcDisplay = document.createElement('div');
+                scoreCalcDisplay.style.fontSize = '1.2em';
+                scoreCalcDisplay.style.fontWeight = 'bold';
+                scoreCalcDisplay.style.marginBottom = '15px';
+                scoreCalcDisplay.style.padding = '10px';
+                scoreCalcDisplay.style.backgroundColor = '#f8f9fa';
+                scoreCalcDisplay.style.borderRadius = '5px';
+                scoreCalcDisplay.style.border = '1px solid #ddd';
+                
+                // Format the score calculation based on the winner and announcements
+                let scoreCalcText = '';
+                
+                if (gameState.winner === 'RE') {
+                    scoreCalcText = 're 1';
+                    
+                    // Add announcements if any were made
+                    if (gameState.announcements) {
+                        if (gameState.announcements.no90) {
+                            scoreCalcText += ' no 90 2';
+                        }
+                        if (gameState.announcements.no60) {
+                            scoreCalcText += ' no 60 3';
+                        }
+                        if (gameState.announcements.no30) {
+                            scoreCalcText += ' no 30 4';
+                        }
+                        if (gameState.announcements.black) {
+                            scoreCalcText += ' black 5';
+                        }
+                    }
+                    
+                    // Add 'all' if applicable
+                    if (gameState.multiplier && gameState.multiplier > 1) {
+                        scoreCalcText += ` all ${gameState.multiplier}`;
+                    }
+                } else {
+                    // Contra wins
+                    scoreCalcText = `contra ${gameState.multiplier || 2}`;
+                }
+                
+                scoreCalcDisplay.textContent = scoreCalcText;
+                scoreBreakdown.appendChild(scoreCalcDisplay);
+                
+                // Add player scores - showing game points instead of trick scores
+                const playerScoresHeader = document.createElement('h3');
+                playerScoresHeader.textContent = 'Player Game Points';
+                scoreBreakdown.appendChild(playerScoresHeader);
+                
+                const playerScoresList = document.createElement('ul');
+                playerScoresList.style.listStyleType = 'none';
+                playerScoresList.style.padding = '0';
+                
+                // Calculate game points based on winner and multiplier
+                const gamePoints = gameState.multiplier || 1;
+                
+                for (let i = 0; i < 4; i++) {
+                    const playerScore = document.createElement('li');
+                    const playerName = i === 0 ? 'You' : `Player ${i}`;
+                    const playerTeam = gameState.otherPlayers && gameState.otherPlayers[i-1] ? 
+                                      gameState.otherPlayers[i-1].team : (i === 0 ? gameState.playerTeam : '');
+                    
+                    // Determine if player is on winning team
+                    const isWinningTeam = (gameState.winner === 'RE' && playerTeam === 'RE') || 
+                                         (gameState.winner === 'KONTRA' && playerTeam === 'KONTRA');
+                    
+                    // Calculate points: positive for winners, negative for losers
+                    const points = isWinningTeam ? gamePoints : -gamePoints;
+                    const pointsDisplay = points > 0 ? `+${points}` : points;
+                    
+                    playerScore.textContent = `${playerName} (${playerTeam}): ${pointsDisplay} points`;
+                    
+                    // Add color coding for teams and points
+                    if (points > 0) {
+                        playerScore.style.color = '#2ecc71'; // Green for positive points
+                    } else {
+                        playerScore.style.color = '#e74c3c'; // Red for negative points
+                    }
+                    
+                    playerScoresList.appendChild(playerScore);
+                }
+                
+                scoreBreakdown.appendChild(playerScoresList);
+                
+                // Add trick scores section (original scores)
+                if (gameState.playerScores && gameState.playerScores.length === 4) {
+                    const trickScoresHeader = document.createElement('h3');
+                    trickScoresHeader.textContent = 'Trick Scores';
+                    trickScoresHeader.style.marginTop = '15px';
+                    scoreBreakdown.appendChild(trickScoresHeader);
+                    
+                    const trickScoresList = document.createElement('ul');
+                    trickScoresList.style.listStyleType = 'none';
+                    trickScoresList.style.padding = '0';
+                    
+                    for (let i = 0; i < 4; i++) {
+                        const trickScore = document.createElement('li');
+                        const playerName = i === 0 ? 'You' : `Player ${i}`;
+                        const playerTeam = gameState.otherPlayers && gameState.otherPlayers[i-1] ? 
+                                          gameState.otherPlayers[i-1].team : (i === 0 ? gameState.playerTeam : '');
+                        
+                        trickScore.textContent = `${playerName} (${playerTeam}): ${gameState.playerScores[i]} trick points`;
+                        
+                        // Add color coding for teams
+                        if (playerTeam === 'RE') {
+                            trickScore.style.color = '#2ecc71'; // Green for RE
+                        } else if (playerTeam === 'KONTRA') {
+                            trickScore.style.color = '#e74c3c'; // Red for KONTRA
+                        }
+                        
+                        trickScoresList.appendChild(trickScore);
+                    }
+                    
+                    scoreBreakdown.appendChild(trickScoresList);
+                }
+                
+                // Add announcements if any were made
+                if (gameState.announcements && Object.keys(gameState.announcements).length > 0) {
+                    const announcementsHeader = document.createElement('h3');
+                    announcementsHeader.textContent = 'Announcements';
+                    scoreBreakdown.appendChild(announcementsHeader);
+                    
+                    const announcementsList = document.createElement('ul');
+                    announcementsList.style.listStyleType = 'none';
+                    announcementsList.style.padding = '0';
+                    
+                    if (gameState.announcements.re) {
+                        const reAnnouncement = document.createElement('li');
+                        reAnnouncement.textContent = 'RE announced';
+                        reAnnouncement.style.color = '#2ecc71'; // Green for RE
+                        announcementsList.appendChild(reAnnouncement);
+                    }
+                    
+                    if (gameState.announcements.contra) {
+                        const contraAnnouncement = document.createElement('li');
+                        contraAnnouncement.textContent = 'CONTRA announced';
+                        contraAnnouncement.style.color = '#e74c3c'; // Red for KONTRA
+                        announcementsList.appendChild(contraAnnouncement);
+                    }
+                    
+                    if (gameState.announcements.no90) {
+                        const no90Announcement = document.createElement('li');
+                        no90Announcement.textContent = 'No 90 announced';
+                        announcementsList.appendChild(no90Announcement);
+                    }
+                    
+                    if (gameState.announcements.no60) {
+                        const no60Announcement = document.createElement('li');
+                        no60Announcement.textContent = 'No 60 announced';
+                        announcementsList.appendChild(no60Announcement);
+                    }
+                    
+                    if (gameState.announcements.no30) {
+                        const no30Announcement = document.createElement('li');
+                        no30Announcement.textContent = 'No 30 announced';
+                        announcementsList.appendChild(no30Announcement);
+                    }
+                    
+                    if (gameState.announcements.black) {
+                        const blackAnnouncement = document.createElement('li');
+                        blackAnnouncement.textContent = 'Black announced';
+                        announcementsList.appendChild(blackAnnouncement);
+                    }
+                    
+                    scoreBreakdown.appendChild(announcementsList);
+                }
+                
+                // Add multiplier information
+                if (gameState.multiplier && gameState.multiplier > 1) {
+                    const multiplierInfo = document.createElement('p');
+                    multiplierInfo.textContent = `Score Multiplier: ${gameState.multiplier}x`;
+                    multiplierInfo.style.fontWeight = 'bold';
+                    scoreBreakdown.appendChild(multiplierInfo);
+                }
+                
+                // Add the score breakdown to the score calculation container
+                scoreCalculationEl.appendChild(scoreBreakdown);
+            }
+            
+            // Set up the play again button
+            if (playAgainBtn) {
+                playAgainBtn.addEventListener('click', () => {
+                    // Hide the game over screen
+                    gameOverScreen.classList.add('hidden');
+                    
+                    // Show the game setup screen
+                    if (gameSetupScreen) {
+                        gameSetupScreen.classList.remove('hidden');
+                    }
+                    
+                    // Reset the game state
+                    gameState = {
+                        gameId: null,
+                        currentPlayer: 0,
+                        playerTeam: null,
+                        gameVariant: null,
+                        hand: [],
+                        currentTrick: [],
+                        legalActions: [],
+                        scores: [0, 0],
+                        gameOver: false,
+                        winner: null,
+                        revealed_team: false,
+                        revealed_teams: [false, false, false, false],
+                        player_team_type: '',
+                        player_team_types: ['', '', '', '']
+                    };
+                    
+                    // Start a new game
+                    startNewGame();
+                });
+            }
+        }
     }
     
     // Fetch model info from the server
