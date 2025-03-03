@@ -6,13 +6,14 @@ Flask web application for Doppelkopf card game.
 import os
 import json
 import argparse
+import sys
+
+# Add the project root directory to the Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
 from flask import Flask, render_template, request, jsonify, session
 from flask_socketio import SocketIO, emit, join_room
 from src.backend.game.doppelkopf import DoppelkopfGame, Card, Suit, Rank, GameVariant, PlayerTeam
-import sys
-import os
-# Add the parent directory to the path so that we can import from src
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from src.reinforcementlearning.agents.random_agent import select_random_action
 from src.reinforcementlearning.agents.rl_agent import RLAgent
 

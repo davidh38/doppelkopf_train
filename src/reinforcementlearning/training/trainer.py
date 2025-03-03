@@ -5,10 +5,15 @@ It supports training for card playing, making Re/Contra announcements, and selec
 """
 
 import os
+import sys
 import time
 import numpy as np
 from typing import List, Dict, Any, Tuple
-import utils.logger as logger
+
+# Add the project root directory to the Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
+
+import src.backend.utils.logger as logger
 
 def train(game, rl_agent, opponents, num_episodes: int, eval_interval: int, save_interval: int, model_dir: str):
     """
@@ -154,7 +159,7 @@ def play_episode(game, rl_agent, opponents) -> Tuple[float, bool]:
             action_type, variant = action_result
             
             # Set the game variant
-            from game.doppelkopf import GameVariant
+            from src.backend.game.doppelkopf import GameVariant
             if variant == 'normal':
                 game.game_variant = GameVariant.NORMAL
             elif variant == 'hochzeit':
@@ -318,7 +323,7 @@ def play_evaluation_episode(game, rl_agent, opponents) -> Tuple[float, bool]:
             action_type, variant = action_result
             
             # Set the game variant
-            from game.doppelkopf import GameVariant
+            from src.backend.game.doppelkopf import GameVariant
             if variant == 'normal':
                 game.game_variant = GameVariant.NORMAL
             elif variant == 'hochzeit':
