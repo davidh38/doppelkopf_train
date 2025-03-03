@@ -235,79 +235,85 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        // Create mock cards for AI players
-        for (let i = 1; i <= 3; i++) {
-            const playerCardsEl = document.getElementById(`player${i}-cards`);
-            if (!playerCardsEl) continue;
-            
-            // Get the number of cards for this AI player
-            const cardCount = gameState.otherPlayers && gameState.otherPlayers[i-1] ? 
-                              gameState.otherPlayers[i-1].card_count : 10;
-            
-            // Create a container for the cards
-            const cardsContainer = document.createElement('div');
-            
-            // Set different layout for each player
-            if (i === 1 || i === 3) {
-                // Vertical layout for Players 1 and 3
-                cardsContainer.style.display = 'flex';
-                cardsContainer.style.flexDirection = 'column';
-                cardsContainer.style.gap = '2px';
-                cardsContainer.style.alignItems = 'center';
-            } else {
-                // Horizontal layout for Player 2
-                cardsContainer.style.display = 'flex';
-                cardsContainer.style.flexDirection = 'row';
-                cardsContainer.style.gap = '2px';
-                cardsContainer.style.justifyContent = 'center';
-            }
-            
-            // Create card back images
-            for (let j = 0; j < cardCount; j++) {
-                const cardImg = document.createElement('img');
-                cardImg.src = '/static/images/cards/back.png';
-                cardImg.alt = 'Card back';
-                cardImg.className = 'ai-card';
-                
-                if (i === 1 || i === 3) {
-                    // Smaller cards for vertical layout
-                    cardImg.style.width = '25px';
-                    cardImg.style.height = 'auto';
-                    cardImg.style.margin = '1px';
-                } else {
-                    // Normal size for horizontal layout
-                    cardImg.style.width = '30px';
-                    cardImg.style.height = 'auto';
-                    cardImg.style.margin = '2px';
+                // Create mock cards for AI players
+                for (let i = 1; i <= 3; i++) {
+                    const playerCardsEl = document.getElementById(`player${i}-cards`);
+                    if (!playerCardsEl) continue;
+                    
+                    // Get the number of cards for this AI player
+                    const cardCount = gameState.otherPlayers && gameState.otherPlayers[i-1] ? 
+                                      gameState.otherPlayers[i-1].card_count : 10;
+                    
+                    // Create a container for the cards
+                    const cardsContainer = document.createElement('div');
+                    
+                    // Set different layout for each player
+                    if (i === 1 || i === 3) {
+                        // Vertical layout for Players 1 and 3
+                        cardsContainer.style.display = 'flex';
+                        cardsContainer.style.flexDirection = 'column';
+                        cardsContainer.style.gap = '2px';
+                        cardsContainer.style.alignItems = 'center';
+                    } else {
+                        // Horizontal layout for Player 2
+                        cardsContainer.style.display = 'flex';
+                        cardsContainer.style.flexDirection = 'row';
+                        cardsContainer.style.gap = '2px';
+                        cardsContainer.style.justifyContent = 'center';
+                    }
+                    
+                    // Create card back images
+                    for (let j = 0; j < cardCount; j++) {
+                        const cardImg = document.createElement('img');
+                        cardImg.src = '/static/images/cards/back.png';
+                        cardImg.alt = 'Card back';
+                        cardImg.className = 'ai-card';
+                        
+                        if (i === 1 || i === 3) {
+                            // Smaller cards for vertical layout
+                            cardImg.style.width = '25px';
+                            cardImg.style.height = 'auto';
+                            cardImg.style.margin = '1px';
+                        } else {
+                            // Normal size for horizontal layout
+                            cardImg.style.width = '30px';
+                            cardImg.style.height = 'auto';
+                            cardImg.style.margin = '2px';
+                        }
+                        
+                        cardsContainer.appendChild(cardImg);
+                    }
+                    
+                    playerCardsEl.appendChild(cardsContainer);
+                    
+                    // Show team information only if the player has revealed their team (by playing a Queen of Clubs)
+                    if (gameState.otherPlayers && 
+                        gameState.otherPlayers[i-1] && 
+                        gameState.otherPlayers[i-1].team && 
+                        gameState.otherPlayers[i-1].revealed_team) {
+                        const team = gameState.otherPlayers[i-1].team;
+                        
+                        const teamInfo = document.createElement('div');
+                        teamInfo.textContent = `Team: ${team}`;
+                        teamInfo.style.marginTop = '5px';
+                        teamInfo.style.fontWeight = 'bold';
+                        
+                        // Add color coding for teams
+                        if (team === 'RE') {
+                            teamInfo.style.color = '#2ecc71'; // Green for RE
+                        } else if (team === 'KONTRA') {
+                            teamInfo.style.color = '#e74c3c'; // Red for KONTRA
+                        }
+                        
+                        playerCardsEl.appendChild(teamInfo);
+                    }
                 }
                 
-                cardsContainer.appendChild(cardImg);
-            }
-            
-            playerCardsEl.appendChild(cardsContainer);
-            
-            // Show team information only if the player has revealed their team (by playing a Queen of Clubs)
-            if (gameState.otherPlayers && 
-                gameState.otherPlayers[i-1] && 
-                gameState.otherPlayers[i-1].team && 
-                gameState.otherPlayers[i-1].revealed_team) {
-                const team = gameState.otherPlayers[i-1].team;
-                
-                const teamInfo = document.createElement('div');
-                teamInfo.textContent = `Team: ${team}`;
-                teamInfo.style.marginTop = '5px';
-                teamInfo.style.fontWeight = 'bold';
-                
-                // Add color coding for teams
-                if (team === 'RE') {
-                    teamInfo.style.color = '#2ecc71'; // Green for RE
-                } else if (team === 'KONTRA') {
-                    teamInfo.style.color = '#e74c3c'; // Red for KONTRA
+                // Make sure the AI card visualization container is visible
+                const aiCardVisualization = document.getElementById('ai-card-visualization');
+                if (aiCardVisualization) {
+                    aiCardVisualization.style.display = 'block';
                 }
-                
-                playerCardsEl.appendChild(teamInfo);
-            }
-        }
     }
     
     // Function to update the game variant display
@@ -1551,6 +1557,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!player1Cards || !player2Cards || !player3Cards) {
                     console.error('AI card containers not found');
                     return;
+                }
+                
+                // Make sure the AI card visualization container is visible
+                const aiCardVisualization = document.getElementById('ai-card-visualization');
+                if (aiCardVisualization) {
+                    aiCardVisualization.style.display = 'block';
                 }
                 
                 // Clear previous content

@@ -114,6 +114,11 @@
                     </div>
                     <p>Multiplier: <span id="game-multiplier">1x</span></p>
                 </div>
+                
+                <!-- AI Card Visualization Button -->
+                <div style="margin-top: 20px;">
+                    <button id="reveal-ai-hands-btn" class="btn" style="width: 100%;">Reveal AI Hands</button>
+                </div>
             </div>
             
             <!-- Main content areas -->
@@ -131,29 +136,20 @@
                     
                     <div id="current-trick" class="trick-cards" style="display: none;"></div>
                     
-                        <!-- Debug section -->
-                        <div id="debug-section" style="margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px;">
-                            <h4>Debug Info</h4>
-                            <div id="debug-trick" style="text-align: left; font-family: monospace; background: #f5f5f5; padding: 10px; border-radius: 5px; overflow: auto; max-height: 200px;"></div>
-                            <button id="debug-btn" style="margin-top: 10px; padding: 5px 10px; background: #3498db; color: white; border: none; border-radius: 3px; cursor: pointer;">Show Raw Trick Data</button>
-                            
-                            <!-- AI Card Visualization -->
-                            <div style="margin-top: 15px;">
-                                <h4>AI Card Visualization</h4>
-                                <button id="reveal-ai-hands-btn" style="margin-bottom: 10px; padding: 5px 10px; background: #e74c3c; color: white; border: none; border-radius: 3px; cursor: pointer;">Reveal AI Hands</button>
-                                <div id="ai-card-visualization" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
-                                    <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; flex: 1;">
-                                        <h5>Player 1</h5>
-                                        <div id="player1-cards" class="ai-cards"></div>
-                                    </div>
-                                    <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; flex: 1;">
-                                        <h5>Player 2</h5>
-                                        <div id="player2-cards" class="ai-cards"></div>
-                                    </div>
-                                    <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; flex: 1;">
-                                        <h5>Player 3</h5>
-                                        <div id="player3-cards" class="ai-cards"></div>
-                                    </div>
+                        <!-- AI Card Visualization (hidden, will be shown when revealed) -->
+                        <div id="ai-card-visualization" style="display: none; margin-top: 15px;">
+                            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
+                                <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; flex: 1;">
+                                    <h5>Player 1</h5>
+                                    <div id="player1-cards" class="ai-cards"></div>
+                                </div>
+                                <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; flex: 1;">
+                                    <h5>Player 2</h5>
+                                    <div id="player2-cards" class="ai-cards"></div>
+                                </div>
+                                <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; flex: 1;">
+                                    <h5>Player 3</h5>
+                                    <div id="player3-cards" class="ai-cards"></div>
                                 </div>
                             </div>
                         </div>
