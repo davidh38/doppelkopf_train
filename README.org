@@ -68,7 +68,7 @@ This project uses Deep Q-Learning to train an AI agent to play Doppelkopf effect
 To train the AI, run:
 
 #+BEGIN_SRC bash
-python main.py --episodes 10000 --eval-interval 1000 --save-interval 1000
+python -m src.reinforcementlearning.main --episodes 10000 --eval-interval 1000 --save-interval 1000
 #+END_SRC
 
 Options:
@@ -102,7 +102,7 @@ Each AI agent independently learns when to make announcements based on its exper
 To play against a trained AI in the command line, run:
 
 #+BEGIN_SRC bash
-python play.py --model models/final_model.pt
+python -m src.reinforcementlearning.play --model models/final_model.pt
 #+END_SRC
 
 Options:
@@ -113,12 +113,18 @@ Options:
 To start the web-based game interface:
 
 #+BEGIN_SRC bash
-python app.py
+python -m src.backend.app
 #+END_SRC
 
 Then open your web browser and navigate to:
 #+BEGIN_SRC
 http://localhost:5007
+#+END_SRC
+
+You can specify a different port if needed:
+
+#+BEGIN_SRC bash
+python -m src.backend.app --port 5010
 #+END_SRC
 
 1. Click "New Game" to start a game
@@ -130,13 +136,13 @@ http://localhost:5007
 To experience the excitement of playing the final card that determines the game outcome:
 
 #+BEGIN_SRC bash
-python final_card_game.py --scenario re_wins
+python -m src.backend.final_card_game --scenario re_wins
 #+END_SRC
 
 or
 
 #+BEGIN_SRC bash
-python final_card_game.py --scenario kontra_wins
+python -m src.backend.final_card_game --scenario kontra_wins
 #+END_SRC
 
 Then open your web browser and navigate to:
@@ -201,17 +207,32 @@ A special scoring rule called "doppelkopf" (namesake of the game) applies in nor
 
 ** Project Structure
 
-- =main.py=: Entry point for training the AI
-- =play.py=: Script to play Doppelkopf against a trained AI in the command line
-- =app.py=: Main Flask application for the web interface
+The project is organized into a modular structure with clear separation of concerns:
+
+*** Main Modules
+- =src/backend/=: Backend components including game logic and server
+- =src/frontend/=: Frontend components including templates and static assets
+- =src/reinforcementlearning/=: AI training components
+
+*** Backend Module
+- =src/backend/app.py=: Main Flask application for the web interface
+- =src/backend/game/=: Implementation of the Doppelkopf game rules and mechanics
+- =src/backend/utils/=: Utility functions and classes
+
+*** Frontend Module
+- =src/frontend/templates/=: HTML templates for the web interface
+- =src/frontend/static/=: Static files (CSS, JavaScript, images)
+
+*** Reinforcement Learning Module
+- =src/reinforcementlearning/main.py=: Entry point for training the AI
+- =src/reinforcementlearning/play.py=: Script to play Doppelkopf against a trained AI in the command line
+- =src/reinforcementlearning/agents/=: Implementation of different agents (RL agent and random agent)
+- =src/reinforcementlearning/training/=: Training process for the RL agent
+
+*** Other Components
 - =final_card_game.py=: Script for running final card scenarios
-- =game/=: Implementation of the Doppelkopf game rules and mechanics
-- =agents/=: Implementation of different agents (RL agent and random agent)
-- =training/=: Training process for the RL agent
-- =utils/=: Utility functions and classes
-- =templates/=: HTML templates for the web interface
-- =static/=: Static files (CSS, JavaScript, images)
 - =tests/=: Test scripts for various game scenarios
+  - =tests/integration/=: Integration tests for browser and game logic
 
 ** How the AI Works
 
