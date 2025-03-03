@@ -134,6 +134,10 @@ def get_game_state(game_id, player_id=0):
         'can_announce_contra': game.teams[player_id] == PlayerTeam.KONTRA and (len(game.current_trick) + sum(len(trick) for trick in game.tricks)) < 5
     }
     
+    # If the game is over, include the game summary
+    if game.game_over and 'game_summary' in game_data:
+        state['game_summary'] = game_data['game_summary']
+    
     # Add Diamond Ace capture information if available
     if hasattr(game, 'diamond_ace_captured'):
         state['diamond_ace_captured'] = game.diamond_ace_captured
@@ -988,8 +992,9 @@ def play_card():
             total_score = scoreboard['player_scores'][i]
             summary_text += f"- {player_name}: {points} points (Total: {total_score})\n"
         
-        # Add the summary to the response
+        # Add the summary to the response and store it in the game data
         response_data['game_summary'] = summary_text
+        games[game_id]['game_summary'] = summary_text
     
     return jsonify(response_data)
 
