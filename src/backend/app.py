@@ -811,9 +811,8 @@ def play_card():
                 else:  # KONTRA team
                     scoreboard['player_scores'][i] += 1 * multiplier  # Winners get positive points
         
-        # Update team scores with multiplier
-        game.scores[0] *= multiplier
-        game.scores[1] *= multiplier
+        # Don't modify game.scores with multiplier - they should add up to 240 (plus any bonus points)
+        # The multiplier is only applied to player scores
         
         # Update win counts
         if game.winner == player_team:
@@ -881,6 +880,32 @@ def play_card():
         for i, team in enumerate(game.teams):
             player_name = "You" if i == 0 else f"Player {i}"
             summary_text += f"- {player_name}: {team.name}\n"
+        
+        # Add trick points information
+        summary_text += "\nTrick Points:\n"
+        summary_text += f"- RE team: {game.scores[0]} points\n"
+        summary_text += f"- KONTRA team: {game.scores[1]} points\n"
+        summary_text += f"- Total: {game.scores[0] + game.scores[1]} points\n"
+        
+        # Check if there were any special bonuses
+        if hasattr(game, 'diamond_ace_captured'):
+            diamond_ace_captures = [capture for capture in game.diamond_ace_captured if capture.get('type') == 'diamond_ace' or not capture.get('type')]
+            forty_plus_captures = [capture for capture in game.diamond_ace_captured if capture.get('type') == 'forty_plus']
+            
+            if diamond_ace_captures:
+                summary_text += "\nDiamond Ace Captures:\n"
+                for capture in diamond_ace_captures:
+                    winner_name = "You" if capture['winner'] == 0 else f"Player {capture['winner']}"
+                    loser_name = "You" if capture['loser'] == 0 else f"Player {capture['loser']}"
+                    summary_text += f"- {winner_name} ({capture['winner_team']}) captured a Diamond Ace from {loser_name} ({capture['loser_team']})\n"
+                summary_text += f"  This adds/subtracts 1 point per capture to the trick points\n"
+            
+            if forty_plus_captures:
+                summary_text += "\n40+ Point Tricks:\n"
+                for capture in forty_plus_captures:
+                    winner_name = "You" if capture['winner'] == 0 else f"Player {capture['winner']}"
+                    summary_text += f"- {winner_name} ({capture['winner_team']}) won a trick worth {capture['points']} points\n"
+                summary_text += f"  This adds/subtracts 1 point per 40+ trick to the trick points\n"
         
         summary_text += "\nScore Calculation:\n"
         

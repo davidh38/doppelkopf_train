@@ -631,9 +631,11 @@ class DoppelkopfGame:
                 self.scores[0] += diamond_ace_bonus
                 # Subtract from the other team
                 self.scores[1] -= diamond_ace_bonus
-            # Add bonus point for 40+ point trick
+            # Add bonus point for 40+ point trick (zero-sum)
             if forty_plus_bonus > 0:
                 self.scores[0] += forty_plus_bonus
+                # Subtract from the other team to keep total at 240
+                self.scores[1] -= forty_plus_bonus
         else:
             self.scores[1] += trick_points
             # Add bonus points for Diamond Ace capture
@@ -641,9 +643,11 @@ class DoppelkopfGame:
                 self.scores[1] += diamond_ace_bonus
                 # Subtract from the other team
                 self.scores[0] -= diamond_ace_bonus
-            # Add bonus point for 40+ point trick
+            # Add bonus point for 40+ point trick (zero-sum)
             if forty_plus_bonus > 0:
                 self.scores[1] += forty_plus_bonus
+                # Subtract from the other team to keep total at 240
+                self.scores[0] -= forty_plus_bonus
             
         # Add points to the individual player's score
         self.player_scores[self.trick_winner] += trick_points
