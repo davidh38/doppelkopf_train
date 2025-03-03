@@ -1086,9 +1086,13 @@ document.addEventListener('DOMContentLoaded', function() {
             grid-template-rows: 1fr 1fr 1fr;
             gap: 10px;
             width: 300px;
-            height: 300px;
+            height: 350px; /* Increased height to better contain bottom card */
             margin: 0 auto;
             position: relative;
+            background-color: #e8f4fc;
+            border-radius: 10px;
+            border: 2px solid #3498db;
+            padding: 15px 15px 40px 15px; /* Extra padding at the bottom */
         `;
         
         // Calculate the starting player for this trick
@@ -1168,11 +1172,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Add the card to the container
                 cardContainer.appendChild(cardElement);
             } else {
-            // Add an empty placeholder for the card
+            // Add an empty placeholder for the card with a visible outline
             const emptyCard = document.createElement('div');
             emptyCard.style.width = '120px';
             emptyCard.style.height = '170px';
-            emptyCard.style.visibility = 'hidden';
+            emptyCard.style.border = '2px dashed #3498db';
+            emptyCard.style.borderRadius = '10px';
+            emptyCard.style.backgroundColor = '#f8f9fa';
                 cardContainer.appendChild(emptyCard);
             }
             
