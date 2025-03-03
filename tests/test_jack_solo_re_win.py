@@ -3,7 +3,7 @@
 Test script to verify the Jack Solo variant with RE announcement and scoring.
 """
 
-from src.game.doppelkopf import DoppelkopfGame, Card, Suit, Rank, GameVariant, PlayerTeam
+from src.backend.game.doppelkopf import DoppelkopfGame, Card, Suit, Rank, GameVariant, PlayerTeam
 
 def test_jack_solo_re_win():
     """
