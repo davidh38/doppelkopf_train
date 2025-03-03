@@ -788,31 +788,28 @@ def play_card():
         print(f"Player Game Scores: {game.player_scores}")
         print("=========================================\n")
         
+        # In Doppelkopf, the base score is 1 point for winning
+        # The multiplier is applied for announcements (Re, Contra, No 90, etc.)
+        
         # Count players in each team
         re_players = sum(1 for team in game.teams if team.name == 'RE')
         kontra_players = sum(1 for team in game.teams if team.name == 'KONTRA')
         
-        # Update player scores - winners get +1, losers get -1 (multiplied by team size ratio)
+        # Update player scores - winners get +1, losers get -1
         if game.winner.name == 'RE':
             # RE team won
-            re_points = kontra_players  # Each RE player gets +kontra_players
-            kontra_points = -re_players  # Each KONTRA player gets -re_players
-            
             for i in range(len(game.teams)):
                 if game.teams[i].name == 'RE':
-                    scoreboard['player_scores'][i] += re_points * multiplier
+                    scoreboard['player_scores'][i] += 1 * multiplier  # Winners get positive points
                 else:  # KONTRA team
-                    scoreboard['player_scores'][i] += kontra_points * multiplier
+                    scoreboard['player_scores'][i] -= 1 * multiplier  # Losers get negative points
         else:
             # KONTRA team won
-            re_points = -kontra_players  # Each RE player gets -kontra_players
-            kontra_points = re_players  # Each KONTRA player gets +re_players
-            
             for i in range(len(game.teams)):
                 if game.teams[i].name == 'RE':
-                    scoreboard['player_scores'][i] += re_points * multiplier
+                    scoreboard['player_scores'][i] -= 1 * multiplier  # Losers get negative points
                 else:  # KONTRA team
-                    scoreboard['player_scores'][i] += kontra_points * multiplier
+                    scoreboard['player_scores'][i] += 1 * multiplier  # Winners get positive points
         
         # Update team scores with multiplier
         game.scores[0] *= multiplier
@@ -907,20 +904,25 @@ def play_card():
         
         # Add base point calculation
         summary_text += "Base Points:\n"
-        summary_text += f"- RE team ({re_players} players): {re_points} points per player\n"
-        summary_text += f"- KONTRA team ({kontra_players} players): {kontra_points} points per player\n\n"
+        summary_text += f"- Winning team: +1 point per player\n"
+        summary_text += f"- Losing team: -1 point per player\n\n"
         
         # Add multiplier effect if applicable
         if multiplier > 1:
             summary_text += "With Multiplier:\n"
-            summary_text += f"- RE team: {re_points} × {multiplier} = {re_points_with_multiplier} points per player\n"
-            summary_text += f"- KONTRA team: {kontra_points} × {multiplier} = {kontra_points_with_multiplier} points per player\n\n"
+            summary_text += f"- Winning team: +1 × {multiplier} = +{multiplier} points per player\n"
+            summary_text += f"- Losing team: -1 × {multiplier} = -{multiplier} points per player\n\n"
         
         # Add final scores
         summary_text += "Final Scores:\n"
         for i, team in enumerate(game.teams):
             player_name = "You" if i == 0 else f"Player {i}"
-            points = re_points_with_multiplier if team.name == 'RE' else kontra_points_with_multiplier
+            if (team.name == 'RE' and game.winner.name == 'RE') or (team.name == 'KONTRA' and game.winner.name == 'KONTRA'):
+                # This player is on the winning team
+                points = f"+{multiplier}"
+            else:
+                # This player is on the losing team
+                points = f"-{multiplier}"
             total_score = scoreboard['player_scores'][i]
             summary_text += f"- {player_name}: {points} points (Total: {total_score})\n"
         
