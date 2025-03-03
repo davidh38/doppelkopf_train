@@ -403,6 +403,150 @@ def ai_play_turn(game_id):
             game.current_player = trick_winner  # Set the current player to the trick winner
             game.trick_winner = None
             
+            # Check if the game is over after this trick
+            if game.game_over:
+                # Generate game summary before updating scoreboard
+                # Create a detailed game summary
+                game_data = games[game_id]
+                multiplier = game_data.get('multiplier', 1)
+                
+                # Count players in each team
+                re_players = sum(1 for team in game.teams if team.name == 'RE')
+                kontra_players = sum(1 for team in game.teams if team.name == 'KONTRA')
+                
+                # Calculate points for each team
+                if game.winner.name == 'RE':
+                    # RE team won
+                    re_points = kontra_players  # Each RE player gets +kontra_players
+                    kontra_points = -re_players  # Each KONTRA player gets -re_players
+                else:
+                    # KONTRA team won
+                    re_points = -kontra_players  # Each RE player gets -kontra_players
+                    kontra_points = re_players  # Each KONTRA player gets +re_players
+                
+                # Apply multiplier
+                re_points_with_multiplier = re_points * multiplier
+                kontra_points_with_multiplier = kontra_points * multiplier
+                
+                # Create summary text
+                summary_text = f"Game Over! {game.winner.name} team wins!\n\n"
+                
+                # Add team composition
+                summary_text += "Team Composition:\n"
+                for i, team in enumerate(game.teams):
+                    player_name = "You" if i == 0 else f"Player {i}"
+                    summary_text += f"- {player_name}: {team.name}\n"
+                
+                # Add trick points information
+                summary_text += "\nTrick Points:\n"
+                summary_text += f"- RE team: {game.scores[0]} points\n"
+                summary_text += f"- KONTRA team: {game.scores[1]} points\n"
+                summary_text += f"- Total: {game.scores[0] + game.scores[1]} points\n"
+                
+                # Check if there were any special bonuses
+                if hasattr(game, 'diamond_ace_captured'):
+                    diamond_ace_captures = [capture for capture in game.diamond_ace_captured if capture.get('type') == 'diamond_ace' or not capture.get('type')]
+                    forty_plus_captures = [capture for capture in game.diamond_ace_captured if capture.get('type') == 'forty_plus']
+                    
+                    if diamond_ace_captures:
+                        summary_text += "\nDiamond Ace Captures:\n"
+                        for capture in diamond_ace_captures:
+                            winner_name = "You" if capture['winner'] == 0 else f"Player {capture['winner']}"
+                            loser_name = "You" if capture['loser'] == 0 else f"Player {capture['loser']}"
+                            summary_text += f"- {winner_name} ({capture['winner_team']}) captured a Diamond Ace from {loser_name} ({capture['loser_team']})\n"
+                        summary_text += f"  This adds/subtracts 1 point per capture to the trick points\n"
+                    
+                    if forty_plus_captures:
+                        summary_text += "\n40+ Point Tricks:\n"
+                        for capture in forty_plus_captures:
+                            winner_name = "You" if capture['winner'] == 0 else f"Player {capture['winner']}"
+                            summary_text += f"- {winner_name} ({capture['winner_team']}) won a trick worth {capture['points']} points\n"
+                        summary_text += f"  This adds/subtracts 1 point per 40+ trick to the trick points\n"
+                
+                # Check for special achievements (no 90, no 60, no 30, black)
+                re_score = game.scores[0]
+                kontra_score = game.scores[1]
+                
+                # Add special achievements section
+                summary_text += "\nSpecial Achievements:\n"
+                
+                # Base points for winning
+                if game.winner.name == 'RE':
+                    summary_text += f"- RE wins: +1\n"
+                else:
+                    summary_text += f"- KONTRA wins: +1\n"
+                
+                # Check for no 90 achievement (opponent got less than 90 points)
+                if game.winner.name == 'RE' and kontra_score < 90:
+                    summary_text += f"- RE plays no 90: +1 (KONTRA got {kontra_score} points)\n"
+                elif game.winner.name == 'KONTRA' and re_score < 90:
+                    summary_text += f"- KONTRA plays no 90: +1 (RE got {re_score} points)\n"
+                
+                # Check for no 60 achievement (opponent got less than 60 points)
+                if game.winner.name == 'RE' and kontra_score < 60:
+                    summary_text += f"- RE plays no 60: +1 (KONTRA got {kontra_score} points)\n"
+                elif game.winner.name == 'KONTRA' and re_score < 60:
+                    summary_text += f"- KONTRA plays no 60: +1 (RE got {re_score} points)\n"
+                
+                # Check for no 30 achievement (opponent got less than 30 points)
+                if game.winner.name == 'RE' and kontra_score < 30:
+                    summary_text += f"- RE plays no 30: +1 (KONTRA got {kontra_score} points)\n"
+                elif game.winner.name == 'KONTRA' and re_score < 30:
+                    summary_text += f"- KONTRA plays no 30: +1 (RE got {re_score} points)\n"
+                
+                # Check for black achievement (opponent got 0 points)
+                if game.winner.name == 'RE' and kontra_score == 0:
+                    summary_text += f"- RE plays black: +1 (KONTRA got 0 points)\n"
+                elif game.winner.name == 'KONTRA' and re_score == 0:
+                    summary_text += f"- KONTRA plays black: +1 (RE got 0 points)\n"
+                
+                summary_text += "\nScore Calculation:\n"
+                
+                # Add announcement information if any
+                if game_data.get('re_announced', False) or game_data.get('contra_announced', False):
+                    summary_text += "Announcements:\n"
+                    if game_data.get('re_announced', False):
+                        summary_text += "- RE announced: +1\n"
+                    if game_data.get('contra_announced', False):
+                        summary_text += "- CONTRA announced: +1\n"
+                    if game_data.get('no90_announced', False):
+                        summary_text += "- No 90 announced: +1\n"
+                    if game_data.get('no60_announced', False):
+                        summary_text += "- No 60 announced: +1\n"
+                    if game_data.get('no30_announced', False):
+                        summary_text += "- No 30 announced: +1\n"
+                    if game_data.get('black_announced', False):
+                        summary_text += "- Black announced: +1\n"
+                    
+                    summary_text += f"- Score multiplier: {multiplier}x\n\n"
+                
+                # Add base point calculation
+                summary_text += "Base Points:\n"
+                summary_text += f"- Winning team: +1 point per player\n"
+                summary_text += f"- Losing team: -1 point per player\n\n"
+                
+                # Add multiplier effect if applicable
+                if multiplier > 1:
+                    summary_text += "With Multiplier:\n"
+                    summary_text += f"- Winning team: +1 × {multiplier} = +{multiplier} points per player\n"
+                    summary_text += f"- Losing team: -1 × {multiplier} = -{multiplier} points per player\n\n"
+                
+                # Add final scores
+                summary_text += "Final Scores:\n"
+                for i, team in enumerate(game.teams):
+                    player_name = "You" if i == 0 else f"Player {i}"
+                    if (team.name == 'RE' and game.winner.name == 'RE') or (team.name == 'KONTRA' and game.winner.name == 'KONTRA'):
+                        # This player is on the winning team
+                        points = f"+{multiplier}"
+                    else:
+                        # This player is on the losing team
+                        points = f"-{multiplier}"
+                    total_score = scoreboard['player_scores'][i]
+                    summary_text += f"- {player_name}: {points} points (Total: {total_score})\n"
+                
+                # Store the game summary in the game data
+                games[game_id]['game_summary'] = summary_text
+            
             # Emit a game state update to reflect the cleared trick
             socketio.emit('game_update', get_game_state(game_id), room=game_id)
 
@@ -780,6 +924,147 @@ def play_card():
     
     # Check if game is over and update scoreboard
     if game.game_over:
+        # Generate game summary before updating scoreboard
+        # Create a detailed game summary
+        game_data = games[game_id]
+        multiplier = game_data.get('multiplier', 1)
+        
+        # Count players in each team
+        re_players = sum(1 for team in game.teams if team.name == 'RE')
+        kontra_players = sum(1 for team in game.teams if team.name == 'KONTRA')
+        
+        # Calculate points for each team
+        if game.winner.name == 'RE':
+            # RE team won
+            re_points = kontra_players  # Each RE player gets +kontra_players
+            kontra_points = -re_players  # Each KONTRA player gets -re_players
+        else:
+            # KONTRA team won
+            re_points = -kontra_players  # Each RE player gets -kontra_players
+            kontra_points = re_players  # Each KONTRA player gets +re_players
+        
+        # Apply multiplier
+        re_points_with_multiplier = re_points * multiplier
+        kontra_points_with_multiplier = kontra_points * multiplier
+        
+        # Create summary text
+        summary_text = f"Game Over! {game.winner.name} team wins!\n\n"
+        
+        # Add team composition
+        summary_text += "Team Composition:\n"
+        for i, team in enumerate(game.teams):
+            player_name = "You" if i == 0 else f"Player {i}"
+            summary_text += f"- {player_name}: {team.name}\n"
+        
+        # Add trick points information
+        summary_text += "\nTrick Points:\n"
+        summary_text += f"- RE team: {game.scores[0]} points\n"
+        summary_text += f"- KONTRA team: {game.scores[1]} points\n"
+        summary_text += f"- Total: {game.scores[0] + game.scores[1]} points\n"
+        
+        # Check if there were any special bonuses
+        if hasattr(game, 'diamond_ace_captured'):
+            diamond_ace_captures = [capture for capture in game.diamond_ace_captured if capture.get('type') == 'diamond_ace' or not capture.get('type')]
+            forty_plus_captures = [capture for capture in game.diamond_ace_captured if capture.get('type') == 'forty_plus']
+            
+            if diamond_ace_captures:
+                summary_text += "\nDiamond Ace Captures:\n"
+                for capture in diamond_ace_captures:
+                    winner_name = "You" if capture['winner'] == 0 else f"Player {capture['winner']}"
+                    loser_name = "You" if capture['loser'] == 0 else f"Player {capture['loser']}"
+                    summary_text += f"- {winner_name} ({capture['winner_team']}) captured a Diamond Ace from {loser_name} ({capture['loser_team']})\n"
+                summary_text += f"  This adds/subtracts 1 point per capture to the trick points\n"
+            
+            if forty_plus_captures:
+                summary_text += "\n40+ Point Tricks:\n"
+                for capture in forty_plus_captures:
+                    winner_name = "You" if capture['winner'] == 0 else f"Player {capture['winner']}"
+                    summary_text += f"- {winner_name} ({capture['winner_team']}) won a trick worth {capture['points']} points\n"
+                summary_text += f"  This adds/subtracts 1 point per 40+ trick to the trick points\n"
+        
+        # Check for special achievements (no 90, no 60, no 30, black)
+        re_score = game.scores[0]
+        kontra_score = game.scores[1]
+        
+        # Add special achievements section
+        summary_text += "\nSpecial Achievements:\n"
+        
+        # Base points for winning
+        if game.winner.name == 'RE':
+            summary_text += f"- RE wins: +1\n"
+        else:
+            summary_text += f"- KONTRA wins: +1\n"
+        
+        # Check for no 90 achievement (opponent got less than 90 points)
+        if game.winner.name == 'RE' and kontra_score < 90:
+            summary_text += f"- RE plays no 90: +1 (KONTRA got {kontra_score} points)\n"
+        elif game.winner.name == 'KONTRA' and re_score < 90:
+            summary_text += f"- KONTRA plays no 90: +1 (RE got {re_score} points)\n"
+        
+        # Check for no 60 achievement (opponent got less than 60 points)
+        if game.winner.name == 'RE' and kontra_score < 60:
+            summary_text += f"- RE plays no 60: +1 (KONTRA got {kontra_score} points)\n"
+        elif game.winner.name == 'KONTRA' and re_score < 60:
+            summary_text += f"- KONTRA plays no 60: +1 (RE got {re_score} points)\n"
+        
+        # Check for no 30 achievement (opponent got less than 30 points)
+        if game.winner.name == 'RE' and kontra_score < 30:
+            summary_text += f"- RE plays no 30: +1 (KONTRA got {kontra_score} points)\n"
+        elif game.winner.name == 'KONTRA' and re_score < 30:
+            summary_text += f"- KONTRA plays no 30: +1 (RE got {re_score} points)\n"
+        
+        # Check for black achievement (opponent got 0 points)
+        if game.winner.name == 'RE' and kontra_score == 0:
+            summary_text += f"- RE plays black: +1 (KONTRA got 0 points)\n"
+        elif game.winner.name == 'KONTRA' and re_score == 0:
+            summary_text += f"- KONTRA plays black: +1 (RE got 0 points)\n"
+        
+        summary_text += "\nScore Calculation:\n"
+        
+        # Add announcement information if any
+        if game_data.get('re_announced', False) or game_data.get('contra_announced', False):
+            summary_text += "Announcements:\n"
+            if game_data.get('re_announced', False):
+                summary_text += "- RE announced: +1\n"
+            if game_data.get('contra_announced', False):
+                summary_text += "- CONTRA announced: +1\n"
+            if game_data.get('no90_announced', False):
+                summary_text += "- No 90 announced: +1\n"
+            if game_data.get('no60_announced', False):
+                summary_text += "- No 60 announced: +1\n"
+            if game_data.get('no30_announced', False):
+                summary_text += "- No 30 announced: +1\n"
+            if game_data.get('black_announced', False):
+                summary_text += "- Black announced: +1\n"
+            
+            summary_text += f"- Score multiplier: {multiplier}x\n\n"
+        
+        # Add base point calculation
+        summary_text += "Base Points:\n"
+        summary_text += f"- Winning team: +1 point per player\n"
+        summary_text += f"- Losing team: -1 point per player\n\n"
+        
+        # Add multiplier effect if applicable
+        if multiplier > 1:
+            summary_text += "With Multiplier:\n"
+            summary_text += f"- Winning team: +1 × {multiplier} = +{multiplier} points per player\n"
+            summary_text += f"- Losing team: -1 × {multiplier} = -{multiplier} points per player\n\n"
+        
+        # Add final scores
+        summary_text += "Final Scores:\n"
+        for i, team in enumerate(game.teams):
+            player_name = "You" if i == 0 else f"Player {i}"
+            if (team.name == 'RE' and game.winner.name == 'RE') or (team.name == 'KONTRA' and game.winner.name == 'KONTRA'):
+                # This player is on the winning team
+                points = f"+{multiplier}"
+            else:
+                # This player is on the losing team
+                points = f"-{multiplier}"
+            total_score = scoreboard['player_scores'][i]
+            summary_text += f"- {player_name}: {points} points (Total: {total_score})\n"
+        
+        # Store the game summary in the game data
+        games[game_id]['game_summary'] = summary_text
         player_team = game.teams[0]
         game_data = games[game_id]
         multiplier = game_data.get('multiplier', 1)
