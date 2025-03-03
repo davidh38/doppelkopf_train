@@ -3,7 +3,7 @@
 Test script to verify the team display and score calculation logic in the Doppelkopf game.
 """
 
-from game.doppelkopf import DoppelkopfGame, Card, Suit, Rank, GameVariant, PlayerTeam
+from src.game.doppelkopf import DoppelkopfGame, Card, Suit, Rank, GameVariant, PlayerTeam
 
 def test_team_reveal():
     """Test the team reveal logic when a Queen of Clubs is played."""

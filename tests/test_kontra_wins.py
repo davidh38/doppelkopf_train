@@ -3,7 +3,7 @@
 Test script to verify the Kontra party winning with exactly 125 points in the Doppelkopf game.
 """
 
-from game.doppelkopf import DoppelkopfGame, Card, Suit, Rank, GameVariant, PlayerTeam
+from src.game.doppelkopf import DoppelkopfGame, Card, Suit, Rank, GameVariant, PlayerTeam
 
 def test_kontra_party_wins_with_125_points():
     """Test the scenario where the Kontra party wins with exactly 125 points and track round scores."""

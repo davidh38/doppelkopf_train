@@ -1,0 +1,3 @@
+"""
+Doppelkopf game package.
+"""
