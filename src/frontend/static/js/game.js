@@ -1177,28 +1177,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Create the card element
                 const cardElement = createCardElement(card, false); // Cards in the trick are not playable
                 
-                // Add team information for the first round
-                if (gameState.currentTrick.length <= 4) {
-                    // Determine the player's team based on their cards
-                    let teamInfo = "";
-                    
-                    // Check if the card is a Queen of Clubs (indicates RE team)
-                    if (card.suit === 'CLUBS' && card.rank === 'QUEEN') {
-                        teamInfo = " (RE)";
-                    } else if (card.suit === 'SPADES' && card.rank === 'QUEEN') {
-                        teamInfo = " (likely RE)";
-                    } else if (card.suit === 'HEARTS' && card.rank === 'QUEEN') {
-                        teamInfo = " (likely RE)";
-                    } else if (card.suit === 'DIAMONDS' && card.rank === 'QUEEN') {
-                        teamInfo = " (likely RE)";
-                    } else if (card.rank === 'JACK') {
-                        teamInfo = " (unknown)";
-                    } else {
-                        teamInfo = " (likely KONTRA)";
-                    }
-                    
-                    playerLabel.textContent = pos.playerIdx === 0 ? `You${teamInfo}` : `Player ${pos.playerIdx}${teamInfo}`;
-                }
+                // No team information shown, just the player name
+                playerLabel.textContent = pos.playerIdx === 0 ? 'You' : `Player ${pos.playerIdx}`;
                 
                 // Add the card to the container
                 cardContainer.appendChild(cardElement);
