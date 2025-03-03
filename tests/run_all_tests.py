@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from tests.test_game_logic import test_team_reveal, test_score_calculation, test_re_party_wins_with_125_points
 from tests.test_kontra_wins import test_kontra_party_wins_with_125_points
 from tests.test_jack_solo_re_win import test_jack_solo_re_win
-from tests.test_browser_integration import test_browser_integration
+from tests.integration.test_browser_integration import test_browser_integration
 
 def run_all_tests():
     """Run all the tests."""

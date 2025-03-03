@@ -16,7 +16,7 @@ from urllib.parse import urljoin
 import signal
 
 # Add the parent directory to the path so that the tests can import modules from the project
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 # Try to import selenium, and if it's not available, provide instructions
 try:
