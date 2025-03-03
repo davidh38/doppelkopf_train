@@ -227,6 +227,14 @@ def ai_play_turn(game_id):
     game = game_data['game']
     ai_agents = game_data['ai_agents']
     
+    # Print scoreboard at the beginning of AI turns
+    print("\n=== SCOREBOARD (Start of AI turns) ===")
+    print(f"Player Wins: {scoreboard['player_wins']}")
+    print(f"AI Wins: {scoreboard['ai_wins']}")
+    print(f"Player Scores: {scoreboard['player_scores']}")
+    print(f"Last Starting Player: {scoreboard['last_starting_player']}")
+    print("=====================================\n")
+    
     # Keep playing AI turns until it's the human's turn or game is over
     while game.current_player != 0 and not game.game_over:
         # Check if a trick has been completed but not yet cleared
@@ -240,6 +248,15 @@ def ai_play_turn(game_id):
             
             # Emit a game state update to reflect the cleared trick
             socketio.emit('game_update', get_game_state(game_id), room=game_id)
+            
+            # Print scoreboard after trick completion
+            print("\n=== SCOREBOARD (After Trick Completion) ===")
+            print(f"Player Wins: {scoreboard['player_wins']}")
+            print(f"AI Wins: {scoreboard['ai_wins']}")
+            print(f"Player Scores: {scoreboard['player_scores']}")
+            print(f"Game Scores: {game.scores}")
+            print(f"Player Game Scores: {game.player_scores}")
+            print("==========================================\n")
             
             # If the new current player is the human player, break out of the loop
             if game.current_player == 0:
@@ -317,6 +334,15 @@ def ai_play_turn(game_id):
         
         # Emit game state update after each AI move
         socketio.emit('game_update', get_game_state(game_id), room=game_id)
+        
+        # Print scoreboard after each AI move
+        print("\n=== SCOREBOARD (After AI Move) ===")
+        print(f"Player Wins: {scoreboard['player_wins']}")
+        print(f"AI Wins: {scoreboard['ai_wins']}")
+        print(f"Player Scores: {scoreboard['player_scores']}")
+        print(f"Game Scores: {game.scores}")
+        print(f"Player Game Scores: {game.player_scores}")
+        print("=================================\n")
         
         # Wait for 0.5 seconds after each card is played (only in web interface)
         socketio.sleep(0.5)
@@ -672,6 +698,15 @@ def play_card():
     # Play the card
     game.play_card(0, selected_card)
     
+    # Print scoreboard after player's move
+    print("\n=== SCOREBOARD (After Player Move) ===")
+    print(f"Player Wins: {scoreboard['player_wins']}")
+    print(f"AI Wins: {scoreboard['ai_wins']}")
+    print(f"Player Scores: {scoreboard['player_scores']}")
+    print(f"Game Scores: {game.scores}")
+    print(f"Player Game Scores: {game.player_scores}")
+    print("====================================\n")
+    
     # Check if the player revealed their team by playing a Queen of Clubs
     if selected_card.suit == Suit.CLUBS and selected_card.rank == Rank.QUEEN:
         games[game_id]['revealed_teams'][0] = True
@@ -726,6 +761,15 @@ def play_card():
         game.current_trick = []
         game.current_player = trick_winner  # Set the current player to the trick winner
         game.trick_winner = None
+        
+        # Print scoreboard after trick completion
+        print("\n=== SCOREBOARD (After Player Trick Completion) ===")
+        print(f"Player Wins: {scoreboard['player_wins']}")
+        print(f"AI Wins: {scoreboard['ai_wins']}")
+        print(f"Player Scores: {scoreboard['player_scores']}")
+        print(f"Game Scores: {game.scores}")
+        print(f"Player Game Scores: {game.player_scores}")
+        print("==============================================\n")
     
     # Have AI players take their turns
     ai_play_turn(game_id)
@@ -735,6 +779,14 @@ def play_card():
         player_team = game.teams[0]
         game_data = games[game_id]
         multiplier = game_data.get('multiplier', 1)
+        
+        print("\n=== SCOREBOARD (Before Game Over Update) ===")
+        print(f"Player Wins: {scoreboard['player_wins']}")
+        print(f"AI Wins: {scoreboard['ai_wins']}")
+        print(f"Player Scores: {scoreboard['player_scores']}")
+        print(f"Game Scores: {game.scores}")
+        print(f"Player Game Scores: {game.player_scores}")
+        print("=========================================\n")
         
         # Count players in each team
         re_players = sum(1 for team in game.teams if team.name == 'RE')
@@ -771,6 +823,14 @@ def play_card():
             scoreboard['player_wins'] += 1
         else:
             scoreboard['ai_wins'] += 1
+            
+        print("\n=== SCOREBOARD (After Game Over Update) ===")
+        print(f"Player Wins: {scoreboard['player_wins']}")
+        print(f"AI Wins: {scoreboard['ai_wins']}")
+        print(f"Player Scores: {scoreboard['player_scores']}")
+        print(f"Game Scores: {game.scores}")
+        print(f"Player Game Scores: {game.player_scores}")
+        print("========================================\n")
     
     # Create a response object
     response_data = {
@@ -999,6 +1059,15 @@ def announce():
             return jsonify({'error': 'Invalid announcement order'}), 400
     else:
         return jsonify({'error': 'Invalid announcement'}), 400
+    
+    # Print scoreboard after announcement
+    print("\n=== SCOREBOARD (After Announcement) ===")
+    print(f"Player Wins: {scoreboard['player_wins']}")
+    print(f"AI Wins: {scoreboard['ai_wins']}")
+    print(f"Player Scores: {scoreboard['player_scores']}")
+    print(f"Game Scores: {game.scores}")
+    print(f"Player Game Scores: {game.player_scores}")
+    print("=====================================\n")
     
     return jsonify({
         'state': get_game_state(game_id),
