@@ -44,7 +44,7 @@ class DoppelkopfBrowserTest(unittest.TestCase):
         
         # Start the server in a separate thread
         cls.server_process = subprocess.Popen(
-            [sys.executable, "src/frontend/app.py", "--port", str(cls.server_port)],
+            [sys.executable, "src/backend/app.py", "--port", str(cls.server_port)],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             preexec_fn=os.setsid  # This allows us to kill the process group later
