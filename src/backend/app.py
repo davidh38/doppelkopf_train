@@ -58,6 +58,260 @@ scoreboard = {
     'last_starting_player': 0  # Track the last player who started a game
 }
 
+# Helper functions to reduce code duplication
+
+def print_scoreboard(label, game=None):
+    """Print the current scoreboard with a label."""
+    print(f"\n=== SCOREBOARD ({label}) ===")
+    print(f"Player Wins: {scoreboard['player_wins']}")
+    print(f"AI Wins: {scoreboard['ai_wins']}")
+    print(f"Player Scores: {scoreboard['player_scores']}")
+    if game:
+        print(f"Game Scores: {game.scores}")
+        print(f"Player Game Scores: {game.player_scores}")
+    print("=" * (len(label) + 25) + "\n")
+
+def handle_trick_completion(game_id, game):
+    """Handle the completion of a trick."""
+    if game.trick_winner is None:
+        return False
+    
+    game_data = games[game_id]
+    
+    # Calculate points for the trick
+    trick_points = sum(card.get_value() for card in game.current_trick)
+    
+    # Store the last trick information
+    game_data['last_trick'] = [card_to_dict(card) for card in game.current_trick]
+    
+    # Calculate the starting player for this trick
+    starting_player = (game.current_player - len(game.current_trick)) % game.num_players
+    
+    # Add player information to each card in the trick
+    trick_players = []
+    for i in range(len(game.current_trick)):
+        player_idx = (starting_player + i) % game.num_players
+        trick_players.append({
+            'name': "You" if player_idx == 0 else f"Player {player_idx}",
+            'idx': player_idx,
+            'is_current': player_idx == game.current_player
+        })
+    
+    game_data['last_trick_players'] = trick_players
+    game_data['last_trick_winner'] = game.trick_winner
+    game_data['last_trick_points'] = trick_points
+    
+    # Check if there was a Diamond Ace capture
+    diamond_ace_bonus = getattr(game, 'last_trick_diamond_ace_bonus', 0)
+    diamond_ace_captured = hasattr(game, 'diamond_ace_captured')
+    
+    # Emit the trick completed event with points and Diamond Ace capture info
+    socketio.emit('trick_completed', {
+        'winner': game.trick_winner,
+        'is_player': game.trick_winner == 0,
+        'trick_points': trick_points,
+        'diamond_ace_bonus': diamond_ace_bonus,
+        'diamond_ace_captured': diamond_ace_captured
+    }, room=game_id)
+    
+    # Clear the current trick and set the current player to the trick winner
+    trick_winner = game.trick_winner
+    game.current_trick = []
+    game.current_player = trick_winner
+    game.trick_winner = None
+    
+    # Emit a game state update to reflect the cleared trick
+    socketio.emit('game_update', get_game_state(game_id), room=game_id)
+    
+    return True
+
+def check_team_revelation(game, player, card, game_data):
+    """Check if a player revealed their team by playing a Queen of Clubs."""
+    if card.suit == Suit.CLUBS and card.rank == Rank.QUEEN:
+        print(f"Player {player} revealed team by playing Queen of Clubs")
+        game_data['revealed_teams'][player] = True
+
+def generate_game_summary(game_id):
+    """Generate a detailed game summary."""
+    game_data = games[game_id]
+    game = game_data['game']
+    multiplier = game_data.get('multiplier', 1)
+    
+    # Count players in each team
+    re_players = sum(1 for team in game.teams if team.name == 'RE')
+    kontra_players = sum(1 for team in game.teams if team.name == 'KONTRA')
+    
+    # Calculate points for each team
+    if game.winner.name == 'RE':
+        # RE team won
+        re_points = kontra_players  # Each RE player gets +kontra_players
+        kontra_points = -re_players  # Each KONTRA player gets -re_players
+    else:
+        # KONTRA team won
+        re_points = -kontra_players  # Each RE player gets -kontra_players
+        kontra_points = re_players  # Each KONTRA player gets +re_players
+    
+    # Apply multiplier
+    re_points_with_multiplier = re_points * multiplier
+    kontra_points_with_multiplier = kontra_points * multiplier
+    
+    # Create summary text
+    summary_text = f"Game Over! {game.winner.name} team wins!\n\n"
+    
+    # Add team composition
+    summary_text += "Team Composition:\n"
+    for i, team in enumerate(game.teams):
+        player_name = "You" if i == 0 else f"Player {i}"
+        summary_text += f"- {player_name}: {team.name}\n"
+    
+    # Add trick points information
+    summary_text += "\nTrick Points:\n"
+    summary_text += f"- RE team: {game.scores[0]} points\n"
+    summary_text += f"- KONTRA team: {game.scores[1]} points\n"
+    summary_text += f"- Total: {game.scores[0] + game.scores[1]} points\n"
+    
+    # Check if there were any special bonuses
+    if hasattr(game, 'diamond_ace_captured'):
+        diamond_ace_captures = [capture for capture in game.diamond_ace_captured if capture.get('type') == 'diamond_ace' or not capture.get('type')]
+        forty_plus_captures = [capture for capture in game.diamond_ace_captured if capture.get('type') == 'forty_plus']
+        
+        if diamond_ace_captures:
+            summary_text += "\nDiamond Ace Captures:\n"
+            for capture in diamond_ace_captures:
+                winner_name = "You" if capture['winner'] == 0 else f"Player {capture['winner']}"
+                loser_name = "You" if capture['loser'] == 0 else f"Player {capture['loser']}"
+                summary_text += f"- {winner_name} ({capture['winner_team']}) captured a Diamond Ace from {loser_name} ({capture['loser_team']})\n"
+            summary_text += f"  This adds/subtracts 1 point per capture to the trick points\n"
+        
+        if forty_plus_captures:
+            summary_text += "\n40+ Point Tricks:\n"
+            for capture in forty_plus_captures:
+                winner_name = "You" if capture['winner'] == 0 else f"Player {capture['winner']}"
+                summary_text += f"- {winner_name} ({capture['winner_team']}) won a trick worth {capture['points']} points\n"
+            summary_text += f"  This adds/subtracts 1 point per 40+ trick to the trick points\n"
+    
+    # Check for special achievements (no 90, no 60, no 30, black)
+    re_score = game.scores[0]
+    kontra_score = game.scores[1]
+    
+    # Add special achievements section
+    summary_text += "\nSpecial Achievements:\n"
+    
+    # Base points for winning
+    if game.winner.name == 'RE':
+        summary_text += f"- RE wins: +1\n"
+    else:
+        summary_text += f"- KONTRA wins: +1\n"
+    
+    # Check for no 90 achievement (opponent got less than 90 points)
+    if game.winner.name == 'RE' and kontra_score < 90:
+        summary_text += f"- RE plays no 90: +1 (KONTRA got {kontra_score} points)\n"
+    elif game.winner.name == 'KONTRA' and re_score < 90:
+        summary_text += f"- KONTRA plays no 90: +1 (RE got {re_score} points)\n"
+    
+    # Check for no 60 achievement (opponent got less than 60 points)
+    if game.winner.name == 'RE' and kontra_score < 60:
+        summary_text += f"- RE plays no 60: +1 (KONTRA got {kontra_score} points)\n"
+    elif game.winner.name == 'KONTRA' and re_score < 60:
+        summary_text += f"- KONTRA plays no 60: +1 (RE got {re_score} points)\n"
+    
+    # Check for no 30 achievement (opponent got less than 30 points)
+    if game.winner.name == 'RE' and kontra_score < 30:
+        summary_text += f"- RE plays no 30: +1 (KONTRA got {kontra_score} points)\n"
+    elif game.winner.name == 'KONTRA' and re_score < 30:
+        summary_text += f"- KONTRA plays no 30: +1 (RE got {re_score} points)\n"
+    
+    # Check for black achievement (opponent got 0 points)
+    if game.winner.name == 'RE' and kontra_score == 0:
+        summary_text += f"- RE plays black: +1 (KONTRA got 0 points)\n"
+    elif game.winner.name == 'KONTRA' and re_score == 0:
+        summary_text += f"- KONTRA plays black: +1 (RE got 0 points)\n"
+    
+    summary_text += "\nScore Calculation:\n"
+    
+    # Add announcement information if any
+    if game_data.get('re_announced', False) or game_data.get('contra_announced', False):
+        summary_text += "Announcements:\n"
+        if game_data.get('re_announced', False):
+            summary_text += "- RE announced: +1\n"
+        if game_data.get('contra_announced', False):
+            summary_text += "- CONTRA announced: +1\n"
+        if game_data.get('no90_announced', False):
+            summary_text += "- No 90 announced: +1\n"
+        if game_data.get('no60_announced', False):
+            summary_text += "- No 60 announced: +1\n"
+        if game_data.get('no30_announced', False):
+            summary_text += "- No 30 announced: +1\n"
+        if game_data.get('black_announced', False):
+            summary_text += "- Black announced: +1\n"
+        
+        summary_text += f"- Score multiplier: {multiplier}x\n\n"
+    
+    # Add base point calculation
+    summary_text += "Base Points:\n"
+    summary_text += f"- Winning team: +1 point per player\n"
+    summary_text += f"- Losing team: -1 point per player\n\n"
+    
+    # Add multiplier effect if applicable
+    if multiplier > 1:
+        summary_text += "With Multiplier:\n"
+        summary_text += f"- Winning team: +1 × {multiplier} = +{multiplier} points per player\n"
+        summary_text += f"- Losing team: -1 × {multiplier} = -{multiplier} points per player\n\n"
+    
+    # Add final scores
+    summary_text += "Final Scores:\n"
+    for i, team in enumerate(game.teams):
+        player_name = "You" if i == 0 else f"Player {i}"
+        if (team.name == 'RE' and game.winner.name == 'RE') or (team.name == 'KONTRA' and game.winner.name == 'KONTRA'):
+            # This player is on the winning team
+            points = f"+{multiplier}"
+        else:
+            # This player is on the losing team
+            points = f"-{multiplier}"
+        total_score = scoreboard['player_scores'][i]
+        summary_text += f"- {player_name}: {points} points (Total: {total_score})\n"
+    
+    # Store the game summary in the game data
+    game_data['game_summary'] = summary_text
+    
+    return summary_text
+
+def update_scoreboard_for_game_over(game_id):
+    """Update the scoreboard when a game is over."""
+    game_data = games[game_id]
+    game = game_data['game']
+    multiplier = game_data.get('multiplier', 1)
+    player_team = game.teams[0]
+    
+    print_scoreboard("Before Game Over Update", game)
+    
+    # In Doppelkopf, the base score is 1 point for winning
+    # The multiplier is applied for announcements (Re, Contra, No 90, etc.)
+    
+    # Update player scores - winners get +1, losers get -1
+    if game.winner.name == 'RE':
+        # RE team won
+        for i in range(len(game.teams)):
+            if game.teams[i].name == 'RE':
+                scoreboard['player_scores'][i] += 1 * multiplier  # Winners get positive points
+            else:  # KONTRA team
+                scoreboard['player_scores'][i] -= 1 * multiplier  # Losers get negative points
+    else:
+        # KONTRA team won
+        for i in range(len(game.teams)):
+            if game.teams[i].name == 'RE':
+                scoreboard['player_scores'][i] -= 1 * multiplier  # Losers get negative points
+            else:  # KONTRA team
+                scoreboard['player_scores'][i] += 1 * multiplier  # Winners get positive points
+    
+    # Update win counts
+    if game.winner == player_team:
+        scoreboard['player_wins'] += 1
+    else:
+        scoreboard['ai_wins'] += 1
+    
+    print_scoreboard("After Game Over Update", game)
+
 def card_to_dict(card):
     """Convert a Card object to a dictionary for JSON serialization."""
     if card is None:
@@ -232,35 +486,18 @@ def ai_play_turn(game_id):
     ai_agents = game_data['ai_agents']
     
     # Print scoreboard at the beginning of AI turns
-    print("\n=== SCOREBOARD (Start of AI turns) ===")
-    print(f"Player Wins: {scoreboard['player_wins']}")
-    print(f"AI Wins: {scoreboard['ai_wins']}")
-    print(f"Player Scores: {scoreboard['player_scores']}")
+    print_scoreboard("Start of AI turns")
     print(f"Last Starting Player: {scoreboard['last_starting_player']}")
-    print("=====================================\n")
     
     # Keep playing AI turns until it's the human's turn or game is over
     while game.current_player != 0 and not game.game_over:
         # Check if a trick has been completed but not yet cleared
         if game.trick_winner is not None:
-            # A trick has been completed but not yet cleared
-            # Clear the trick and set the current player to the trick winner
-            trick_winner = game.trick_winner
-            game.current_trick = []
-            game.current_player = trick_winner
-            game.trick_winner = None
-            
-            # Emit a game state update to reflect the cleared trick
-            socketio.emit('game_update', get_game_state(game_id), room=game_id)
+            # Handle trick completion
+            handle_trick_completion(game_id, game)
             
             # Print scoreboard after trick completion
-            print("\n=== SCOREBOARD (After Trick Completion) ===")
-            print(f"Player Wins: {scoreboard['player_wins']}")
-            print(f"AI Wins: {scoreboard['ai_wins']}")
-            print(f"Player Scores: {scoreboard['player_scores']}")
-            print(f"Game Scores: {game.scores}")
-            print(f"Player Game Scores: {game.player_scores}")
-            print("==========================================\n")
+            print_scoreboard("After Trick Completion", game)
             
             # If the new current player is the human player, break out of the loop
             if game.current_player == 0:
@@ -306,9 +543,7 @@ def ai_play_turn(game_id):
                 game.play_card(current_player, action)
                 
                 # Check if the AI player revealed their team by playing a Queen of Clubs
-                if action.suit == Suit.CLUBS and action.rank == Rank.QUEEN:
-                    print(f"AI player {current_player} revealed team by playing Queen of Clubs (tuple case)")
-                    games[game_id]['revealed_teams'][current_player] = True
+                check_team_revelation(game, current_player, action, game_data)
             elif action_type == 'announce':
                 # Make an announcement
                 game.announce(current_player, action)
@@ -331,221 +566,35 @@ def ai_play_turn(game_id):
             
             # Check if the AI player revealed their team by playing a Queen of Clubs
             if action_result is not None:
-                # Debug output to help diagnose team revelation
-                if action_result.suit == Suit.CLUBS and action_result.rank == Rank.QUEEN:
-                    print(f"AI player {current_player} revealed team by playing Queen of Clubs")
-                    games[game_id]['revealed_teams'][current_player] = True
+                check_team_revelation(game, current_player, action_result, game_data)
         
         # Emit game state update after each AI move
         socketio.emit('game_update', get_game_state(game_id), room=game_id)
         
         # Print scoreboard after each AI move
-        print("\n=== SCOREBOARD (After AI Move) ===")
-        print(f"Player Wins: {scoreboard['player_wins']}")
-        print(f"AI Wins: {scoreboard['ai_wins']}")
-        print(f"Player Scores: {scoreboard['player_scores']}")
-        print(f"Game Scores: {game.scores}")
-        print(f"Player Game Scores: {game.player_scores}")
-        print("=================================\n")
+        print_scoreboard("After AI Move", game)
         
         # Wait for 0.5 seconds after each card is played (only in web interface)
         socketio.sleep(0.5)
         
         # If a trick was completed, pause to show it
         if game.trick_winner is not None:
-            # Store the trick winner but don't reset it yet
-            trick_winner = game.trick_winner
-            
             # Emit the game state update with the completed trick
             socketio.emit('game_update', get_game_state(game_id), room=game_id)
-            
-            # Calculate points for the trick
-            trick_points = sum(card.get_value() for card in game.current_trick)
-            
-            # Store the last trick information
-            games[game_id]['last_trick'] = [card_to_dict(card) for card in game.current_trick]
-            
-            # Calculate the starting player for this trick
-            starting_player = (game.current_player - len(game.current_trick)) % game.num_players
-            
-            # Add player information to each card in the trick
-            trick_players = []
-            for i in range(len(game.current_trick)):
-                player_idx = (starting_player + i) % game.num_players
-                trick_players.append({
-                    'name': "You" if player_idx == 0 else f"Player {player_idx}",
-                    'idx': player_idx,
-                    'is_current': player_idx == game.current_player
-                })
-            
-            games[game_id]['last_trick_players'] = trick_players
-            games[game_id]['last_trick_winner'] = trick_winner
-            games[game_id]['last_trick_points'] = trick_points
-            
-            # Check if there was a Diamond Ace capture
-            diamond_ace_bonus = getattr(game, 'last_trick_diamond_ace_bonus', 0)
-            diamond_ace_captured = hasattr(game, 'diamond_ace_captured')
-            
-            # Emit the trick completed event with points and Diamond Ace capture info
-            socketio.emit('trick_completed', {
-                'winner': trick_winner,
-                'is_player': trick_winner == 0,
-                'trick_points': trick_points,
-                'diamond_ace_bonus': diamond_ace_bonus,
-                'diamond_ace_captured': diamond_ace_captured
-            }, room=game_id)
             
             # Pause for 0.3 seconds to show the completed trick
             socketio.sleep(0.3)
             
-            # Now clear the current trick and set the current player to the trick winner
-            game.current_trick = []
-            game.current_player = trick_winner  # Set the current player to the trick winner
-            game.trick_winner = None
+            # Handle trick completion
+            handle_trick_completion(game_id, game)
             
             # Check if the game is over after this trick
             if game.game_over:
-                # Generate game summary before updating scoreboard
-                # Create a detailed game summary
-                game_data = games[game_id]
-                multiplier = game_data.get('multiplier', 1)
+                # Generate game summary
+                generate_game_summary(game_id)
                 
-                # Count players in each team
-                re_players = sum(1 for team in game.teams if team.name == 'RE')
-                kontra_players = sum(1 for team in game.teams if team.name == 'KONTRA')
-                
-                # Calculate points for each team
-                if game.winner.name == 'RE':
-                    # RE team won
-                    re_points = kontra_players  # Each RE player gets +kontra_players
-                    kontra_points = -re_players  # Each KONTRA player gets -re_players
-                else:
-                    # KONTRA team won
-                    re_points = -kontra_players  # Each RE player gets -kontra_players
-                    kontra_points = re_players  # Each KONTRA player gets +re_players
-                
-                # Apply multiplier
-                re_points_with_multiplier = re_points * multiplier
-                kontra_points_with_multiplier = kontra_points * multiplier
-                
-                # Create summary text
-                summary_text = f"Game Over! {game.winner.name} team wins!\n\n"
-                
-                # Add team composition
-                summary_text += "Team Composition:\n"
-                for i, team in enumerate(game.teams):
-                    player_name = "You" if i == 0 else f"Player {i}"
-                    summary_text += f"- {player_name}: {team.name}\n"
-                
-                # Add trick points information
-                summary_text += "\nTrick Points:\n"
-                summary_text += f"- RE team: {game.scores[0]} points\n"
-                summary_text += f"- KONTRA team: {game.scores[1]} points\n"
-                summary_text += f"- Total: {game.scores[0] + game.scores[1]} points\n"
-                
-                # Check if there were any special bonuses
-                if hasattr(game, 'diamond_ace_captured'):
-                    diamond_ace_captures = [capture for capture in game.diamond_ace_captured if capture.get('type') == 'diamond_ace' or not capture.get('type')]
-                    forty_plus_captures = [capture for capture in game.diamond_ace_captured if capture.get('type') == 'forty_plus']
-                    
-                    if diamond_ace_captures:
-                        summary_text += "\nDiamond Ace Captures:\n"
-                        for capture in diamond_ace_captures:
-                            winner_name = "You" if capture['winner'] == 0 else f"Player {capture['winner']}"
-                            loser_name = "You" if capture['loser'] == 0 else f"Player {capture['loser']}"
-                            summary_text += f"- {winner_name} ({capture['winner_team']}) captured a Diamond Ace from {loser_name} ({capture['loser_team']})\n"
-                        summary_text += f"  This adds/subtracts 1 point per capture to the trick points\n"
-                    
-                    if forty_plus_captures:
-                        summary_text += "\n40+ Point Tricks:\n"
-                        for capture in forty_plus_captures:
-                            winner_name = "You" if capture['winner'] == 0 else f"Player {capture['winner']}"
-                            summary_text += f"- {winner_name} ({capture['winner_team']}) won a trick worth {capture['points']} points\n"
-                        summary_text += f"  This adds/subtracts 1 point per 40+ trick to the trick points\n"
-                
-                # Check for special achievements (no 90, no 60, no 30, black)
-                re_score = game.scores[0]
-                kontra_score = game.scores[1]
-                
-                # Add special achievements section
-                summary_text += "\nSpecial Achievements:\n"
-                
-                # Base points for winning
-                if game.winner.name == 'RE':
-                    summary_text += f"- RE wins: +1\n"
-                else:
-                    summary_text += f"- KONTRA wins: +1\n"
-                
-                # Check for no 90 achievement (opponent got less than 90 points)
-                if game.winner.name == 'RE' and kontra_score < 90:
-                    summary_text += f"- RE plays no 90: +1 (KONTRA got {kontra_score} points)\n"
-                elif game.winner.name == 'KONTRA' and re_score < 90:
-                    summary_text += f"- KONTRA plays no 90: +1 (RE got {re_score} points)\n"
-                
-                # Check for no 60 achievement (opponent got less than 60 points)
-                if game.winner.name == 'RE' and kontra_score < 60:
-                    summary_text += f"- RE plays no 60: +1 (KONTRA got {kontra_score} points)\n"
-                elif game.winner.name == 'KONTRA' and re_score < 60:
-                    summary_text += f"- KONTRA plays no 60: +1 (RE got {re_score} points)\n"
-                
-                # Check for no 30 achievement (opponent got less than 30 points)
-                if game.winner.name == 'RE' and kontra_score < 30:
-                    summary_text += f"- RE plays no 30: +1 (KONTRA got {kontra_score} points)\n"
-                elif game.winner.name == 'KONTRA' and re_score < 30:
-                    summary_text += f"- KONTRA plays no 30: +1 (RE got {re_score} points)\n"
-                
-                # Check for black achievement (opponent got 0 points)
-                if game.winner.name == 'RE' and kontra_score == 0:
-                    summary_text += f"- RE plays black: +1 (KONTRA got 0 points)\n"
-                elif game.winner.name == 'KONTRA' and re_score == 0:
-                    summary_text += f"- KONTRA plays black: +1 (RE got 0 points)\n"
-                
-                summary_text += "\nScore Calculation:\n"
-                
-                # Add announcement information if any
-                if game_data.get('re_announced', False) or game_data.get('contra_announced', False):
-                    summary_text += "Announcements:\n"
-                    if game_data.get('re_announced', False):
-                        summary_text += "- RE announced: +1\n"
-                    if game_data.get('contra_announced', False):
-                        summary_text += "- CONTRA announced: +1\n"
-                    if game_data.get('no90_announced', False):
-                        summary_text += "- No 90 announced: +1\n"
-                    if game_data.get('no60_announced', False):
-                        summary_text += "- No 60 announced: +1\n"
-                    if game_data.get('no30_announced', False):
-                        summary_text += "- No 30 announced: +1\n"
-                    if game_data.get('black_announced', False):
-                        summary_text += "- Black announced: +1\n"
-                    
-                    summary_text += f"- Score multiplier: {multiplier}x\n\n"
-                
-                # Add base point calculation
-                summary_text += "Base Points:\n"
-                summary_text += f"- Winning team: +1 point per player\n"
-                summary_text += f"- Losing team: -1 point per player\n\n"
-                
-                # Add multiplier effect if applicable
-                if multiplier > 1:
-                    summary_text += "With Multiplier:\n"
-                    summary_text += f"- Winning team: +1 × {multiplier} = +{multiplier} points per player\n"
-                    summary_text += f"- Losing team: -1 × {multiplier} = -{multiplier} points per player\n\n"
-                
-                # Add final scores
-                summary_text += "Final Scores:\n"
-                for i, team in enumerate(game.teams):
-                    player_name = "You" if i == 0 else f"Player {i}"
-                    if (team.name == 'RE' and game.winner.name == 'RE') or (team.name == 'KONTRA' and game.winner.name == 'KONTRA'):
-                        # This player is on the winning team
-                        points = f"+{multiplier}"
-                    else:
-                        # This player is on the losing team
-                        points = f"-{multiplier}"
-                    total_score = scoreboard['player_scores'][i]
-                    summary_text += f"- {player_name}: {points} points (Total: {total_score})\n"
-                
-                # Store the game summary in the game data
-                games[game_id]['game_summary'] = summary_text
+                # Update scoreboard
+                update_scoreboard_for_game_over(game_id)
             
             # Emit a game state update to reflect the cleared trick
             socketio.emit('game_update', get_game_state(game_id), room=game_id)
@@ -847,17 +896,10 @@ def play_card():
     game.play_card(0, selected_card)
     
     # Print scoreboard after player's move
-    print("\n=== SCOREBOARD (After Player Move) ===")
-    print(f"Player Wins: {scoreboard['player_wins']}")
-    print(f"AI Wins: {scoreboard['ai_wins']}")
-    print(f"Player Scores: {scoreboard['player_scores']}")
-    print(f"Game Scores: {game.scores}")
-    print(f"Player Game Scores: {game.player_scores}")
-    print("====================================\n")
+    print_scoreboard("After Player Move", game)
     
     # Check if the player revealed their team by playing a Queen of Clubs
-    if selected_card.suit == Suit.CLUBS and selected_card.rank == Rank.QUEEN:
-        games[game_id]['revealed_teams'][0] = True
+    check_team_revelation(game, 0, selected_card, games[game_id])
     
     # Check if a trick was completed
     trick_completed = game.trick_winner is not None
@@ -866,256 +908,28 @@ def play_card():
     
     # If a trick was completed, handle it before AI plays
     if trick_completed:
-        # Calculate points for the trick
-        trick_points = sum(card.get_value() for card in game.current_trick)
-        
-        # Store the trick winner but don't reset it yet
+        # Store the trick winner before handling the trick completion
         trick_winner = game.trick_winner
         
-        # Store the current trick before clearing it
-        games[game_id]['last_trick'] = [card_to_dict(card) for card in game.current_trick]
+        # Calculate points for the trick before handling the trick completion
+        trick_points = sum(card.get_value() for card in game.current_trick)
         
-        # Calculate the starting player for this trick
-        starting_player = (game.current_player - len(game.current_trick)) % game.num_players
-        
-        # Add player information to each card in the trick
-        trick_players = []
-        for i in range(len(game.current_trick)):
-            player_idx = (starting_player + i) % game.num_players
-            trick_players.append({
-                'name': "You" if player_idx == 0 else f"Player {player_idx}",
-                'idx': player_idx,
-                'is_current': player_idx == game.current_player
-            })
-        
-        games[game_id]['last_trick_players'] = trick_players
-        games[game_id]['last_trick_winner'] = trick_winner
-        games[game_id]['last_trick_points'] = trick_points
-        
-        # Check if there was a Diamond Ace capture
-        diamond_ace_bonus = getattr(game, 'last_trick_diamond_ace_bonus', 0)
-        diamond_ace_captured = hasattr(game, 'diamond_ace_captured')
-        
-        # Emit the trick completed event with points and Diamond Ace capture info
-        socketio.emit('trick_completed', {
-            'winner': trick_winner,
-            'is_player': trick_winner == 0,
-            'trick_points': trick_points,
-            'diamond_ace_bonus': diamond_ace_bonus,
-            'diamond_ace_captured': diamond_ace_captured
-        }, room=game_id)
-        
-        # Clear the current trick and set the current player to the trick winner
-        game.current_trick = []
-        game.current_player = trick_winner  # Set the current player to the trick winner
-        game.trick_winner = None
+        # Handle trick completion
+        handle_trick_completion(game_id, game)
         
         # Print scoreboard after trick completion
-        print("\n=== SCOREBOARD (After Player Trick Completion) ===")
-        print(f"Player Wins: {scoreboard['player_wins']}")
-        print(f"AI Wins: {scoreboard['ai_wins']}")
-        print(f"Player Scores: {scoreboard['player_scores']}")
-        print(f"Game Scores: {game.scores}")
-        print(f"Player Game Scores: {game.player_scores}")
-        print("==============================================\n")
+        print_scoreboard("After Player Trick Completion", game)
     
     # Have AI players take their turns
     ai_play_turn(game_id)
     
     # Check if game is over and update scoreboard
     if game.game_over:
-        # Generate game summary before updating scoreboard
-        # Create a detailed game summary
-        game_data = games[game_id]
-        multiplier = game_data.get('multiplier', 1)
+        # Generate game summary
+        summary_text = generate_game_summary(game_id)
         
-        # Count players in each team
-        re_players = sum(1 for team in game.teams if team.name == 'RE')
-        kontra_players = sum(1 for team in game.teams if team.name == 'KONTRA')
-        
-        # Calculate points for each team
-        if game.winner.name == 'RE':
-            # RE team won
-            re_points = kontra_players  # Each RE player gets +kontra_players
-            kontra_points = -re_players  # Each KONTRA player gets -re_players
-        else:
-            # KONTRA team won
-            re_points = -kontra_players  # Each RE player gets -kontra_players
-            kontra_points = re_players  # Each KONTRA player gets +re_players
-        
-        # Apply multiplier
-        re_points_with_multiplier = re_points * multiplier
-        kontra_points_with_multiplier = kontra_points * multiplier
-        
-        # Create summary text
-        summary_text = f"Game Over! {game.winner.name} team wins!\n\n"
-        
-        # Add team composition
-        summary_text += "Team Composition:\n"
-        for i, team in enumerate(game.teams):
-            player_name = "You" if i == 0 else f"Player {i}"
-            summary_text += f"- {player_name}: {team.name}\n"
-        
-        # Add trick points information
-        summary_text += "\nTrick Points:\n"
-        summary_text += f"- RE team: {game.scores[0]} points\n"
-        summary_text += f"- KONTRA team: {game.scores[1]} points\n"
-        summary_text += f"- Total: {game.scores[0] + game.scores[1]} points\n"
-        
-        # Check if there were any special bonuses
-        if hasattr(game, 'diamond_ace_captured'):
-            diamond_ace_captures = [capture for capture in game.diamond_ace_captured if capture.get('type') == 'diamond_ace' or not capture.get('type')]
-            forty_plus_captures = [capture for capture in game.diamond_ace_captured if capture.get('type') == 'forty_plus']
-            
-            if diamond_ace_captures:
-                summary_text += "\nDiamond Ace Captures:\n"
-                for capture in diamond_ace_captures:
-                    winner_name = "You" if capture['winner'] == 0 else f"Player {capture['winner']}"
-                    loser_name = "You" if capture['loser'] == 0 else f"Player {capture['loser']}"
-                    summary_text += f"- {winner_name} ({capture['winner_team']}) captured a Diamond Ace from {loser_name} ({capture['loser_team']})\n"
-                summary_text += f"  This adds/subtracts 1 point per capture to the trick points\n"
-            
-            if forty_plus_captures:
-                summary_text += "\n40+ Point Tricks:\n"
-                for capture in forty_plus_captures:
-                    winner_name = "You" if capture['winner'] == 0 else f"Player {capture['winner']}"
-                    summary_text += f"- {winner_name} ({capture['winner_team']}) won a trick worth {capture['points']} points\n"
-                summary_text += f"  This adds/subtracts 1 point per 40+ trick to the trick points\n"
-        
-        # Check for special achievements (no 90, no 60, no 30, black)
-        re_score = game.scores[0]
-        kontra_score = game.scores[1]
-        
-        # Add special achievements section
-        summary_text += "\nSpecial Achievements:\n"
-        
-        # Base points for winning
-        if game.winner.name == 'RE':
-            summary_text += f"- RE wins: +1\n"
-        else:
-            summary_text += f"- KONTRA wins: +1\n"
-        
-        # Check for no 90 achievement (opponent got less than 90 points)
-        if game.winner.name == 'RE' and kontra_score < 90:
-            summary_text += f"- RE plays no 90: +1 (KONTRA got {kontra_score} points)\n"
-        elif game.winner.name == 'KONTRA' and re_score < 90:
-            summary_text += f"- KONTRA plays no 90: +1 (RE got {re_score} points)\n"
-        
-        # Check for no 60 achievement (opponent got less than 60 points)
-        if game.winner.name == 'RE' and kontra_score < 60:
-            summary_text += f"- RE plays no 60: +1 (KONTRA got {kontra_score} points)\n"
-        elif game.winner.name == 'KONTRA' and re_score < 60:
-            summary_text += f"- KONTRA plays no 60: +1 (RE got {re_score} points)\n"
-        
-        # Check for no 30 achievement (opponent got less than 30 points)
-        if game.winner.name == 'RE' and kontra_score < 30:
-            summary_text += f"- RE plays no 30: +1 (KONTRA got {kontra_score} points)\n"
-        elif game.winner.name == 'KONTRA' and re_score < 30:
-            summary_text += f"- KONTRA plays no 30: +1 (RE got {re_score} points)\n"
-        
-        # Check for black achievement (opponent got 0 points)
-        if game.winner.name == 'RE' and kontra_score == 0:
-            summary_text += f"- RE plays black: +1 (KONTRA got 0 points)\n"
-        elif game.winner.name == 'KONTRA' and re_score == 0:
-            summary_text += f"- KONTRA plays black: +1 (RE got 0 points)\n"
-        
-        summary_text += "\nScore Calculation:\n"
-        
-        # Add announcement information if any
-        if game_data.get('re_announced', False) or game_data.get('contra_announced', False):
-            summary_text += "Announcements:\n"
-            if game_data.get('re_announced', False):
-                summary_text += "- RE announced: +1\n"
-            if game_data.get('contra_announced', False):
-                summary_text += "- CONTRA announced: +1\n"
-            if game_data.get('no90_announced', False):
-                summary_text += "- No 90 announced: +1\n"
-            if game_data.get('no60_announced', False):
-                summary_text += "- No 60 announced: +1\n"
-            if game_data.get('no30_announced', False):
-                summary_text += "- No 30 announced: +1\n"
-            if game_data.get('black_announced', False):
-                summary_text += "- Black announced: +1\n"
-            
-            summary_text += f"- Score multiplier: {multiplier}x\n\n"
-        
-        # Add base point calculation
-        summary_text += "Base Points:\n"
-        summary_text += f"- Winning team: +1 point per player\n"
-        summary_text += f"- Losing team: -1 point per player\n\n"
-        
-        # Add multiplier effect if applicable
-        if multiplier > 1:
-            summary_text += "With Multiplier:\n"
-            summary_text += f"- Winning team: +1 × {multiplier} = +{multiplier} points per player\n"
-            summary_text += f"- Losing team: -1 × {multiplier} = -{multiplier} points per player\n\n"
-        
-        # Add final scores
-        summary_text += "Final Scores:\n"
-        for i, team in enumerate(game.teams):
-            player_name = "You" if i == 0 else f"Player {i}"
-            if (team.name == 'RE' and game.winner.name == 'RE') or (team.name == 'KONTRA' and game.winner.name == 'KONTRA'):
-                # This player is on the winning team
-                points = f"+{multiplier}"
-            else:
-                # This player is on the losing team
-                points = f"-{multiplier}"
-            total_score = scoreboard['player_scores'][i]
-            summary_text += f"- {player_name}: {points} points (Total: {total_score})\n"
-        
-        # Store the game summary in the game data
-        games[game_id]['game_summary'] = summary_text
-        player_team = game.teams[0]
-        game_data = games[game_id]
-        multiplier = game_data.get('multiplier', 1)
-        
-        print("\n=== SCOREBOARD (Before Game Over Update) ===")
-        print(f"Player Wins: {scoreboard['player_wins']}")
-        print(f"AI Wins: {scoreboard['ai_wins']}")
-        print(f"Player Scores: {scoreboard['player_scores']}")
-        print(f"Game Scores: {game.scores}")
-        print(f"Player Game Scores: {game.player_scores}")
-        print("=========================================\n")
-        
-        # In Doppelkopf, the base score is 1 point for winning
-        # The multiplier is applied for announcements (Re, Contra, No 90, etc.)
-        
-        # Count players in each team
-        re_players = sum(1 for team in game.teams if team.name == 'RE')
-        kontra_players = sum(1 for team in game.teams if team.name == 'KONTRA')
-        
-        # Update player scores - winners get +1, losers get -1
-        if game.winner.name == 'RE':
-            # RE team won
-            for i in range(len(game.teams)):
-                if game.teams[i].name == 'RE':
-                    scoreboard['player_scores'][i] += 1 * multiplier  # Winners get positive points
-                else:  # KONTRA team
-                    scoreboard['player_scores'][i] -= 1 * multiplier  # Losers get negative points
-        else:
-            # KONTRA team won
-            for i in range(len(game.teams)):
-                if game.teams[i].name == 'RE':
-                    scoreboard['player_scores'][i] -= 1 * multiplier  # Losers get negative points
-                else:  # KONTRA team
-                    scoreboard['player_scores'][i] += 1 * multiplier  # Winners get positive points
-        
-        # Don't modify game.scores with multiplier - they should add up to 240 (plus any bonus points)
-        # The multiplier is only applied to player scores
-        
-        # Update win counts
-        if game.winner == player_team:
-            scoreboard['player_wins'] += 1
-        else:
-            scoreboard['ai_wins'] += 1
-            
-        print("\n=== SCOREBOARD (After Game Over Update) ===")
-        print(f"Player Wins: {scoreboard['player_wins']}")
-        print(f"AI Wins: {scoreboard['ai_wins']}")
-        print(f"Player Scores: {scoreboard['player_scores']}")
-        print(f"Game Scores: {game.scores}")
-        print(f"Player Game Scores: {game.player_scores}")
-        print("========================================\n")
+        # Update scoreboard
+        update_scoreboard_for_game_over(game_id)
     
     # Create a response object
     response_data = {
@@ -1139,147 +953,8 @@ def play_card():
             'player_scores': scoreboard['player_scores']
         }
         
-        # Create a detailed game summary
-        game_data = games[game_id]
-        multiplier = game_data.get('multiplier', 1)
-        
-        # Count players in each team
-        re_players = sum(1 for team in game.teams if team.name == 'RE')
-        kontra_players = sum(1 for team in game.teams if team.name == 'KONTRA')
-        
-        # Calculate points for each team
-        if game.winner.name == 'RE':
-            # RE team won
-            re_points = kontra_players  # Each RE player gets +kontra_players
-            kontra_points = -re_players  # Each KONTRA player gets -re_players
-        else:
-            # KONTRA team won
-            re_points = -kontra_players  # Each RE player gets -kontra_players
-            kontra_points = re_players  # Each KONTRA player gets +re_players
-        
-        # Apply multiplier
-        re_points_with_multiplier = re_points * multiplier
-        kontra_points_with_multiplier = kontra_points * multiplier
-        
-        # Create summary text
-        summary_text = f"Game Over! {game.winner.name} team wins!\n\n"
-        
-        # Add team composition
-        summary_text += "Team Composition:\n"
-        for i, team in enumerate(game.teams):
-            player_name = "You" if i == 0 else f"Player {i}"
-            summary_text += f"- {player_name}: {team.name}\n"
-        
-        # Add trick points information
-        summary_text += "\nTrick Points:\n"
-        summary_text += f"- RE team: {game.scores[0]} points\n"
-        summary_text += f"- KONTRA team: {game.scores[1]} points\n"
-        summary_text += f"- Total: {game.scores[0] + game.scores[1]} points\n"
-        
-        # Check if there were any special bonuses
-        if hasattr(game, 'diamond_ace_captured'):
-            diamond_ace_captures = [capture for capture in game.diamond_ace_captured if capture.get('type') == 'diamond_ace' or not capture.get('type')]
-            forty_plus_captures = [capture for capture in game.diamond_ace_captured if capture.get('type') == 'forty_plus']
-            
-            if diamond_ace_captures:
-                summary_text += "\nDiamond Ace Captures:\n"
-                for capture in diamond_ace_captures:
-                    winner_name = "You" if capture['winner'] == 0 else f"Player {capture['winner']}"
-                    loser_name = "You" if capture['loser'] == 0 else f"Player {capture['loser']}"
-                    summary_text += f"- {winner_name} ({capture['winner_team']}) captured a Diamond Ace from {loser_name} ({capture['loser_team']})\n"
-                summary_text += f"  This adds/subtracts 1 point per capture to the trick points\n"
-            
-            if forty_plus_captures:
-                summary_text += "\n40+ Point Tricks:\n"
-                for capture in forty_plus_captures:
-                    winner_name = "You" if capture['winner'] == 0 else f"Player {capture['winner']}"
-                    summary_text += f"- {winner_name} ({capture['winner_team']}) won a trick worth {capture['points']} points\n"
-                summary_text += f"  This adds/subtracts 1 point per 40+ trick to the trick points\n"
-        
-        # Check for special achievements (no 90, no 60, no 30, black)
-        re_score = game.scores[0]
-        kontra_score = game.scores[1]
-        
-        # Add special achievements section
-        summary_text += "\nSpecial Achievements:\n"
-        
-        # Base points for winning
-        if game.winner.name == 'RE':
-            summary_text += f"- RE wins: +1\n"
-        else:
-            summary_text += f"- KONTRA wins: +1\n"
-        
-        # Check for no 90 achievement (opponent got less than 90 points)
-        if game.winner.name == 'RE' and kontra_score < 90:
-            summary_text += f"- RE plays no 90: +1 (KONTRA got {kontra_score} points)\n"
-        elif game.winner.name == 'KONTRA' and re_score < 90:
-            summary_text += f"- KONTRA plays no 90: +1 (RE got {re_score} points)\n"
-        
-        # Check for no 60 achievement (opponent got less than 60 points)
-        if game.winner.name == 'RE' and kontra_score < 60:
-            summary_text += f"- RE plays no 60: +1 (KONTRA got {kontra_score} points)\n"
-        elif game.winner.name == 'KONTRA' and re_score < 60:
-            summary_text += f"- KONTRA plays no 60: +1 (RE got {re_score} points)\n"
-        
-        # Check for no 30 achievement (opponent got less than 30 points)
-        if game.winner.name == 'RE' and kontra_score < 30:
-            summary_text += f"- RE plays no 30: +1 (KONTRA got {kontra_score} points)\n"
-        elif game.winner.name == 'KONTRA' and re_score < 30:
-            summary_text += f"- KONTRA plays no 30: +1 (RE got {re_score} points)\n"
-        
-        # Check for black achievement (opponent got 0 points)
-        if game.winner.name == 'RE' and kontra_score == 0:
-            summary_text += f"- RE plays black: +1 (KONTRA got 0 points)\n"
-        elif game.winner.name == 'KONTRA' and re_score == 0:
-            summary_text += f"- KONTRA plays black: +1 (RE got 0 points)\n"
-        
-        summary_text += "\nScore Calculation:\n"
-        
-        # Add announcement information if any
-        if game_data.get('re_announced', False) or game_data.get('contra_announced', False):
-            summary_text += "Announcements:\n"
-            if game_data.get('re_announced', False):
-                summary_text += "- RE announced: +1\n"
-            if game_data.get('contra_announced', False):
-                summary_text += "- CONTRA announced: +1\n"
-            if game_data.get('no90_announced', False):
-                summary_text += "- No 90 announced: +1\n"
-            if game_data.get('no60_announced', False):
-                summary_text += "- No 60 announced: +1\n"
-            if game_data.get('no30_announced', False):
-                summary_text += "- No 30 announced: +1\n"
-            if game_data.get('black_announced', False):
-                summary_text += "- Black announced: +1\n"
-            
-            summary_text += f"- Score multiplier: {multiplier}x\n\n"
-        
-        # Add base point calculation
-        summary_text += "Base Points:\n"
-        summary_text += f"- Winning team: +1 point per player\n"
-        summary_text += f"- Losing team: -1 point per player\n\n"
-        
-        # Add multiplier effect if applicable
-        if multiplier > 1:
-            summary_text += "With Multiplier:\n"
-            summary_text += f"- Winning team: +1 × {multiplier} = +{multiplier} points per player\n"
-            summary_text += f"- Losing team: -1 × {multiplier} = -{multiplier} points per player\n\n"
-        
-        # Add final scores
-        summary_text += "Final Scores:\n"
-        for i, team in enumerate(game.teams):
-            player_name = "You" if i == 0 else f"Player {i}"
-            if (team.name == 'RE' and game.winner.name == 'RE') or (team.name == 'KONTRA' and game.winner.name == 'KONTRA'):
-                # This player is on the winning team
-                points = f"+{multiplier}"
-            else:
-                # This player is on the losing team
-                points = f"-{multiplier}"
-            total_score = scoreboard['player_scores'][i]
-            summary_text += f"- {player_name}: {points} points (Total: {total_score})\n"
-        
-        # Add the summary to the response and store it in the game data
-        response_data['game_summary'] = summary_text
-        games[game_id]['game_summary'] = summary_text
+        # Add the game summary to the response
+        response_data['game_summary'] = games[game_id]['game_summary']
     
     return jsonify(response_data)
 
@@ -1415,13 +1090,7 @@ def announce():
         return jsonify({'error': 'Invalid announcement'}), 400
     
     # Print scoreboard after announcement
-    print("\n=== SCOREBOARD (After Announcement) ===")
-    print(f"Player Wins: {scoreboard['player_wins']}")
-    print(f"AI Wins: {scoreboard['ai_wins']}")
-    print(f"Player Scores: {scoreboard['player_scores']}")
-    print(f"Game Scores: {game.scores}")
-    print(f"Player Game Scores: {game.player_scores}")
-    print("=====================================\n")
+    print_scoreboard("After Announcement", game)
     
     return jsonify({
         'state': get_game_state(game_id),
