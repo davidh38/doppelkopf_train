@@ -1936,47 +1936,64 @@ function showGameOverScreen() {
                 finalBlackStatus.classList.toggle('hidden', !(gameState.announcements && gameState.announcements.black));
             }
             
-            // Update the player scores in the game over screen - showing game points instead of trick scores
-            for (let i = 0; i < 4; i++) {
-                const playerScoreEl = document.getElementById(`game-over-player-${i}-score`);
-                if (playerScoreEl) {
-                    const playerTeam = i === 0 ? gameState.playerTeam : 
-                                      (gameState.otherPlayers && gameState.otherPlayers[i-1] ? 
-                                       gameState.otherPlayers[i-1].team : '');
-                    
-                    // Determine if player is on winning team
-                    const isWinningTeam = (gameState.winner === 'RE' && playerTeam === 'RE') || 
-                                         (gameState.winner === 'KONTRA' && playerTeam === 'KONTRA');
-                    
-                    // Count players in each team
-                    const rePlayers = gameState.otherPlayers ? 
-                                     gameState.otherPlayers.filter(p => p.team === 'RE').length + 
-                                     (gameState.playerTeam === 'RE' ? 1 : 0) : 
-                                     (gameState.playerTeam === 'RE' ? 1 : 0);
-                    
-                    const kontraPlayers = gameState.otherPlayers ? 
-                                         gameState.otherPlayers.filter(p => p.team === 'KONTRA').length + 
-                                         (gameState.playerTeam === 'KONTRA' ? 1 : 0) : 
-                                         (gameState.playerTeam === 'KONTRA' ? 1 : 0);
-                    
-                    // Calculate points based on winner and multiplier
-                    let points = 0;
-                    if (playerTeam === 'RE') {
-                        // RE team: +kontraPlayers if won, -kontraPlayers if lost
-                        points = isWinningTeam ? kontraPlayers : -kontraPlayers;
-                    } else if (playerTeam === 'KONTRA') {
-                        // KONTRA team: +rePlayers if won, -rePlayers if lost
-                        points = isWinningTeam ? rePlayers : -rePlayers;
+            // Update the player scores in the game over screen using the player_game_points from the backend
+            if (gameState.state && gameState.state.player_game_points && gameState.state.player_game_points.length === 4) {
+                const player_game_points = gameState.state.player_game_points;
+                for (let i = 0; i < 4; i++) {
+                    const playerScoreEl = document.getElementById(`game-over-player-${i}-score`);
+                    if (playerScoreEl) {
+                        const points = gameState.player_game_points[i];
+                        
+                        // Display the points with a + sign for positive values
+                        playerScoreEl.textContent = points > 0 ? `+${points}` : points;
+                        
+                        // Add color coding for positive/negative points
+                        playerScoreEl.style.color = points > 0 ? '#2ecc71' : (points < 0 ? '#e74c3c' : 'inherit');
                     }
-                    
-                    // Apply multiplier
-                    points *= (gameState.multiplier || 1);
-                    
-                    // Display the points with a + sign for positive values
-                    playerScoreEl.textContent = points > 0 ? `+${points}` : points;
-                    
-                    // Add color coding for positive/negative points
-                    playerScoreEl.style.color = points > 0 ? '#2ecc71' : (points < 0 ? '#e74c3c' : 'inherit');
+                }
+            } else {
+                // Fallback to the old calculation if player_game_points is not available
+                for (let i = 0; i < 4; i++) {
+                    const playerScoreEl = document.getElementById(`game-over-player-${i}-score`);
+                    if (playerScoreEl) {
+                        const playerTeam = i === 0 ? gameState.playerTeam : 
+                                          (gameState.otherPlayers && gameState.otherPlayers[i-1] ? 
+                                           gameState.otherPlayers[i-1].team : '');
+                        
+                        // Determine if player is on winning team
+                        const isWinningTeam = (gameState.winner === 'RE' && playerTeam === 'RE') || 
+                                             (gameState.winner === 'KONTRA' && playerTeam === 'KONTRA');
+                        
+                        // Count players in each team
+                        const rePlayers = gameState.otherPlayers ? 
+                                         gameState.otherPlayers.filter(p => p.team === 'RE').length + 
+                                         (gameState.playerTeam === 'RE' ? 1 : 0) : 
+                                         (gameState.playerTeam === 'RE' ? 1 : 0);
+                        
+                        const kontraPlayers = gameState.otherPlayers ? 
+                                             gameState.otherPlayers.filter(p => p.team === 'KONTRA').length + 
+                                             (gameState.playerTeam === 'KONTRA' ? 1 : 0) : 
+                                             (gameState.playerTeam === 'KONTRA' ? 1 : 0);
+                        
+                        // Calculate points based on winner and multiplier
+                        let points = 0;
+                        if (playerTeam === 'RE') {
+                            // RE team: +kontraPlayers if won, -kontraPlayers if lost
+                            points = isWinningTeam ? kontraPlayers : -kontraPlayers;
+                        } else if (playerTeam === 'KONTRA') {
+                            // KONTRA team: +rePlayers if won, -rePlayers if lost
+                            points = isWinningTeam ? rePlayers : -rePlayers;
+                        }
+                        
+                        // Apply multiplier
+                        points *= (gameState.multiplier || 1);
+                        
+                        // Display the points with a + sign for positive values
+                        playerScoreEl.textContent = points > 0 ? `+${points}` : points;
+                        
+                        // Add color coding for positive/negative points
+                        playerScoreEl.style.color = points > 0 ? '#2ecc71' : (points < 0 ? '#e74c3c' : 'inherit');
+                    }
                 }
             }
             

@@ -8,6 +8,7 @@ in the backend. These routes can be imported and used by the main backend app.
 from flask import Blueprint, render_template, jsonify, request, session
 from flask_socketio import emit, join_room
 from src.frontend.routes import Routes
+from src.frontend.route_handlers import RouteHandlers
 
 # Create a Blueprint for frontend routes
 frontend_routes = Blueprint('frontend_routes', __name__)
@@ -23,9 +24,8 @@ _model_path = 'models/final_model.pt'
 @frontend_routes.route(Routes.MODEL_INFO, methods=['GET'])
 def model_info():
     """Get information about the model being used."""
-    return jsonify({
-        'model_path': _model_path
-    })
+    # Use the route handler from the frontend module
+    return RouteHandlers.handle_model_info(_model_path)
 
 def register_frontend_routes(app, socketio, model_path):
     """
