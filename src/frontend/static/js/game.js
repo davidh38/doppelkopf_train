@@ -61,35 +61,33 @@ document.addEventListener('DOMContentLoaded', function() {
     if (jackSoloBtn) jackSoloBtn.addEventListener('click', () => setGameVariant('jack_solo'));
     if (fleshlessBtn) fleshlessBtn.addEventListener('click', () => setGameVariant('fleshless'));
     
-    // Add event listeners for Re and Contra announcement buttons
-    const reBtn = document.getElementById('re-btn');
-    const contraBtn = document.getElementById('contra-btn');
-    const gameReBtn = document.getElementById('game-re-btn');
-    const gameContraBtn = document.getElementById('game-contra-btn');
+    // Helper function to add announcement button event listeners
+    function addAnnouncementButtonListener(buttonId, announcementType) {
+        const button = document.getElementById(buttonId);
+        if (button) {
+            button.addEventListener('click', () => makeAnnouncement(announcementType));
+        }
+    }
     
-    if (reBtn) reBtn.addEventListener('click', () => makeAnnouncement('re'));
-    if (contraBtn) contraBtn.addEventListener('click', () => makeAnnouncement('contra'));
-    if (gameReBtn) gameReBtn.addEventListener('click', () => makeAnnouncement('re'));
-    if (gameContraBtn) gameContraBtn.addEventListener('click', () => makeAnnouncement('contra'));
+    // Add event listeners for all announcement buttons
+    const announcementButtons = [
+        { id: 're-btn', type: 're' },
+        { id: 'contra-btn', type: 'contra' },
+        { id: 'game-re-btn', type: 're' },
+        { id: 'game-contra-btn', type: 'contra' },
+        { id: 'no90-btn', type: 'no90' },
+        { id: 'no60-btn', type: 'no60' },
+        { id: 'no30-btn', type: 'no30' },
+        { id: 'black-btn', type: 'black' },
+        { id: 'game-no90-btn', type: 'no90' },
+        { id: 'game-no60-btn', type: 'no60' },
+        { id: 'game-no30-btn', type: 'no30' },
+        { id: 'game-black-btn', type: 'black' }
+    ];
     
-    // Add event listeners for additional announcement buttons
-    const no90Btn = document.getElementById('no90-btn');
-    const no60Btn = document.getElementById('no60-btn');
-    const no30Btn = document.getElementById('no30-btn');
-    const blackBtn = document.getElementById('black-btn');
-    const gameNo90Btn = document.getElementById('game-no90-btn');
-    const gameNo60Btn = document.getElementById('game-no60-btn');
-    const gameNo30Btn = document.getElementById('game-no30-btn');
-    const gameBlackBtn = document.getElementById('game-black-btn');
-    
-    if (no90Btn) no90Btn.addEventListener('click', () => makeAnnouncement('no90'));
-    if (no60Btn) no60Btn.addEventListener('click', () => makeAnnouncement('no60'));
-    if (no30Btn) no30Btn.addEventListener('click', () => makeAnnouncement('no30'));
-    if (blackBtn) blackBtn.addEventListener('click', () => makeAnnouncement('black'));
-    if (gameNo90Btn) gameNo90Btn.addEventListener('click', () => makeAnnouncement('no90'));
-    if (gameNo60Btn) gameNo60Btn.addEventListener('click', () => makeAnnouncement('no60'));
-    if (gameNo30Btn) gameNo30Btn.addEventListener('click', () => makeAnnouncement('no30'));
-    if (gameBlackBtn) gameBlackBtn.addEventListener('click', () => makeAnnouncement('black'));
+    announcementButtons.forEach(button => {
+        addAnnouncementButtonListener(button.id, button.type);
+    });
     
     // Add event listener for the Show Last Trick button
     const showLastTrickBtn = document.getElementById('show-last-trick-btn');
@@ -885,93 +883,35 @@ document.addEventListener('DOMContentLoaded', function() {
             gameAnnouncementArea.classList.toggle('hidden', !canAnnounce);
         }
         
-        // Update announcement status displays
-        const reStatus = document.getElementById('re-status');
-        const contraStatus = document.getElementById('contra-status');
-        const gameReStatus = document.getElementById('game-re-status');
-        const gameContraStatus = document.getElementById('game-contra-status');
-        
-        if (reStatus && gameState.announcements && gameState.announcements.re) {
-            reStatus.classList.remove('hidden');
-        } else if (reStatus) {
-            reStatus.classList.add('hidden');
+        // Helper function to update announcement status visibility
+        function updateAnnouncementStatus(elementId, isVisible) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.classList.toggle('hidden', !isVisible);
+            }
         }
         
-        if (contraStatus && gameState.announcements && gameState.announcements.contra) {
-            contraStatus.classList.remove('hidden');
-        } else if (contraStatus) {
-            contraStatus.classList.add('hidden');
-        }
+        // Update announcement status displays for all announcement types
+        const announcementStatuses = [
+            { id: 're-status', type: 're' },
+            { id: 'contra-status', type: 'contra' },
+            { id: 'game-re-status', type: 're' },
+            { id: 'game-contra-status', type: 'contra' },
+            { id: 'no90-status', type: 'no90' },
+            { id: 'no60-status', type: 'no60' },
+            { id: 'no30-status', type: 'no30' },
+            { id: 'black-status', type: 'black' },
+            { id: 'game-no90-status', type: 'no90' },
+            { id: 'game-no60-status', type: 'no60' },
+            { id: 'game-no30-status', type: 'no30' },
+            { id: 'game-black-status', type: 'black' }
+        ];
         
-        if (gameReStatus && gameState.announcements && gameState.announcements.re) {
-            gameReStatus.classList.remove('hidden');
-        } else if (gameReStatus) {
-            gameReStatus.classList.add('hidden');
-        }
-        
-        if (gameContraStatus && gameState.announcements && gameState.announcements.contra) {
-            gameContraStatus.classList.remove('hidden');
-        } else if (gameContraStatus) {
-            gameContraStatus.classList.add('hidden');
-        }
-        
-        // Update additional announcement status displays
-        const no90Status = document.getElementById('no90-status');
-        const no60Status = document.getElementById('no60-status');
-        const no30Status = document.getElementById('no30-status');
-        const blackStatus = document.getElementById('black-status');
-        const gameNo90Status = document.getElementById('game-no90-status');
-        const gameNo60Status = document.getElementById('game-no60-status');
-        const gameNo30Status = document.getElementById('game-no30-status');
-        const gameBlackStatus = document.getElementById('game-black-status');
-        
-        if (no90Status && gameState.announcements && gameState.announcements.no90) {
-            no90Status.classList.remove('hidden');
-        } else if (no90Status) {
-            no90Status.classList.add('hidden');
-        }
-        
-        if (no60Status && gameState.announcements && gameState.announcements.no60) {
-            no60Status.classList.remove('hidden');
-        } else if (no60Status) {
-            no60Status.classList.add('hidden');
-        }
-        
-        if (no30Status && gameState.announcements && gameState.announcements.no30) {
-            no30Status.classList.remove('hidden');
-        } else if (no30Status) {
-            no30Status.classList.add('hidden');
-        }
-        
-        if (blackStatus && gameState.announcements && gameState.announcements.black) {
-            blackStatus.classList.remove('hidden');
-        } else if (blackStatus) {
-            blackStatus.classList.add('hidden');
-        }
-        
-        if (gameNo90Status && gameState.announcements && gameState.announcements.no90) {
-            gameNo90Status.classList.remove('hidden');
-        } else if (gameNo90Status) {
-            gameNo90Status.classList.add('hidden');
-        }
-        
-        if (gameNo60Status && gameState.announcements && gameState.announcements.no60) {
-            gameNo60Status.classList.remove('hidden');
-        } else if (gameNo60Status) {
-            gameNo60Status.classList.add('hidden');
-        }
-        
-        if (gameNo30Status && gameState.announcements && gameState.announcements.no30) {
-            gameNo30Status.classList.remove('hidden');
-        } else if (gameNo30Status) {
-            gameNo30Status.classList.add('hidden');
-        }
-        
-        if (gameBlackStatus && gameState.announcements && gameState.announcements.black) {
-            gameBlackStatus.classList.remove('hidden');
-        } else if (gameBlackStatus) {
-            gameBlackStatus.classList.add('hidden');
-        }
+        // Update visibility for each announcement status element
+        announcementStatuses.forEach(status => {
+            const isVisible = gameState.announcements && gameState.announcements[status.type];
+            updateAnnouncementStatus(status.id, isVisible);
+        });
         
         // Update multiplier displays
         const multiplierEl = document.getElementById('multiplier');
@@ -1584,8 +1524,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 player2Cards.innerHTML = '';
                 player3Cards.innerHTML = '';
                 
-                // Display Player 1's cards
-                if (data.player1 && data.player1.length > 0) {
+                // Helper function to display AI player cards
+                function displayAIPlayerCards(playerIndex, cards, container) {
+                    if (!cards || cards.length === 0) return;
+                    
                     // Create a container for all cards
                     const cardsContainer = document.createElement('div');
                     
@@ -1602,185 +1544,60 @@ document.addEventListener('DOMContentLoaded', function() {
                     secondRowContainer.style.gap = '2px';
                     
                     // Calculate how many cards go in each row
-                    const halfLength = Math.ceil(data.player1.length / 2);
+                    const halfLength = Math.ceil(cards.length / 2);
                     
-                    // Add cards to the first row
-                    data.player1.slice(0, halfLength).forEach(card => {
-                        const cardElement = createCardElement(card, false);
-                        // Make the cards larger
-                        const cardImg = cardElement.querySelector('img');
-                        if (cardImg) {
-                            cardImg.style.width = '40px';
-                            cardImg.style.height = 'auto';
-                        }
-                        firstRowContainer.appendChild(cardElement);
-                    });
+                    // Function to add cards to a row
+                    const addCardsToRow = (rowContainer, cardsToAdd) => {
+                        cardsToAdd.forEach(card => {
+                            const cardElement = createCardElement(card, false);
+                            // Make the cards larger
+                            const cardImg = cardElement.querySelector('img');
+                            if (cardImg) {
+                                cardImg.style.width = '40px';
+                                cardImg.style.height = 'auto';
+                            }
+                            rowContainer.appendChild(cardElement);
+                        });
+                    };
                     
-                    // Add cards to the second row
-                    data.player1.slice(halfLength).forEach(card => {
-                        const cardElement = createCardElement(card, false);
-                        // Make the cards larger
-                        const cardImg = cardElement.querySelector('img');
-                        if (cardImg) {
-                            cardImg.style.width = '40px';
-                            cardImg.style.height = 'auto';
-                        }
-                        secondRowContainer.appendChild(cardElement);
-                    });
+                    // Add cards to both rows
+                    addCardsToRow(firstRowContainer, cards.slice(0, halfLength));
+                    addCardsToRow(secondRowContainer, cards.slice(halfLength));
                     
                     // Add both rows to the container
                     cardsContainer.appendChild(firstRowContainer);
                     cardsContainer.appendChild(secondRowContainer);
                     
-                    player1Cards.appendChild(cardsContainer);
+                    container.appendChild(cardsContainer);
                     
                     // Add team information
-                    const teamInfo = document.createElement('div');
-                    teamInfo.textContent = `Team: ${gameState.otherPlayers[0].team}`;
-                    teamInfo.style.marginTop = '5px';
-                    teamInfo.style.fontWeight = 'bold';
-                    
-                    // Add color coding for teams
-                    if (gameState.otherPlayers[0].team === 'RE') {
-                        teamInfo.style.color = '#2ecc71'; // Green for RE
-                    } else if (gameState.otherPlayers[0].team === 'KONTRA') {
-                        teamInfo.style.color = '#e74c3c'; // Red for KONTRA
+                    const otherPlayerIndex = playerIndex - 1; // Convert from 1-based to 0-based index for otherPlayers array
+                    if (gameState.otherPlayers && 
+                        gameState.otherPlayers[otherPlayerIndex] && 
+                        gameState.otherPlayers[otherPlayerIndex].team) {
+                        
+                        const team = gameState.otherPlayers[otherPlayerIndex].team;
+                        
+                        const teamInfo = document.createElement('div');
+                        teamInfo.textContent = `Team: ${team}`;
+                        teamInfo.style.marginTop = '5px';
+                        teamInfo.style.fontWeight = 'bold';
+                        
+                        // Add color coding for teams
+                        if (team === 'RE') {
+                            teamInfo.style.color = '#2ecc71'; // Green for RE
+                        } else if (team === 'KONTRA') {
+                            teamInfo.style.color = '#e74c3c'; // Red for KONTRA
+                        }
+                        
+                        container.appendChild(teamInfo);
                     }
-                    
-                    player1Cards.appendChild(teamInfo);
                 }
                 
-                // Display Player 2's cards
-                if (data.player2 && data.player2.length > 0) {
-                    // Create a container for all cards
-                    const cardsContainer = document.createElement('div');
-                    
-                    // Split cards into two rows
-                    const firstRowContainer = document.createElement('div');
-                    firstRowContainer.style.display = 'flex';
-                    firstRowContainer.style.flexDirection = 'row';
-                    firstRowContainer.style.gap = '2px';
-                    firstRowContainer.style.marginBottom = '4px';
-                    
-                    const secondRowContainer = document.createElement('div');
-                    secondRowContainer.style.display = 'flex';
-                    secondRowContainer.style.flexDirection = 'row';
-                    secondRowContainer.style.gap = '2px';
-                    
-                    // Calculate how many cards go in each row
-                    const halfLength = Math.ceil(data.player2.length / 2);
-                    
-                    // Add cards to the first row
-                    data.player2.slice(0, halfLength).forEach(card => {
-                        const cardElement = createCardElement(card, false);
-                        // Make the cards larger
-                        const cardImg = cardElement.querySelector('img');
-                        if (cardImg) {
-                            cardImg.style.width = '40px';
-                            cardImg.style.height = 'auto';
-                        }
-                        firstRowContainer.appendChild(cardElement);
-                    });
-                    
-                    // Add cards to the second row
-                    data.player2.slice(halfLength).forEach(card => {
-                        const cardElement = createCardElement(card, false);
-                        // Make the cards larger
-                        const cardImg = cardElement.querySelector('img');
-                        if (cardImg) {
-                            cardImg.style.width = '40px';
-                            cardImg.style.height = 'auto';
-                        }
-                        secondRowContainer.appendChild(cardElement);
-                    });
-                    
-                    // Add both rows to the container
-                    cardsContainer.appendChild(firstRowContainer);
-                    cardsContainer.appendChild(secondRowContainer);
-                    
-                    player2Cards.appendChild(cardsContainer);
-                    
-                    // Add team information
-                    const teamInfo = document.createElement('div');
-                    teamInfo.textContent = `Team: ${gameState.otherPlayers[1].team}`;
-                    teamInfo.style.marginTop = '5px';
-                    teamInfo.style.fontWeight = 'bold';
-                    
-                    // Add color coding for teams
-                    if (gameState.otherPlayers[1].team === 'RE') {
-                        teamInfo.style.color = '#2ecc71'; // Green for RE
-                    } else if (gameState.otherPlayers[1].team === 'KONTRA') {
-                        teamInfo.style.color = '#e74c3c'; // Red for KONTRA
-                    }
-                    
-                    player2Cards.appendChild(teamInfo);
-                }
-                
-                // Display Player 3's cards
-                if (data.player3 && data.player3.length > 0) {
-                    // Create a container for all cards
-                    const cardsContainer = document.createElement('div');
-                    
-                    // Split cards into two rows
-                    const firstRowContainer = document.createElement('div');
-                    firstRowContainer.style.display = 'flex';
-                    firstRowContainer.style.flexDirection = 'row';
-                    firstRowContainer.style.gap = '2px';
-                    firstRowContainer.style.marginBottom = '4px';
-                    
-                    const secondRowContainer = document.createElement('div');
-                    secondRowContainer.style.display = 'flex';
-                    secondRowContainer.style.flexDirection = 'row';
-                    secondRowContainer.style.gap = '2px';
-                    
-                    // Calculate how many cards go in each row
-                    const halfLength = Math.ceil(data.player3.length / 2);
-                    
-                    // Add cards to the first row
-                    data.player3.slice(0, halfLength).forEach(card => {
-                        const cardElement = createCardElement(card, false);
-                        // Make the cards larger
-                        const cardImg = cardElement.querySelector('img');
-                        if (cardImg) {
-                            cardImg.style.width = '40px';
-                            cardImg.style.height = 'auto';
-                        }
-                        firstRowContainer.appendChild(cardElement);
-                    });
-                    
-                    // Add cards to the second row
-                    data.player3.slice(halfLength).forEach(card => {
-                        const cardElement = createCardElement(card, false);
-                        // Make the cards larger
-                        const cardImg = cardElement.querySelector('img');
-                        if (cardImg) {
-                            cardImg.style.width = '40px';
-                            cardImg.style.height = 'auto';
-                        }
-                        secondRowContainer.appendChild(cardElement);
-                    });
-                    
-                    // Add both rows to the container
-                    cardsContainer.appendChild(firstRowContainer);
-                    cardsContainer.appendChild(secondRowContainer);
-                    
-                    player3Cards.appendChild(cardsContainer);
-                    
-                    // Add team information
-                    const teamInfo = document.createElement('div');
-                    teamInfo.textContent = `Team: ${gameState.otherPlayers[2].team}`;
-                    teamInfo.style.marginTop = '5px';
-                    teamInfo.style.fontWeight = 'bold';
-                    
-                    // Add color coding for teams
-                    if (gameState.otherPlayers[2].team === 'RE') {
-                        teamInfo.style.color = '#2ecc71'; // Green for RE
-                    } else if (gameState.otherPlayers[2].team === 'KONTRA') {
-                        teamInfo.style.color = '#e74c3c'; // Red for KONTRA
-                    }
-                    
-                    player3Cards.appendChild(teamInfo);
-                }
+                // Display cards for each AI player
+                displayAIPlayerCards(1, data.player1, player1Cards);
+                displayAIPlayerCards(2, data.player2, player2Cards);
+                displayAIPlayerCards(3, data.player3, player3Cards);
                 
                 // Change the button text to indicate that hands are revealed
                 const revealAIHandsBtn = document.getElementById('reveal-ai-hands-btn');
