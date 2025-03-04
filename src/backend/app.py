@@ -16,6 +16,8 @@ from flask_socketio import SocketIO, emit, join_room
 from src.backend.game.doppelkopf import DoppelkopfGame, Card, Suit, Rank, GameVariant, PlayerTeam
 from src.reinforcementlearning.agents.random_agent import select_random_action
 from src.reinforcementlearning.agents.rl_agent import RLAgent
+from src.backend.frontend_routes import register_frontend_routes
+from src.frontend.routes import Routes
 
 # Parse command line arguments
 def parse_arguments():
@@ -38,14 +40,8 @@ app = Flask(__name__,
 app.config['SECRET_KEY'] = os.urandom(24)
 socketio = SocketIO(app)
 
-# Socket.IO event handlers
-@socketio.on('join')
-def on_join(data):
-    """Join a game room."""
-    game_id = data.get('game_id')
-    if game_id:
-        print(f"Client joined game room: {game_id}")
-        join_room(game_id)
+# Register frontend routes and get the emit_progress_update function
+emit_progress_update = register_frontend_routes(app, socketio, MODEL_PATH)
 
 # Global game state (in a real application, you'd use a database or session management)
 games = {}
@@ -550,19 +546,8 @@ def ai_play_turn(game_id):
             # Emit a game state update to reflect the cleared trick
             socketio.emit('game_update', get_game_state(game_id), room=game_id)
 
-@app.route('/')
-def index():
-    """Render the main game page."""
-    return render_template('index.html')
 
-@app.route('/model_info', methods=['GET'])
-def model_info():
-    """Get information about the model being used."""
-    return jsonify({
-        'model_path': MODEL_PATH
-    })
-
-@app.route('/new_game', methods=['POST'])
+@app.route(Routes.NEW_GAME, methods=['POST'])
 def new_game():
     """Start a new game."""
     # Generate a unique game ID
@@ -587,13 +572,13 @@ def new_game():
     ai_agents = []
     
     # Send progress update to all clients
-    socketio.emit('progress_update', {'step': 'model_loading_start', 'message': 'Loading AI model...'})
+    emit_progress_update('model_loading_start', 'Loading AI model...')
     print(f"Sending progress update: model_loading_start")
     
     # First AI player (index 1) uses the RL model
     try:
         # Send detailed progress update
-        socketio.emit('progress_update', {'step': 'model_loading_details', 'message': f'Loading model from {MODEL_PATH}...'})
+        emit_progress_update('model_loading_details', f'Loading model from {MODEL_PATH}...')
         print(f"Sending progress update: model_loading_details")
         
         # Create the RL agent
@@ -625,7 +610,7 @@ def new_game():
                 model_loaded = True
                 print(f"Model loading completed successfully")
                 # Send success update
-                socketio.emit('progress_update', {'step': 'model_loading_success', 'message': 'Model loaded successfully!'})
+                emit_progress_update('model_loading_success', 'Model loaded successfully!')
                 print(f"Sending progress update: model_loading_success")
             except Exception as e:
                 print(f"ERROR IN MODEL LOADING: {str(e)}")
@@ -654,7 +639,7 @@ def new_game():
         print(f"Loaded RL model from {MODEL_PATH} for player 1")
         
         # Send success update
-        socketio.emit('progress_update', {'step': 'model_loading_success', 'message': 'Model loaded successfully!'})
+        emit_progress_update('model_loading_success', 'Model loaded successfully!')
         print(f"Sending progress update: model_loading_success")
     except Exception as e:
         error_msg = f"Error loading RL model: {e}"
@@ -663,22 +648,22 @@ def new_game():
         ai_agents.append(select_random_action)
         
         # Send error update
-        socketio.emit('progress_update', {'step': 'model_loading_error', 'message': error_msg}, room=game_id)
-        socketio.emit('progress_update', {'step': 'model_loading_fallback', 'message': 'Falling back to random agent...'}, room=game_id)
+        emit_progress_update('model_loading_error', error_msg, room=game_id)
+        emit_progress_update('model_loading_fallback', 'Falling back to random agent...', room=game_id)
     
     # Send progress update for next steps
-    socketio.emit('progress_update', {'step': 'setup_other_agents', 'message': 'Setting up other AI players...'}, room=game_id)
+    emit_progress_update('setup_other_agents', 'Setting up other AI players...', room=game_id)
     
     # Other AI players use random agent
     for i in range(2):
         ai_agents.append(select_random_action)
     
     # Send progress update for game preparation
-    socketio.emit('progress_update', {'step': 'game_preparation', 'message': 'Preparing game state...'})
+    emit_progress_update('game_preparation', 'Preparing game state...')
     print(f"Sending progress update: game_preparation")
     
     # Send final progress update when game is ready
-    socketio.emit('progress_update', {'step': 'game_ready', 'message': 'Game ready!'})
+    emit_progress_update('game_ready', 'Game ready!')
     print(f"Sending progress update: game_ready")
     
     # Initialize player variants dictionary
@@ -745,7 +730,7 @@ def new_game():
         'has_hochzeit': check_for_hochzeit(game.hands[0])
     })
 
-@app.route('/set_variant', methods=['POST'])
+@app.route(Routes.SET_VARIANT, methods=['POST'])
 def set_variant():
     """Set the game variant."""
     data = request.json
@@ -804,7 +789,7 @@ def set_variant():
         'game_variant': game.game_variant.name
     })
 
-@app.route('/play_card', methods=['POST'])
+@app.route(Routes.PLAY_CARD, methods=['POST'])
 def play_card():
     """Play a card."""
     data = request.json
@@ -1283,7 +1268,7 @@ def play_card():
     
     return jsonify(response_data)
 
-@app.route('/get_current_trick', methods=['GET'])
+@app.route(Routes.GET_CURRENT_TRICK, methods=['GET'])
 def get_current_trick():
     """Get the current trick data for debugging."""
     game_id = request.args.get('game_id')
@@ -1316,7 +1301,7 @@ def get_current_trick():
         'starting_player': starting_player
     })
 
-@app.route('/get_last_trick', methods=['GET'])
+@app.route(Routes.GET_LAST_TRICK, methods=['GET'])
 def get_last_trick():
     """Get the last completed trick."""
     game_id = request.args.get('game_id')
@@ -1336,7 +1321,7 @@ def get_last_trick():
         'trick_points': game_data['last_trick_points']
     })
 
-@app.route('/announce', methods=['POST'])
+@app.route(Routes.ANNOUNCE, methods=['POST'])
 def announce():
     """Announce Re, Contra, or additional announcements (No 90, No 60, No 30, Black)."""
     data = request.json
@@ -1434,7 +1419,7 @@ def announce():
         'multiplier': game_data.get('multiplier', 1)
     })
 
-@app.route('/get_ai_hands', methods=['GET'])
+@app.route(Routes.GET_AI_HANDS, methods=['GET'])
 def get_ai_hands():
     """Get the hands of AI players for debugging purposes."""
     game_id = request.args.get('game_id')
@@ -1453,7 +1438,7 @@ def get_ai_hands():
     
     return jsonify(ai_hands)
 
-@app.route('/get_scoreboard', methods=['GET'])
+@app.route(Routes.GET_SCOREBOARD, methods=['GET'])
 def get_scoreboard():
     """Get the current scoreboard."""
     return jsonify(scoreboard)
