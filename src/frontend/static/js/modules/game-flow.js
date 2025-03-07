@@ -316,10 +316,16 @@ export function initGameFlowEvents() {
     playAgainBtn.addEventListener('click', playAgain);
   }
   
-  // Add event listener for the new game button
+  // Add event listener for the new game buttons
   const newGameBtn = document.getElementById('new-game-btn');
+  const newGameSidebarBtn = document.getElementById('new-game-sidebar-btn');
+  
   if (newGameBtn) {
     newGameBtn.addEventListener('click', startNewGame);
+  }
+  
+  if (newGameSidebarBtn) {
+    newGameSidebarBtn.addEventListener('click', startNewGame);
   }
   
   // Add event listeners for variant selection buttons
