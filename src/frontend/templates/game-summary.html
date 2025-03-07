@@ -6,6 +6,52 @@
     <title>Doppelkopf - Game Summary</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <style>
+        .calculation-details table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        .calculation-details th, .calculation-details td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .calculation-details th {
+            background-color: #f2f2f2;
+        }
+        .calculation-details h4 {
+            margin-top: 20px;
+            margin-bottom: 10px;
+            color: #3498db;
+        }
+        .team-re td {
+            background-color: rgba(46, 204, 113, 0.1);
+        }
+        .team-kontra td {
+            background-color: rgba(231, 76, 60, 0.1);
+        }
+        .total {
+            margin-top: 15px;
+            font-weight: bold;
+            text-align: right;
+        }
+        .player-scores-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            margin-bottom: 20px;
+        }
+        .player-scores-table th, .player-scores-table td {
+            padding: 8px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+        .player-scores-table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -61,24 +107,26 @@
             <!-- Player scores scoreboard -->
             <div class="game-wins-scoreboard">
                 <h3>Player Scores</h3>
-                <div class="scoreboard-content">
-                    <div class="score-item">
-                        <span class="score-label">You:</span>
-                        <span id="game-over-player-0-score" class="score-value">{{ player_scores.0 }}</span>
-                    </div>
-                    <div class="score-item">
-                        <span class="score-label">Player 1:</span>
-                        <span id="game-over-player-1-score" class="score-value">{{ player_scores.1 }}</span>
-                    </div>
-                    <div class="score-item">
-                        <span class="score-label">Player 2:</span>
-                        <span id="game-over-player-2-score" class="score-value">{{ player_scores.2 }}</span>
-                    </div>
-                    <div class="score-item">
-                        <span class="score-label">Player 3:</span>
-                        <span id="game-over-player-3-score" class="score-value">{{ player_scores.3 }}</span>
-                    </div>
-                </div>
+                <table class="player-scores-table">
+                    <tr>
+                        <th>Player</th>
+                        <th>Team</th>
+                        <th>Points from RE</th>
+                        <th>Points from KONTRA</th>
+                        <th>Net Points</th>
+                        <th>Total Score</th>
+                    </tr>
+                    {% for player in player_achievement_scores %}
+                    <tr class="team-{{ player.team|lower }}">
+                        <td>{{ player.name }}</td>
+                        <td>{{ player.team }}</td>
+                        <td>{{ player.re_points }}</td>
+                        <td>{{ player.kontra_points }}</td>
+                        <td><strong>{{ player.points }}</strong></td>
+                        <td>{{ player.total }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
             </div>
             
             <a href="/" class="btn" id="play-again-btn">Play Again</a>
