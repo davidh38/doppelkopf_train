@@ -480,9 +480,11 @@ export function updateAnnouncementButtons() {
   
   // Show or hide the Hochzeit button based on whether the player has both Queens of Clubs
   if (gameHochzeitBtn) {
-    gameHochzeitBtn.style.display = gameState.hasHochzeit ? 'inline-block' : 'none';
-    gameHochzeitBtn.disabled = !gameState.canAnnounce;
-    gameHochzeitBtn.style.opacity = gameState.canAnnounce ? '1' : '0.5';
+    // Only show the button if the player has both Queens of Clubs AND can announce
+    const canAnnounceHochzeit = gameState.hasHochzeit && gameState.canAnnounce;
+    gameHochzeitBtn.style.display = canAnnounceHochzeit ? 'inline-block' : 'none';
+    gameHochzeitBtn.disabled = !canAnnounceHochzeit;
+    gameHochzeitBtn.style.opacity = canAnnounceHochzeit ? '1' : '0.5';
   }
   
   // Determine which announcement button to show based on the game state
