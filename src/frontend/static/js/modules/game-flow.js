@@ -290,16 +290,10 @@ export function playAgain() {
     gameOverScreen.classList.add('hidden');
   }
   
-  // Show the game setup screen
-  const gameSetupScreen = document.getElementById('game-setup');
-  if (gameSetupScreen) {
-    gameSetupScreen.classList.remove('hidden');
-  }
-  
   // Reset the game state
   resetGameState();
   
-  // Start a new game
+  // Start a new game directly
   startNewGame();
 }
 
