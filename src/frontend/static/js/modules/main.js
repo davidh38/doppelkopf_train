@@ -4,7 +4,7 @@
 import { initGameCore, gameState } from './game-core.js';
 import { initUI, showLastTrick, revealAIHands } from './game-ui.js';
 import { initCardEvents } from './game-cards.js';
-import { initGameFlowEvents } from './game-flow.js';
+import { initGameFlowEvents, startNewGame } from './game-flow.js';
 import { initSocket, initSocketEvents } from './game-socket.js';
 import { eventBus } from './event-bus.js';
 
@@ -30,6 +30,9 @@ function initGame() {
   eventBus.on('revealAIHands', revealAIHands);
   
   console.log("Game initialization complete");
+  
+  // Automatically start a new game
+  startNewGame();
 }
 
 // Initialize the game when the DOM is loaded
