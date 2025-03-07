@@ -27,6 +27,80 @@ def register_routes(app, socketio):
     def index():
         """Render the main game page."""
         return render_template('index.html')
+        
+    @app.route('/game-summary/<game_id>')
+    def game_summary(game_id):
+        """Render the game summary page."""
+        if game_id not in games:
+            return jsonify({'error': 'Game not found'}), 404
+            
+        game_data = games[game_id]
+        game = game_data['game']
+        
+        # Determine the winner team and color
+        winner_team = game.winner.name if hasattr(game, 'winner') else "Unknown"
+        winner_color = "#2ecc71" if winner_team == "RE" else "#e74c3c"
+        
+        # Get the game summary
+        game_summary = game_data.get('game_summary', '')
+        
+        # Get the scores
+        re_score = game.scores[0] if hasattr(game, 'scores') else 0
+        kontra_score = game.scores[1] if hasattr(game, 'scores') else 0
+        
+        # Get the announcements
+        re_announced = game_data.get('re_announced', False)
+        contra_announced = game_data.get('contra_announced', False)
+        no90_announced = game_data.get('no90_announced', False)
+        no60_announced = game_data.get('no60_announced', False)
+        no30_announced = game_data.get('no30_announced', False)
+        black_announced = game_data.get('black_announced', False)
+        
+        # Get the multiplier
+        multiplier = game_data.get('multiplier', 1)
+        
+        # Get the player scores
+        player_scores = scoreboard['player_scores']
+        
+        # Create a simple score calculation details HTML
+        score_calculation_details = f"""
+        <table>
+            <tr>
+                <th>Team</th>
+                <th>Points</th>
+                <th>Result</th>
+            </tr>
+            <tr class="team-re">
+                <td>RE</td>
+                <td>{re_score}</td>
+                <td>{"Win" if winner_team == "RE" else "Loss"}</td>
+            </tr>
+            <tr class="team-kontra">
+                <td>KONTRA</td>
+                <td>{kontra_score}</td>
+                <td>{"Win" if winner_team == "KONTRA" else "Loss"}</td>
+            </tr>
+        </table>
+        <div class="total">
+            Multiplier: {multiplier}x
+        </div>
+        """
+        
+        return render_template('game-summary.html',
+                              winner_team=winner_team,
+                              winner_color=winner_color,
+                              game_summary=game_summary,
+                              re_score=re_score,
+                              kontra_score=kontra_score,
+                              re_announced=re_announced,
+                              contra_announced=contra_announced,
+                              no90_announced=no90_announced,
+                              no60_announced=no60_announced,
+                              no30_announced=no30_announced,
+                              black_announced=black_announced,
+                              multiplier=multiplier,
+                              player_scores=player_scores,
+                              score_calculation_details=score_calculation_details)
 
     @app.route('/model_info', methods=['GET'])
     def model_info():
