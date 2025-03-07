@@ -451,13 +451,26 @@ export function updateAnnouncementButtons() {
   // Get the announcement areas
   const gameAnnouncementArea = document.getElementById('game-announcement-area');
   
+  // Log current announcement state for debugging
+  console.log("Updating announcement buttons with state:", {
+    playerTeam: gameState.playerTeam,
+    canAnnounceRe: gameState.canAnnounceRe,
+    canAnnounceContra: gameState.canAnnounceContra,
+    announcements: gameState.announcements
+  });
+  
   // Determine which announcement button to show based on the game state
   // For RE team
   if (gameState.playerTeam === 'RE') {
     
-    // Same for game Re button
+    // Show Re button for RE team
     if (gameReBtn) {
-      if (!gameState.announcements || !gameState.announcements.re) {
+      gameReBtn.style.display = 'inline-block';
+      
+      // Check if announcements object exists and is properly initialized
+      const hasAnnounced = gameState.announcements && gameState.announcements.re === true;
+      
+      if (!hasAnnounced) {
         gameReBtn.textContent = 'Re';
         gameReBtn.onclick = () => eventBus.emit('makeAnnouncement', 're');
         gameReBtn.disabled = !gameState.canAnnounceRe;
@@ -497,9 +510,14 @@ export function updateAnnouncementButtons() {
   // For KONTRA team
   else if (gameState.playerTeam === 'KONTRA') {
     
-    // Same for game Contra button
+    // Show Contra button for KONTRA team
     if (gameContraBtn) {
-      if (!gameState.announcements || !gameState.announcements.contra) {
+      gameContraBtn.style.display = 'inline-block';
+      
+      // Check if announcements object exists and is properly initialized
+      const hasAnnounced = gameState.announcements && gameState.announcements.contra === true;
+      
+      if (!hasAnnounced) {
         gameContraBtn.textContent = 'Contra';
         gameContraBtn.onclick = () => eventBus.emit('makeAnnouncement', 'contra');
         gameContraBtn.disabled = !gameState.canAnnounceContra;
@@ -535,6 +553,10 @@ export function updateAnnouncementButtons() {
     if (gameReBtn) {
       gameReBtn.style.display = 'none';
     }
+  } else {
+    // If player team is not yet determined, hide both buttons
+    if (gameReBtn) gameReBtn.style.display = 'none';
+    if (gameContraBtn) gameContraBtn.style.display = 'none';
   }
   
   // Show/hide the announcement areas based on whether announcements are allowed

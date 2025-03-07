@@ -50,12 +50,15 @@ export function updateGameState(data) {
   gameState.winner = data.winner || gameState.winner;
   gameState.legalActions = data.legal_actions || gameState.legalActions;
   gameState.otherPlayers = data.other_players || gameState.otherPlayers;
-  gameState.canAnnounceRe = data.can_announce_re || false;
-  gameState.canAnnounceContra = data.can_announce_contra || false;
-  gameState.canAnnounceNo90 = data.can_announce_no90 || false;
-  gameState.canAnnounceNo60 = data.can_announce_no60 || false;
-  gameState.canAnnounceNo30 = data.can_announce_no30 || false;
-  gameState.canAnnounceBlack = data.can_announce_black || false;
+  
+  // Explicitly update announcement capabilities with default values of false if not provided
+  gameState.canAnnounceRe = data.can_announce_re === true;
+  gameState.canAnnounceContra = data.can_announce_contra === true;
+  gameState.canAnnounceNo90 = data.can_announce_no90 === true;
+  gameState.canAnnounceNo60 = data.can_announce_no60 === true;
+  gameState.canAnnounceNo30 = data.can_announce_no30 === true;
+  gameState.canAnnounceBlack = data.can_announce_black === true;
+  
   gameState.multiplier = data.multiplier || gameState.multiplier;
   gameState.playerScores = data.player_scores || gameState.playerScores;
   gameState.revealed_teams = data.revealed_teams || gameState.revealed_teams;
@@ -63,6 +66,9 @@ export function updateGameState(data) {
   // Store player announcements if available
   if (data.announcements) {
     gameState.announcements = data.announcements;
+  } else if (gameState.announcements === null) {
+    // Initialize announcements object if it's null
+    gameState.announcements = {};
   }
   
   // Store player variant selections if available
@@ -79,6 +85,13 @@ export function updateGameState(data) {
   if (data.game_summary) {
     gameState.gameSummary = data.game_summary;
   }
+  
+  // Log announcement capabilities for debugging
+  console.log("Updated announcement capabilities:", {
+    canAnnounceRe: gameState.canAnnounceRe,
+    canAnnounceContra: gameState.canAnnounceContra,
+    playerTeam: gameState.playerTeam
+  });
   
   // Emit event that game state has been updated
   eventBus.emit('gameStateUpdated', gameState);
@@ -105,13 +118,16 @@ export function resetGameState() {
   gameState.winner = null;
   gameState.revealed_teams = [false, false, false, false];
   gameState.otherPlayers = [];
-  gameState.announcements = {};
+  
+  // Properly reset all announcement-related state
+  gameState.announcements = null; // Set to null instead of empty object to ensure proper initialization
   gameState.canAnnounceRe = false;
   gameState.canAnnounceContra = false;
   gameState.canAnnounceNo90 = false;
   gameState.canAnnounceNo60 = false;
   gameState.canAnnounceNo30 = false;
   gameState.canAnnounceBlack = false;
+  
   gameState.multiplier = 1;
   gameState.playerScores = [0, 0, 0, 0];
   gameState.playerVariants = {};
