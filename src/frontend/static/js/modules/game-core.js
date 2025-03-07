@@ -26,7 +26,9 @@ export const gameState = {
   canAnnounceBlack: false,
   multiplier: 1,
   playerScores: [0, 0, 0, 0],
-  playerVariants: {}
+  playerVariants: {},
+  hasHochzeit: false,
+  canAnnounce: false
 };
 
 // Store model path
@@ -58,6 +60,10 @@ export function updateGameState(data) {
   gameState.canAnnounceNo60 = data.can_announce_no60 === true;
   gameState.canAnnounceNo30 = data.can_announce_no30 === true;
   gameState.canAnnounceBlack = data.can_announce_black === true;
+  gameState.canAnnounce = data.can_announce === true;
+  
+  // Update hasHochzeit property
+  gameState.hasHochzeit = data.has_hochzeit === true;
   
   gameState.multiplier = data.multiplier || gameState.multiplier;
   gameState.playerScores = data.player_scores || gameState.playerScores;
@@ -127,6 +133,10 @@ export function resetGameState() {
   gameState.canAnnounceNo60 = false;
   gameState.canAnnounceNo30 = false;
   gameState.canAnnounceBlack = false;
+  gameState.canAnnounce = false;
+  
+  // Reset hochzeit state
+  gameState.hasHochzeit = false;
   
   gameState.multiplier = 1;
   gameState.playerScores = [0, 0, 0, 0];

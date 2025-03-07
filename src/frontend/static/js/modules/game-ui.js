@@ -456,8 +456,34 @@ export function updateAnnouncementButtons() {
     playerTeam: gameState.playerTeam,
     canAnnounceRe: gameState.canAnnounceRe,
     canAnnounceContra: gameState.canAnnounceContra,
+    hasHochzeit: gameState.hasHochzeit,
     announcements: gameState.announcements
   });
+  
+  // Create or get the Hochzeit button
+  let gameHochzeitBtn = document.getElementById('game-hochzeit-btn');
+  
+  // If the Hochzeit button doesn't exist, create it
+  if (!gameHochzeitBtn && gameState.hasHochzeit) {
+    gameHochzeitBtn = document.createElement('button');
+    gameHochzeitBtn.id = 'game-hochzeit-btn';
+    gameHochzeitBtn.className = 'btn announcement-btn';
+    gameHochzeitBtn.textContent = 'Hochzeit (Marriage)';
+    gameHochzeitBtn.onclick = () => eventBus.emit('makeAnnouncement', 'hochzeit');
+    
+    // Add the button to the announcement area
+    const announcementButtons = document.querySelector('.announcement-buttons');
+    if (announcementButtons) {
+      announcementButtons.appendChild(gameHochzeitBtn);
+    }
+  }
+  
+  // Show or hide the Hochzeit button based on whether the player has both Queens of Clubs
+  if (gameHochzeitBtn) {
+    gameHochzeitBtn.style.display = gameState.hasHochzeit ? 'inline-block' : 'none';
+    gameHochzeitBtn.disabled = !gameState.canAnnounce;
+    gameHochzeitBtn.style.opacity = gameState.canAnnounce ? '1' : '0.5';
+  }
   
   // Determine which announcement button to show based on the game state
   // For RE team
@@ -564,7 +590,8 @@ export function updateAnnouncementButtons() {
     const canAnnounce = (gameState.playerTeam === 'RE' && (gameState.canAnnounceRe || gameState.canAnnounceNo90 || 
                         gameState.canAnnounceNo60 || gameState.canAnnounceNo30 || gameState.canAnnounceBlack)) ||
                        (gameState.playerTeam === 'KONTRA' && (gameState.canAnnounceContra || gameState.canAnnounceNo90 || 
-                        gameState.canAnnounceNo60 || gameState.canAnnounceNo30 || gameState.canAnnounceBlack));
+                        gameState.canAnnounceNo60 || gameState.canAnnounceNo30 || gameState.canAnnounceBlack)) ||
+                       gameState.hasHochzeit;
     
     gameAnnouncementArea.classList.toggle('hidden', !canAnnounce);
   }

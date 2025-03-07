@@ -362,11 +362,11 @@ class DoppelkopfGame:
     
     def announce(self, player_idx: int, announcement: str) -> bool:
         """
-        Make an announcement (Re or Contra).
+        Make an announcement (Re, Contra, or Hochzeit).
         
         Args:
             player_idx: Index of the player
-            announcement: The announcement to make ('re' or 'contra')
+            announcement: The announcement to make ('re', 'contra', or 'hochzeit')
             
         Returns:
             True if the announcement was legal and executed, False otherwise
@@ -377,6 +377,15 @@ class DoppelkopfGame:
             
         # Cannot announce if not allowed
         if not self.can_announce:
+            return False
+        
+        # Handle hochzeit announcement
+        if announcement == 'hochzeit':
+            # Check if the player has both Queens of Clubs
+            if self.has_hochzeit(player_idx):
+                # Set the game variant to Hochzeit
+                self.game_variant = GameVariant.HOCHZEIT
+                return True
             return False
         
         # Check if the player is in the appropriate team for the announcement
