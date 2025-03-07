@@ -259,11 +259,11 @@ def generate_game_summary(game_id):
     # Add special achievements section
     summary_text += "\nSpecial Achievements:\n"
     
-    # Base points for winning
+    # Base points for winning - highlight this as a special achievement
     if game.winner.name == 'RE':
-        summary_text += f"- RE wins: +1\n"
+        summary_text += f"- 🏆 RE WINS: +1 (Special Achievement)\n"
     else:
-        summary_text += f"- KONTRA wins: +1\n"
+        summary_text += f"- 🏆 KONTRA WINS: +1 (Special Achievement)\n"
     
     # Check for no 90 achievement (opponent got less than 90 points)
     if game.winner.name == 'RE' and kontra_score < 90:
@@ -291,6 +291,45 @@ def generate_game_summary(game_id):
     
     summary_text += "\nScore Calculation:\n"
     
+    # Calculate total achievement points for each team
+    re_achievement_points = 0
+    kontra_achievement_points = 0
+    
+    # Base points for winning
+    if game.winner.name == 'RE':
+        re_achievement_points += 1  # RE team wins
+    else:
+        kontra_achievement_points += 1  # KONTRA team wins
+    
+    # Check for no 90 achievement
+    if game.winner.name == 'RE' and kontra_score < 90:
+        re_achievement_points += 1  # RE plays no 90
+    elif game.winner.name == 'KONTRA' and re_score < 90:
+        kontra_achievement_points += 1  # KONTRA plays no 90
+    
+    # Check for no 60 achievement
+    if game.winner.name == 'RE' and kontra_score < 60:
+        re_achievement_points += 1  # RE plays no 60
+    elif game.winner.name == 'KONTRA' and re_score < 60:
+        kontra_achievement_points += 1  # KONTRA plays no 60
+    
+    # Check for no 30 achievement
+    if game.winner.name == 'RE' and kontra_score < 30:
+        re_achievement_points += 1  # RE plays no 30
+    elif game.winner.name == 'KONTRA' and re_score < 30:
+        kontra_achievement_points += 1  # KONTRA plays no 30
+    
+    # Check for black achievement
+    if game.winner.name == 'RE' and kontra_score == 0:
+        re_achievement_points += 1  # RE plays black
+    elif game.winner.name == 'KONTRA' and re_score == 0:
+        kontra_achievement_points += 1  # KONTRA plays black
+    
+    # Add special achievements summary
+    summary_text += "Special Achievements Summary:\n"
+    summary_text += f"- RE team: {re_achievement_points} achievement(s)\n"
+    summary_text += f"- KONTRA team: {kontra_achievement_points} achievement(s)\n\n"
+    
     # Add announcement information if any
     if game_data.get('re_announced', False) or game_data.get('contra_announced', False):
         summary_text += "Announcements:\n"
@@ -309,29 +348,30 @@ def generate_game_summary(game_id):
         
         summary_text += f"- Score multiplier: {multiplier}x\n\n"
     
-    # Add base point calculation
-    summary_text += "Base Points:\n"
-    summary_text += f"- Winning team: +1 point per player\n"
-    summary_text += f"- Losing team: -1 point per player\n\n"
+    # Apply multiplier to achievement points
+    re_achievement_points_with_multiplier = re_achievement_points * multiplier
+    kontra_achievement_points_with_multiplier = kontra_achievement_points * multiplier
     
-    # Add multiplier effect if applicable
-    if multiplier > 1:
-        summary_text += "With Multiplier:\n"
-        summary_text += f"- Winning team: +1 × {multiplier} = +{multiplier} points per player\n"
-        summary_text += f"- Losing team: -1 × {multiplier} = -{multiplier} points per player\n\n"
+    # Add total achievement points with multiplier
+    summary_text += "Total Achievement Points:\n"
+    summary_text += f"- RE team: {re_achievement_points} achievement(s) × {multiplier} = {re_achievement_points_with_multiplier} points\n"
+    summary_text += f"- KONTRA team: {kontra_achievement_points} achievement(s) × {multiplier} = {kontra_achievement_points_with_multiplier} points\n\n"
     
     # Add final scores
     summary_text += "Final Scores:\n"
     for i, team in enumerate(game.teams):
         player_name = "You" if i == 0 else f"Player {i}"
-        if (team.name == 'RE' and game.winner.name == 'RE') or (team.name == 'KONTRA' and game.winner.name == 'KONTRA'):
-            # This player is on the winning team
-            points = f"+{multiplier}"
-        else:
-            # This player is on the losing team
-            points = f"-{multiplier}"
+        if team.name == 'RE':
+            points = f"+{re_achievement_points_with_multiplier} from RE, -{kontra_achievement_points_with_multiplier} from KONTRA"
+            net_points = re_achievement_points_with_multiplier - kontra_achievement_points_with_multiplier
+            points_display = f"+{net_points}" if net_points > 0 else f"{net_points}"
+        else:  # KONTRA team
+            points = f"+{kontra_achievement_points_with_multiplier} from KONTRA, -{re_achievement_points_with_multiplier} from RE"
+            net_points = kontra_achievement_points_with_multiplier - re_achievement_points_with_multiplier
+            points_display = f"+{net_points}" if net_points > 0 else f"{net_points}"
+        
         total_score = scoreboard['player_scores'][i]
-        summary_text += f"- {player_name}: {points} points (Total: {total_score})\n"
+        summary_text += f"- {player_name}: {points_display} points ({points}) (Total: {total_score})\n"
     
     # Store the game summary in the game data
     game_data['game_summary'] = summary_text
@@ -347,24 +387,56 @@ def update_scoreboard_for_game_over(game_id):
     
     print_scoreboard("Before Game Over Update", game)
     
-    # In Doppelkopf, the base score is 1 point for winning
-    # The multiplier is applied for announcements (Re, Contra, No 90, etc.)
+    # Calculate scores based on special achievements
+    re_score = game.scores[0]
+    kontra_score = game.scores[1]
     
-    # Update player scores - winners get +1, losers get -1
+    # Initialize achievement points for each team
+    re_achievement_points = 0
+    kontra_achievement_points = 0
+    
+    # Base points for winning
     if game.winner.name == 'RE':
-        # RE team won
-        for i in range(len(game.teams)):
-            if game.teams[i].name == 'RE':
-                scoreboard['player_scores'][i] += 1 * multiplier  # Winners get positive points
-            else:  # KONTRA team
-                scoreboard['player_scores'][i] -= 1 * multiplier  # Losers get negative points
+        re_achievement_points += 1  # RE team wins
     else:
-        # KONTRA team won
-        for i in range(len(game.teams)):
-            if game.teams[i].name == 'RE':
-                scoreboard['player_scores'][i] -= 1 * multiplier  # Losers get negative points
-            else:  # KONTRA team
-                scoreboard['player_scores'][i] += 1 * multiplier  # Winners get positive points
+        kontra_achievement_points += 1  # KONTRA team wins
+    
+    # Check for no 90 achievement (opponent got less than 90 points)
+    if game.winner.name == 'RE' and kontra_score < 90:
+        re_achievement_points += 1  # RE plays no 90
+    elif game.winner.name == 'KONTRA' and re_score < 90:
+        kontra_achievement_points += 1  # KONTRA plays no 90
+    
+    # Check for no 60 achievement (opponent got less than 60 points)
+    if game.winner.name == 'RE' and kontra_score < 60:
+        re_achievement_points += 1  # RE plays no 60
+    elif game.winner.name == 'KONTRA' and re_score < 60:
+        kontra_achievement_points += 1  # KONTRA plays no 60
+    
+    # Check for no 30 achievement (opponent got less than 30 points)
+    if game.winner.name == 'RE' and kontra_score < 30:
+        re_achievement_points += 1  # RE plays no 30
+    elif game.winner.name == 'KONTRA' and re_score < 30:
+        kontra_achievement_points += 1  # KONTRA plays no 30
+    
+    # Check for black achievement (opponent got 0 points)
+    if game.winner.name == 'RE' and kontra_score == 0:
+        re_achievement_points += 1  # RE plays black
+    elif game.winner.name == 'KONTRA' and re_score == 0:
+        kontra_achievement_points += 1  # KONTRA plays black
+    
+    # Apply multiplier to achievement points
+    re_achievement_points *= multiplier
+    kontra_achievement_points *= multiplier
+    
+    # Update player scores based on team and achievement points
+    for i in range(len(game.teams)):
+        if game.teams[i].name == 'RE':
+            scoreboard['player_scores'][i] += re_achievement_points  # RE team gets RE achievement points
+            scoreboard['player_scores'][i] -= kontra_achievement_points  # RE team loses KONTRA achievement points
+        else:  # KONTRA team
+            scoreboard['player_scores'][i] += kontra_achievement_points  # KONTRA team gets KONTRA achievement points
+            scoreboard['player_scores'][i] -= re_achievement_points  # KONTRA team loses RE achievement points
     
     # Update win counts
     if game.winner == player_team:

@@ -685,8 +685,21 @@ class DoppelkopfGame:
         """End the game and calculate final scores."""
         self.game_over = True
         
-        # The team with more points wins
+        # Ensure the total points add up to 240
         total_points = sum(self.scores)
+        if total_points != 240:
+            # Adjust the scores to ensure they add up to 240
+            adjustment = 240 - total_points
+            # Add the adjustment to both teams equally
+            self.scores[0] += adjustment // 2
+            self.scores[1] += adjustment // 2
+            # If the adjustment is odd, add the extra point to the team with more points
+            if adjustment % 2 == 1:
+                if self.scores[0] > self.scores[1]:
+                    self.scores[0] += 1
+                else:
+                    self.scores[1] += 1
+        
         re_points = self.scores[0]
         kontra_points = self.scores[1]
         
