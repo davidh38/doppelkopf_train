@@ -9,6 +9,35 @@ This project implements a comprehensive Doppelkopf card game system with multipl
 - A web-based game interface for playing against AI opponents
 - Special scenario scripts for experiencing specific game situations
 
+** Game Flow and API Routes
+
+The frontend communicates with the backend through the following API routes:
+
+*** Game Initialization and Setup
+- =/new_game= (POST): Creates a new game and returns the initial game state
+- =/set_variant= (POST): Sets the game variant (Normal, Hochzeit, Queen Solo, etc.)
+- =/model_info= (GET): Gets information about the AI model being used
+
+*** Game Play
+- =/play_card= (POST): Plays a card and updates the game state
+- =/announce= (POST): Makes an announcement (Re, Contra, Hochzeit, etc.)
+- =/get_current_trick= (GET): Gets information about the current trick
+- =/get_last_trick= (GET): Gets information about the last completed trick
+- =/get_ai_hands= (GET): Gets the hands of AI players (for debugging)
+- =/get_scoreboard= (GET): Gets the current scoreboard
+
+*** Game Completion
+- =/game-summary/<game_id>= (GET): Shows the game summary page after a game is completed
+
+The game flow follows these steps:
+1. Player starts a new game (=/new_game=)
+2. Player selects a game variant (=/set_variant=)
+3. Players take turns playing cards (=/play_card=)
+4. Players can make announcements (=/announce=)
+5. When the game is over, the summary is displayed (=/game-summary/<game_id>=)
+
+Socket.IO is used for real-time updates during the game, particularly for AI player moves and trick completion events.
+
 ** Overview
 
 Doppelkopf is a trick-taking card game for four players, played with a double deck of 48 cards (two copies of each card from 9 to Ace in four suits). Players are divided into two teams, typically determined by who holds the Queens of Clubs. The goal is to score more points than the opposing team by winning tricks containing valuable cards.
@@ -228,6 +257,7 @@ The project is organized into a modular structure with clear separation of conce
 - =src/reinforcementlearning/play.py=: Script to play Doppelkopf against a trained AI in the command line
 - =src/reinforcementlearning/agents/=: Implementation of different agents (RL agent and random agent)
 - =src/reinforcementlearning/training/=: Training process for the RL agent
+
 
 *** Other Components
 - =final_card_game.py=: Script for running final card scenarios
