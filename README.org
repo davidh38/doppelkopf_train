@@ -9,34 +9,23 @@ This project implements a comprehensive Doppelkopf card game system with multipl
 - A web-based game interface for playing against AI opponents
 - Special scenario scripts for experiencing specific game situations
 
-** Game Flow and API Routes
+** Game Flow
 
-The frontend communicates with the backend through the following API routes:
+The game follows these steps in order:
 
-*** Game Initialization and Setup
-- =/new_game= (POST): Creates a new game and returns the initial game state
-- =/set_variant= (POST): Sets the game variant (Normal, Hochzeit, Queen Solo, etc.)
-- =/model_info= (GET): Gets information about the AI model being used
+1. *Start a New Game*: Click the "New Game" button to create a new game session
+2. *Select a Game Variant*: Choose from Normal, Hochzeit (Marriage), Queen Solo, Jack Solo, or Fleshless
+3. *Play Cards*: Take turns playing cards by clicking on them when it's your turn
+4. *Make Announcements (Optional)*: 
+   - If you're on the Re team (have Queens of Clubs), you can announce "Re"
+   - If you're on the Kontra team (no Queens of Clubs), you can announce "Contra"
+   - If you have both Queens of Clubs, you can announce "Hochzeit" (Marriage)
+   - Announcements must be made before the fifth card is played
+5. *Complete Tricks*: The highest card in each trick wins and collects points
+6. *Game Ends*: After all cards are played, the team with more points wins
+7. *View Summary*: See the final score and game statistics
 
-*** Game Play
-- =/play_card= (POST): Plays a card and updates the game state
-- =/announce= (POST): Makes an announcement (Re, Contra, Hochzeit, etc.)
-- =/get_current_trick= (GET): Gets information about the current trick
-- =/get_last_trick= (GET): Gets information about the last completed trick
-- =/get_ai_hands= (GET): Gets the hands of AI players (for debugging)
-- =/get_scoreboard= (GET): Gets the current scoreboard
-
-*** Game Completion
-- =/game-summary/<game_id>= (GET): Shows the game summary page after a game is completed
-
-The game flow follows these steps:
-1. Player starts a new game (=/new_game=)
-2. Player selects a game variant (=/set_variant=)
-3. Players take turns playing cards (=/play_card=)
-4. Players can make announcements (=/announce=)
-5. When the game is over, the summary is displayed (=/game-summary/<game_id>=)
-
-Socket.IO is used for real-time updates during the game, particularly for AI player moves and trick completion events.
+Socket.IO provides real-time updates during gameplay, showing AI player moves and trick completions automatically.
 
 ** Overview
 
