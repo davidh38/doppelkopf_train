@@ -44,9 +44,32 @@ export function isTrumpCard(card) {
  * @returns {HTMLElement} - Card element
  */
 export function createCardElement(card, isPlayable) {
+  console.log(`Creating card element for ${card.id}, isPlayable: ${isPlayable}`);
+  
   const cardContainer = document.createElement('div');
   cardContainer.className = 'card-container';
   cardContainer.dataset.cardId = card.id;
+  
+  // Add playable class to the container if the card is playable
+  if (isPlayable) {
+    cardContainer.classList.add('playable');
+    
+    // Add a click event listener to the container
+    cardContainer.addEventListener('click', () => {
+      console.log('Card clicked:', card.id);
+      eventBus.emit('cardPlayed', card.id);
+    });
+    
+    // Add a style to indicate it's clickable
+    cardContainer.style.cursor = 'pointer';
+    cardContainer.style.border = '2px solid green';
+    cardContainer.style.borderRadius = '5px';
+    cardContainer.style.boxShadow = '0 0 10px rgba(0, 255, 0, 0.5)';
+  } else {
+    // Add a style to indicate it's not clickable
+    cardContainer.style.opacity = '0.7';
+    cardContainer.style.filter = 'grayscale(50%)';
+  }
   
   const cardElement = document.createElement('img');
   cardElement.className = 'card';
@@ -75,15 +98,20 @@ export function createCardElement(card, isPlayable) {
   cardElement.src = cardSrc;
   cardElement.alt = `${card.rank} of ${card.suit}`;
   
-  cardContainer.appendChild(cardElement);
-  
-  // Add click event for playable cards
+  // Add a click event listener to the card image as well
   if (isPlayable) {
-    cardContainer.classList.add('playable');
-    cardContainer.addEventListener('click', () => {
+    cardElement.addEventListener('click', () => {
+      console.log('Card image clicked:', card.id);
       eventBus.emit('cardPlayed', card.id);
     });
+    
+    // Make sure the card is fully visible
+    cardElement.style.opacity = '1';
+    cardElement.style.filter = 'none';
+    cardElement.style.cursor = 'pointer';
   }
+  
+  cardContainer.appendChild(cardElement);
   
   return cardContainer;
 }
@@ -146,10 +174,39 @@ export function sortCards(cards) {
 export function playCard(cardId) {
   console.log('Playing card:', cardId);
   
+  // Debug output to help diagnose issues
+  console.log("Current game state:", {
+    currentPlayer: gameState.currentPlayer,
+    hand: gameState.hand,
+    legalActions: gameState.legalActions
+  });
+  
   // Find the card in the hand
   const card = gameState.hand.find(c => c.id === cardId);
   if (!card) {
     console.error("Card not found in hand:", cardId);
+    return;
+  }
+  
+  // Check if the card is in the legal actions
+  const isPlayable = gameState.currentPlayer === 0 && 
+                     gameState.legalActions && 
+                     gameState.legalActions.some(legalCard => legalCard.id === cardId);
+  
+  console.log(`Card ${cardId} isPlayable:`, isPlayable);
+  
+  if (!isPlayable) {
+    console.error("Card is not playable:", cardId);
+    
+    // Add a visual feedback for non-playable cards
+    const cardElement = document.querySelector(`.card-container[data-card-id="${cardId}"]`);
+    if (cardElement) {
+      cardElement.style.border = "2px solid red";
+      setTimeout(() => {
+        cardElement.style.border = "";
+      }, 500);
+    }
+    
     return;
   }
   

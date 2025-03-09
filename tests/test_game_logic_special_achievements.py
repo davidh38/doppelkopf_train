@@ -9,7 +9,14 @@ import sys
 # Add the project root directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 
-from src.backend.game.doppelkopf import DoppelkopfGame, Card, Suit, Rank, GameVariant, PlayerTeam
+from src.backend.game.doppelkopf import (
+    create_game_state, create_card, 
+    SUIT_CLUBS, SUIT_SPADES, SUIT_HEARTS, SUIT_DIAMONDS,
+    RANK_NINE, RANK_JACK, RANK_QUEEN, RANK_KING, RANK_TEN, RANK_ACE,
+    TEAM_RE, TEAM_KONTRA, TEAM_UNKNOWN,
+    VARIANT_NORMAL, VARIANT_HOCHZEIT, VARIANT_QUEEN_SOLO, VARIANT_JACK_SOLO, VARIANT_FLESHLESS,
+    get_card_order_value, complete_trick
+)
 
 def test_game_logic_special_achievements():
     """
@@ -20,58 +27,55 @@ def test_game_logic_special_achievements():
     print("\n=== Testing Game Logic for Special Achievements ===")
     
     # Create a new game
-    game = DoppelkopfGame()
-    
-    # Reset the game
-    game.reset()
+    game = create_game_state()
     
     # Set up teams manually
-    game.teams = [PlayerTeam.RE, PlayerTeam.KONTRA, PlayerTeam.RE, PlayerTeam.KONTRA]
+    game['teams'] = [TEAM_RE, TEAM_KONTRA, TEAM_RE, TEAM_KONTRA]
     
     # Set the game variant to normal
-    game.game_variant = GameVariant.NORMAL
-    game.variant_selection_phase = False
+    game['game_variant'] = VARIANT_NORMAL
+    game['variant_selection_phase'] = False
     
     # Initialize player scores
-    game.scores = [0, 0]  # [RE score, KONTRA score]
-    game.player_scores = [0, 0, 0, 0]  # Individual player scores
+    game['scores'] = [0, 0]  # [RE score, KONTRA score]
+    game['player_scores'] = [0, 0, 0, 0]  # Individual player scores
     
     # Test 1: Diamond ace capture
     print("\nTest 1: Diamond ace capture")
     
     # Create a trick where KONTRA player 1 captures a diamond ace from RE player 0
-    game.current_trick = [
-        Card(Suit.DIAMONDS, Rank.ACE, False),  # Player 0 (RE) plays diamond ace
-        Card(Suit.DIAMONDS, Rank.JACK, False),  # Player 1 (KONTRA) plays diamond jack (trump)
-        Card(Suit.HEARTS, Rank.NINE, False),    # Player 2 (RE) plays heart nine
-        Card(Suit.CLUBS, Rank.NINE, False)      # Player 3 (KONTRA) plays club nine
+    game['current_trick'] = [
+        create_card(SUIT_DIAMONDS, RANK_ACE, False),  # Player 0 (RE) plays diamond ace
+        create_card(SUIT_DIAMONDS, RANK_JACK, False),  # Player 1 (KONTRA) plays diamond jack (trump)
+        create_card(SUIT_HEARTS, RANK_NINE, False),    # Player 2 (RE) plays heart nine
+        create_card(SUIT_CLUBS, RANK_NINE, False)      # Player 3 (KONTRA) plays club nine
     ]
     
     # Set the current player to the next player after the trick
-    game.current_player = 0  # Start with player 0
+    game['current_player'] = 0  # Start with player 0
     
     # Record the initial scores
-    initial_scores = game.scores.copy()
-    initial_player_scores = game.player_scores.copy()
+    initial_scores = game['scores'].copy()
+    initial_player_scores = game['player_scores'].copy()
     
     # Determine the trick winner (should be player 1 with the diamond jack)
     highest_card_idx = 0
-    highest_card_value = game.current_trick[0].get_order_value(game.game_variant)
+    highest_card_value = get_card_order_value(game['current_trick'][0], game['game_variant'])
     
-    for i in range(1, len(game.current_trick)):
-        card = game.current_trick[i]
-        card_value = card.get_order_value(game.game_variant)
+    for i in range(1, len(game['current_trick'])):
+        card = game['current_trick'][i]
+        card_value = get_card_order_value(card, game['game_variant'])
         if card_value > highest_card_value:
             highest_card_idx = i
             highest_card_value = card_value
     
     # The winner is the player who played the highest card
-    game.trick_winner = (game.current_player + highest_card_idx) % game.num_players
+    game['trick_winner'] = (game['current_player'] + highest_card_idx) % game['num_players']
     
-    print(f"Trick winner: Player {game.trick_winner}")
+    print(f"Trick winner: Player {game['trick_winner']}")
     
     # Complete the trick
-    game._complete_trick()
+    complete_trick(game)
     
     # Calculate the expected scores
     # The trick contains:
@@ -86,73 +90,73 @@ def test_game_logic_special_achievements():
     
     # Check if the scores were updated correctly
     print(f"Initial team scores: {initial_scores}")
-    print(f"Final team scores: {game.scores}")
-    print(f"Difference: {[game.scores[i] - initial_scores[i] for i in range(2)]}")
+    print(f"Final team scores: {game['scores']}")
+    print(f"Difference: {[game['scores'][i] - initial_scores[i] for i in range(2)]}")
     
     print(f"Initial player scores: {initial_player_scores}")
-    print(f"Final player scores: {game.player_scores}")
-    print(f"Difference: {[game.player_scores[i] - initial_player_scores[i] for i in range(4)]}")
+    print(f"Final player scores: {game['player_scores']}")
+    print(f"Difference: {[game['player_scores'][i] - initial_player_scores[i] for i in range(4)]}")
     
     # Get the winner's team
-    winner_team_idx = 0 if game.teams[game.trick_winner] == PlayerTeam.RE else 1
+    winner_team_idx = 0 if game['teams'][game['trick_winner']] == TEAM_RE else 1
     loser_team_idx = 1 - winner_team_idx
     
     # Check if the winner's team got the trick points plus the bonus point
-    assert game.scores[winner_team_idx] - initial_scores[winner_team_idx] == expected_trick_points + expected_bonus_points, \
-        f"{game.teams[game.trick_winner].name} team should have gained {expected_trick_points + expected_bonus_points} points, but gained {game.scores[winner_team_idx] - initial_scores[winner_team_idx]}"
+    assert game['scores'][winner_team_idx] - initial_scores[winner_team_idx] == expected_trick_points + expected_bonus_points, \
+        f"{'RE' if game['teams'][game['trick_winner']] == TEAM_RE else 'KONTRA'} team should have gained {expected_trick_points + expected_bonus_points} points, but gained {game['scores'][winner_team_idx] - initial_scores[winner_team_idx]}"
     
     # Check if the loser's team lost the bonus point
-    assert game.scores[loser_team_idx] - initial_scores[loser_team_idx] == -expected_bonus_points, \
-        f"{game.teams[0 if loser_team_idx == 0 else 2].name} team should have lost {expected_bonus_points} points, but lost {initial_scores[loser_team_idx] - game.scores[loser_team_idx]}"
+    assert game['scores'][loser_team_idx] - initial_scores[loser_team_idx] == -expected_bonus_points, \
+        f"{'RE' if loser_team_idx == 0 else 'KONTRA'} team should have lost {expected_bonus_points} points, but lost {initial_scores[loser_team_idx] - game['scores'][loser_team_idx]}"
     
     # Check if the trick winner got the trick points
-    assert game.player_scores[game.trick_winner] - initial_player_scores[game.trick_winner] >= expected_trick_points, \
-        f"Player {game.trick_winner} should have gained at least {expected_trick_points} points, but gained {game.player_scores[game.trick_winner] - initial_player_scores[game.trick_winner]}"
+    assert game['player_scores'][game['trick_winner']] - initial_player_scores[game['trick_winner']] >= expected_trick_points, \
+        f"Player {game['trick_winner']} should have gained at least {expected_trick_points} points, but gained {game['player_scores'][game['trick_winner']] - initial_player_scores[game['trick_winner']]}"
     
     # Check if all players on the winner's team got the bonus point
-    winner_team = game.teams[game.trick_winner]
-    winner_team_players = [i for i, team in enumerate(game.teams) if team == winner_team]
+    winner_team = game['teams'][game['trick_winner']]
+    winner_team_players = [i for i, team in enumerate(game['teams']) if team == winner_team]
     
     # Calculate bonus points for each player on the winner's team
-    winner_team_bonus = [game.player_scores[i] - initial_player_scores[i] - (expected_trick_points if i == game.trick_winner else 0) for i in winner_team_players]
-    print(f"{winner_team.name} team player bonus points: {winner_team_bonus}")
+    winner_team_bonus = [game['player_scores'][i] - initial_player_scores[i] - (expected_trick_points if i == game['trick_winner'] else 0) for i in winner_team_players]
+    print(f"{'RE' if winner_team == TEAM_RE else 'KONTRA'} team player bonus points: {winner_team_bonus}")
     
     # Test 2: 40+ point trick
     print("\nTest 2: 40+ point trick")
     
     # Record the scores before the trick
-    initial_scores = game.scores.copy()
-    initial_player_scores = game.player_scores.copy()
+    initial_scores = game['scores'].copy()
+    initial_player_scores = game['player_scores'].copy()
     
     # Create a trick with 40+ points
-    game.current_trick = [
-        Card(Suit.HEARTS, Rank.TEN, False),     # Player 0 (RE) plays heart ten (10 points)
-        Card(Suit.HEARTS, Rank.ACE, False),     # Player 1 (KONTRA) plays heart ace (11 points)
-        Card(Suit.SPADES, Rank.ACE, False),     # Player 2 (RE) plays spade ace (11 points)
-        Card(Suit.CLUBS, Rank.ACE, False)       # Player 3 (KONTRA) plays club ace (11 points)
+    game['current_trick'] = [
+        create_card(SUIT_HEARTS, RANK_TEN, False),     # Player 0 (RE) plays heart ten (10 points)
+        create_card(SUIT_HEARTS, RANK_ACE, False),     # Player 1 (KONTRA) plays heart ace (11 points)
+        create_card(SUIT_SPADES, RANK_ACE, False),     # Player 2 (RE) plays spade ace (11 points)
+        create_card(SUIT_CLUBS, RANK_ACE, False)       # Player 3 (KONTRA) plays club ace (11 points)
     ]
     
     # Set the current player to the next player after the trick
-    game.current_player = 0  # Start with player 0
+    game['current_player'] = 0  # Start with player 0
     
     # Determine the trick winner (should be player 1 with the heart ace)
     highest_card_idx = 0
-    highest_card_value = game.current_trick[0].get_order_value(game.game_variant)
+    highest_card_value = get_card_order_value(game['current_trick'][0], game['game_variant'])
     
-    for i in range(1, len(game.current_trick)):
-        card = game.current_trick[i]
-        card_value = card.get_order_value(game.game_variant)
+    for i in range(1, len(game['current_trick'])):
+        card = game['current_trick'][i]
+        card_value = get_card_order_value(card, game['game_variant'])
         if card_value > highest_card_value:
             highest_card_idx = i
             highest_card_value = card_value
     
     # The winner is the player who played the highest card
-    game.trick_winner = (game.current_player + highest_card_idx) % game.num_players
+    game['trick_winner'] = (game['current_player'] + highest_card_idx) % game['num_players']
     
-    print(f"Trick winner: Player {game.trick_winner}")
+    print(f"Trick winner: Player {game['trick_winner']}")
     
     # Complete the trick
-    game._complete_trick()
+    complete_trick(game)
     
     # Calculate the expected scores
     # The trick contains:
@@ -167,43 +171,43 @@ def test_game_logic_special_achievements():
     
     # Check if the scores were updated correctly
     print(f"Initial team scores: {initial_scores}")
-    print(f"Final team scores: {game.scores}")
-    print(f"Difference: {[game.scores[i] - initial_scores[i] for i in range(2)]}")
+    print(f"Final team scores: {game['scores']}")
+    print(f"Difference: {[game['scores'][i] - initial_scores[i] for i in range(2)]}")
     
     print(f"Initial player scores: {initial_player_scores}")
-    print(f"Final player scores: {game.player_scores}")
-    print(f"Difference: {[game.player_scores[i] - initial_player_scores[i] for i in range(4)]}")
+    print(f"Final player scores: {game['player_scores']}")
+    print(f"Difference: {[game['player_scores'][i] - initial_player_scores[i] for i in range(4)]}")
     
     # Get the winner's team
-    winner_team_idx = 0 if game.teams[game.trick_winner] == PlayerTeam.RE else 1
+    winner_team_idx = 0 if game['teams'][game['trick_winner']] == TEAM_RE else 1
     loser_team_idx = 1 - winner_team_idx
     
     # Check if the winner's team got the trick points plus the bonus point
-    assert game.scores[winner_team_idx] - initial_scores[winner_team_idx] == expected_trick_points + expected_bonus_points, \
-        f"{game.teams[game.trick_winner].name} team should have gained {expected_trick_points + expected_bonus_points} points, but gained {game.scores[winner_team_idx] - initial_scores[winner_team_idx]}"
+    assert game['scores'][winner_team_idx] - initial_scores[winner_team_idx] == expected_trick_points + expected_bonus_points, \
+        f"{'RE' if game['teams'][game['trick_winner']] == TEAM_RE else 'KONTRA'} team should have gained {expected_trick_points + expected_bonus_points} points, but gained {game['scores'][winner_team_idx] - initial_scores[winner_team_idx]}"
     
     # Check if the loser's team lost the bonus point
-    assert game.scores[loser_team_idx] - initial_scores[loser_team_idx] == -expected_bonus_points, \
-        f"{game.teams[0 if loser_team_idx == 0 else 2].name} team should have lost {expected_bonus_points} points, but lost {initial_scores[loser_team_idx] - game.scores[loser_team_idx]}"
+    assert game['scores'][loser_team_idx] - initial_scores[loser_team_idx] == -expected_bonus_points, \
+        f"{'RE' if loser_team_idx == 0 else 'KONTRA'} team should have lost {expected_bonus_points} points, but lost {initial_scores[loser_team_idx] - game['scores'][loser_team_idx]}"
     
     # Check if the trick winner got the trick points
-    assert game.player_scores[game.trick_winner] - initial_player_scores[game.trick_winner] >= expected_trick_points, \
-        f"Player {game.trick_winner} should have gained at least {expected_trick_points} points, but gained {game.player_scores[game.trick_winner] - initial_player_scores[game.trick_winner]}"
+    assert game['player_scores'][game['trick_winner']] - initial_player_scores[game['trick_winner']] >= expected_trick_points, \
+        f"Player {game['trick_winner']} should have gained at least {expected_trick_points} points, but gained {game['player_scores'][game['trick_winner']] - initial_player_scores[game['trick_winner']]}"
     
     # Check if all players on the winner's team got the bonus point
-    winner_team = game.teams[game.trick_winner]
-    winner_team_players = [i for i, team in enumerate(game.teams) if team == winner_team]
+    winner_team = game['teams'][game['trick_winner']]
+    winner_team_players = [i for i, team in enumerate(game['teams']) if team == winner_team]
     
     # Calculate bonus points for each player on the winner's team
-    winner_team_bonus = [game.player_scores[i] - initial_player_scores[i] - (expected_trick_points if i == game.trick_winner else 0) for i in winner_team_players]
-    print(f"{winner_team.name} team player bonus points: {winner_team_bonus}")
+    winner_team_bonus = [game['player_scores'][i] - initial_player_scores[i] - (expected_trick_points if i == game['trick_winner'] else 0) for i in winner_team_players]
+    print(f"{'RE' if winner_team == TEAM_RE else 'KONTRA'} team player bonus points: {winner_team_bonus}")
     
     # Check if the bonus points were awarded to all players on the team
     if all(bonus == expected_bonus_points for bonus in winner_team_bonus):
         print("Game logic correctly awards bonus points to all players on the team")
     else:
         print("Game logic does NOT award bonus points to all players on the team")
-        print("This should be fixed in the _complete_trick method in doppelkopf.py")
+        print("This should be fixed in the complete_trick function in doppelkopf.py")
     
     print("\nGame logic for special achievements test completed!")
     return True

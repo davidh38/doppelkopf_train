@@ -13,57 +13,60 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 from src.reinforcementlearning.agents.random_agent import select_random_action
 from src.reinforcementlearning.agents.rl_agent import RLAgent
 
+from src.backend.game.doppelkopf import (
+    get_card_value, get_state_size, get_action_size, cards_equal
+)
 from config import games, MODEL_PATH
 from game_state import print_scoreboard, check_team_revelation, get_game_state, generate_game_summary, update_scoreboard_for_game_over, card_to_dict
 
 def handle_trick_completion(socketio, game_id, game):
     """Handle the completion of a trick."""
-    if game.trick_winner is None:
+    if game.get('trick_winner') is None:
         return False
     
     game_data = games[game_id]
     
     # Calculate points for the trick
-    trick_points = sum(card.get_value() for card in game.current_trick)
+    trick_points = sum(get_card_value(card) for card in game['current_trick'])
     
     # Store the last trick information
-    game_data['last_trick'] = [card_to_dict(card) for card in game.current_trick]
+    game_data['last_trick'] = [card_to_dict(card) for card in game['current_trick']]
     
     # Calculate the starting player for this trick
-    starting_player = (game.current_player - len(game.current_trick)) % game.num_players
+    starting_player = (game['current_player'] - len(game['current_trick'])) % game['num_players']
     
     # Add player information to each card in the trick
     trick_players = []
-    for i in range(len(game.current_trick)):
-        player_idx = (starting_player + i) % game.num_players
+    for i in range(len(game['current_trick'])):
+        player_idx = (starting_player + i) % game['num_players']
         trick_players.append({
             'name': "You" if player_idx == 0 else f"Player {player_idx}",
             'idx': player_idx,
-            'is_current': player_idx == game.current_player
+            'is_current': player_idx == game['current_player']
         })
     
     game_data['last_trick_players'] = trick_players
-    game_data['last_trick_winner'] = game.trick_winner
+    game_data['last_trick_winner'] = game['trick_winner']
     game_data['last_trick_points'] = trick_points
     
     # Check if there was a Diamond Ace capture
-    diamond_ace_bonus = getattr(game, 'last_trick_diamond_ace_bonus', 0)
-    diamond_ace_captured = hasattr(game, 'diamond_ace_captured')
+    diamond_ace_bonus = game.get('last_trick_diamond_ace_bonus', 0)
+    diamond_ace_captured = 'diamond_ace_captured' in game
     
     # Emit the trick completed event with points and Diamond Ace capture info
     socketio.emit('trick_completed', {
-        'winner': game.trick_winner,
-        'is_player': game.trick_winner == 0,
+        'winner': game['trick_winner'],
+        'is_player': game['trick_winner'] == 0,
         'trick_points': trick_points,
         'diamond_ace_bonus': diamond_ace_bonus,
         'diamond_ace_captured': diamond_ace_captured
     }, room=game_id)
     
     # Clear the current trick and set the current player to the trick winner
-    trick_winner = game.trick_winner
-    game.current_trick = []
-    game.current_player = trick_winner
-    game.trick_winner = None
+    trick_winner = game['trick_winner']
+    game['current_trick'] = []
+    game['current_player'] = trick_winner
+    game['trick_winner'] = None
     
     # Emit a game state update to reflect the cleared trick
     socketio.emit('game_update', get_game_state(game_id), room=game_id)
@@ -85,7 +88,7 @@ def initialize_ai_agents(socketio, game, game_id):
         print(f"Sending progress update: model_loading_details")
         
         # Create the RL agent
-        rl_agent = RLAgent(game.get_state_size(), game.get_action_size())
+        rl_agent = RLAgent(get_state_size(), get_action_size())
         
         # Load the model with a timeout to prevent hanging
         print(f"Loading model from {MODEL_PATH}...")
@@ -96,7 +99,7 @@ def initialize_ai_agents(socketio, game, game_id):
             print("Creating a dummy model for testing...")
             
             # Create a dummy model for testing
-            dummy_agent = RLAgent(game.get_state_size(), game.get_action_size())
+            dummy_agent = RLAgent(get_state_size(), get_action_size())
             os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
             dummy_agent.save(MODEL_PATH)
             print(f"Created dummy model at {MODEL_PATH}")
@@ -176,9 +179,9 @@ def ai_play_turn(socketio, game_id):
     print(f"Last Starting Player: {game_data.get('starting_player', 0)}")
     
     # Keep playing AI turns until it's the human's turn or game is over
-    while game.current_player != 0 and not game.game_over:
+    while game['current_player'] != 0 and not game['game_over']:
         # Check if a trick has been completed but not yet cleared
-        if game.trick_winner is not None:
+        if game.get('trick_winner') is not None:
             # Handle trick completion
             handle_trick_completion(socketio, game_id, game)
             
@@ -186,10 +189,10 @@ def ai_play_turn(socketio, game_id):
             print_scoreboard("After Trick Completion", game)
             
             # If the new current player is the human player, break out of the loop
-            if game.current_player == 0:
+            if game['current_player'] == 0:
                 break
         
-        current_player = game.current_player
+        current_player = game['current_player']
         
         # Ensure current_player is valid (1, 2, or 3)
         if current_player < 1 or current_player > 3:
@@ -225,19 +228,25 @@ def ai_play_turn(socketio, game_id):
             action_type, action = action_result
             
             if action_type == 'card':
+                # Import play_card function
+                from src.backend.game.doppelkopf import play_card
                 # Play the card
-                game.play_card(current_player, action)
+                play_card(game, current_player, action)
                 
                 # Check if the AI player revealed their team by playing a Queen of Clubs
                 check_team_revelation(game, current_player, action, game_data)
             elif action_type == 'announce':
+                # Import announce function
+                from src.backend.game.doppelkopf import announce
                 # Make an announcement
-                game.announce(current_player, action)
+                announce(game, current_player, action)
                 # Continue the turn after announcement
                 continue
             elif action_type == 'variant':
+                # Import set_variant function
+                from src.backend.game.doppelkopf import set_variant
                 # Set a game variant
-                game.set_variant(action, current_player)
+                set_variant(game, action, current_player)
                 # Continue the turn after setting variant
                 continue
         else:
@@ -247,8 +256,11 @@ def ai_play_turn(socketio, game_id):
                 # Fallback to random action if the agent returns None
                 print(f"Warning: AI player {current_player} returned None action, falling back to random action")
                 action_result = select_random_action(game, current_player)
-                
-            game.play_card(current_player, action_result)
+            
+            # Import play_card function
+            from src.backend.game.doppelkopf import play_card
+            # Play the card
+            play_card(game, current_player, action_result)
             
             # Check if the AI player revealed their team by playing a Queen of Clubs
             if action_result is not None:
@@ -264,7 +276,7 @@ def ai_play_turn(socketio, game_id):
         socketio.sleep(0.5)
         
         # If a trick was completed, pause to show it
-        if game.trick_winner is not None:
+        if game.get('trick_winner') is not None:
             # Emit the game state update with the completed trick
             socketio.emit('game_update', get_game_state(game_id), room=game_id)
             
@@ -275,7 +287,7 @@ def ai_play_turn(socketio, game_id):
             handle_trick_completion(socketio, game_id, game)
             
             # Check if the game is over after this trick
-            if game.game_over:
+            if game['game_over']:
                 # Generate game summary
                 generate_game_summary(game_id)
                 

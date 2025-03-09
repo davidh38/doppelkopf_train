@@ -67,6 +67,13 @@ export function renderHand() {
   
   playerHandEl.innerHTML = '';
   
+  // Debug output to help diagnose issues
+  console.log("Rendering hand with state:", {
+    currentPlayer: gameState.currentPlayer,
+    hand: gameState.hand,
+    legalActions: gameState.legalActions
+  });
+  
   // Sort the cards: trumps first, then clubs, spades, hearts
   const sortedHand = sortCards(gameState.hand);
   
@@ -74,12 +81,43 @@ export function renderHand() {
   sortedHand.forEach(card => {
     // Check if the card is in the legal actions
     const isPlayable = gameState.currentPlayer === 0 && 
+                       gameState.legalActions && 
                        gameState.legalActions.some(legalCard => legalCard.id === card.id);
+    
+    console.log(`Card ${card.id} (${card.rank} of ${card.suit}) isPlayable:`, isPlayable);
     
     // Only make cards playable if they are legal moves
     const cardElement = createCardElement(card, isPlayable);
+    
+    // Add a debug click handler to the card container
+    cardElement.addEventListener('click', () => {
+      console.log(`Card container clicked: ${card.id} (${card.rank} of ${card.suit}), isPlayable: ${isPlayable}`);
+      
+      // If it's not playable, show a message
+      if (!isPlayable) {
+        console.log("This card is not playable right now");
+        
+        // Add a temporary visual feedback
+        cardElement.style.border = "2px solid red";
+        setTimeout(() => {
+          cardElement.style.border = "";
+        }, 500);
+      }
+    });
+    
     playerHandEl.appendChild(cardElement);
   });
+  
+  // If it's the player's turn, add a message to indicate they can play
+  if (gameState.currentPlayer === 0) {
+    const messageEl = document.createElement('div');
+    messageEl.style.textAlign = 'center';
+    messageEl.style.marginTop = '10px';
+    messageEl.style.fontWeight = 'bold';
+    messageEl.style.color = '#2ecc71';
+    messageEl.textContent = 'Your turn! Click a card to play it.';
+    playerHandEl.appendChild(messageEl);
+  }
 }
 
 /**
@@ -460,31 +498,44 @@ export function updateAnnouncementButtons() {
     announcements: gameState.announcements
   });
   
-  // Create or get the Hochzeit button
+  // First, determine if the player can announce Hochzeit
+  const canAnnounceHochzeit = gameState.hasHochzeit && gameState.canAnnounce;
+  console.log("Can announce hochzeit:", canAnnounceHochzeit, "hasHochzeit:", gameState.hasHochzeit, "canAnnounce:", gameState.canAnnounce);
+  
+  // Get the Hochzeit button if it exists
   let gameHochzeitBtn = document.getElementById('game-hochzeit-btn');
   
-  // If the Hochzeit button doesn't exist, create it
-  if (!gameHochzeitBtn && gameState.hasHochzeit) {
-    gameHochzeitBtn = document.createElement('button');
-    gameHochzeitBtn.id = 'game-hochzeit-btn';
-    gameHochzeitBtn.className = 'btn announcement-btn';
-    gameHochzeitBtn.textContent = 'Hochzeit (Marriage)';
-    gameHochzeitBtn.onclick = () => eventBus.emit('makeAnnouncement', 'hochzeit');
-    
-    // Add the button to the announcement area
-    const announcementButtons = document.querySelector('.announcement-buttons');
-    if (announcementButtons) {
+  // Get the announcement buttons container
+  const announcementButtons = document.querySelector('.announcement-buttons');
+  
+  // Handle button creation/removal based on whether player has both Queens of Clubs
+  if (gameState.hasHochzeit) {
+    // Player has both Queens of Clubs - create button if it doesn't exist
+    if (!gameHochzeitBtn && announcementButtons) {
+      console.log("Creating Hochzeit button because player has both Queens of Clubs");
+      gameHochzeitBtn = document.createElement('button');
+      gameHochzeitBtn.id = 'game-hochzeit-btn';
+      gameHochzeitBtn.className = 'btn announcement-btn';
+      gameHochzeitBtn.textContent = 'Hochzeit (Marriage)';
+      gameHochzeitBtn.onclick = () => eventBus.emit('makeAnnouncement', 'hochzeit');
+      
+      // Add the button to the announcement area
       announcementButtons.appendChild(gameHochzeitBtn);
     }
-  }
-  
-  // Show or hide the Hochzeit button based on whether the player has both Queens of Clubs
-  if (gameHochzeitBtn) {
-    // Only show the button if the player has both Queens of Clubs AND can announce
-    const canAnnounceHochzeit = gameState.hasHochzeit && gameState.canAnnounce;
-    gameHochzeitBtn.style.display = canAnnounceHochzeit ? 'inline-block' : 'none';
-    gameHochzeitBtn.disabled = !canAnnounceHochzeit;
-    gameHochzeitBtn.style.opacity = canAnnounceHochzeit ? '1' : '0.5';
+    
+    // Now set visibility based on whether player can announce
+    if (gameHochzeitBtn) {
+      gameHochzeitBtn.style.display = canAnnounceHochzeit ? 'inline-block' : 'none';
+      gameHochzeitBtn.disabled = !canAnnounceHochzeit;
+      gameHochzeitBtn.style.opacity = canAnnounceHochzeit ? '1' : '0.5';
+    }
+  } else {
+    // Player doesn't have both Queens of Clubs - remove button if it exists
+    if (gameHochzeitBtn) {
+      console.log("Removing Hochzeit button because player doesn't have both Queens of Clubs");
+      gameHochzeitBtn.remove();
+      gameHochzeitBtn = null;
+    }
   }
   
   // Determine which announcement button to show based on the game state
@@ -589,11 +640,23 @@ export function updateAnnouncementButtons() {
   
   // Show/hide the announcement areas based on whether announcements are allowed
   if (gameAnnouncementArea) {
-    const canAnnounce = (gameState.playerTeam === 'RE' && (gameState.canAnnounceRe || gameState.canAnnounceNo90 || 
-                        gameState.canAnnounceNo60 || gameState.canAnnounceNo30 || gameState.canAnnounceBlack)) ||
-                       (gameState.playerTeam === 'KONTRA' && (gameState.canAnnounceContra || gameState.canAnnounceNo90 || 
-                        gameState.canAnnounceNo60 || gameState.canAnnounceNo30 || gameState.canAnnounceBlack)) ||
-                       gameState.hasHochzeit;
+    // Only show the announcement area if the player can make an announcement
+    const canAnnounceRe = gameState.playerTeam === 'RE' && gameState.canAnnounceRe;
+    const canAnnounceContra = gameState.playerTeam === 'KONTRA' && gameState.canAnnounceContra;
+    const canAnnounceNo90 = gameState.canAnnounceNo90;
+    const canAnnounceNo60 = gameState.canAnnounceNo60;
+    const canAnnounceNo30 = gameState.canAnnounceNo30;
+    const canAnnounceBlack = gameState.canAnnounceBlack;
+    const canAnnounceHochzeit = gameState.hasHochzeit && gameState.canAnnounce;
+    
+    const canAnnounce = canAnnounceRe || canAnnounceContra || canAnnounceNo90 || 
+                        canAnnounceNo60 || canAnnounceNo30 || canAnnounceBlack || 
+                        canAnnounceHochzeit;
+    
+    console.log("Can announce anything:", canAnnounce, 
+                "Re:", canAnnounceRe, 
+                "Contra:", canAnnounceContra, 
+                "Hochzeit:", canAnnounceHochzeit);
     
     gameAnnouncementArea.classList.toggle('hidden', !canAnnounce);
   }

@@ -5,956 +5,1091 @@ This module contains the rules and mechanics of the Doppelkopf card game.
 
 import random
 import numpy as np
-from enum import Enum, auto
-from typing import List, Tuple, Dict, Optional, Set
+from typing import List, Dict, Tuple, Optional, Set, Any
 
-class Suit(Enum):
-    """Card suits in Doppelkopf."""
-    CLUBS = auto()
-    SPADES = auto()
-    HEARTS = auto()
-    DIAMONDS = auto()
-    
-    def __str__(self):
-        return self.name.capitalize()
+# Constants for suits
+SUIT_CLUBS = 1
+SUIT_SPADES = 2
+SUIT_HEARTS = 3
+SUIT_DIAMONDS = 4
 
-class Rank(Enum):
-    """Card ranks in Doppelkopf."""
-    NINE = 9
-    JACK = 11
-    QUEEN = 12
-    KING = 13
-    TEN = 10
-    ACE = 14
-    
-    def __str__(self):
-        return self.name.capitalize()
+# Constants for ranks
+RANK_NINE = 9
+RANK_JACK = 11
+RANK_QUEEN = 12
+RANK_KING = 13
+RANK_TEN = 10
+RANK_ACE = 14
 
-class Card:
-    """A playing card in Doppelkopf."""
+# Constants for game variants
+VARIANT_NORMAL = 1
+VARIANT_HOCHZEIT = 2
+VARIANT_QUEEN_SOLO = 3
+VARIANT_JACK_SOLO = 4
+VARIANT_FLESHLESS = 5
+
+# Constants for player teams
+TEAM_RE = 1
+TEAM_KONTRA = 2
+TEAM_UNKNOWN = 3
+
+# Mapping dictionaries for display purposes
+SUIT_NAMES = {
+    SUIT_CLUBS: "CLUBS",
+    SUIT_SPADES: "SPADES",
+    SUIT_HEARTS: "HEARTS",
+    SUIT_DIAMONDS: "DIAMONDS"
+}
+
+RANK_NAMES = {
+    RANK_NINE: "NINE",
+    RANK_JACK: "JACK",
+    RANK_QUEEN: "QUEEN",
+    RANK_KING: "KING",
+    RANK_TEN: "TEN",
+    RANK_ACE: "ACE"
+}
+
+VARIANT_NAMES = {
+    VARIANT_NORMAL: "NORMAL",
+    VARIANT_HOCHZEIT: "HOCHZEIT",
+    VARIANT_QUEEN_SOLO: "QUEEN_SOLO",
+    VARIANT_JACK_SOLO: "JACK_SOLO",
+    VARIANT_FLESHLESS: "FLESHLESS"
+}
+
+TEAM_NAMES = {
+    TEAM_RE: "RE",
+    TEAM_KONTRA: "KONTRA",
+    TEAM_UNKNOWN: "UNKNOWN"
+}
+
+# Emoji mappings for suits
+SUIT_EMOJIS = {
+    SUIT_HEARTS: "♥️",
+    SUIT_DIAMONDS: "♦️",
+    SUIT_CLUBS: "♣️",
+    SUIT_SPADES: "♠️"
+}
+
+# Emoji mappings for ranks
+RANK_EMOJIS = {
+    RANK_ACE: "🅰️",
+    RANK_KING: "👑",
+    RANK_QUEEN: "👸",
+    RANK_JACK: "🤴",
+    RANK_TEN: "🔟",
+    RANK_NINE: "9️⃣"
+}
+
+def create_card(suit: int, rank: int, is_second: bool = False) -> Dict:
+    """
+    Create a card dictionary.
     
-    def __init__(self, suit: Suit, rank: Rank, is_second: bool = False):
-        """
-        Initialize a card.
+    Args:
+        suit: The suit of the card
+        rank: The rank of the card
+        is_second: Whether this is the second copy of the card
         
-        Args:
-            suit: The suit of the card
-            rank: The rank of the card
-            is_second: Whether this is the second copy of the card (Doppelkopf has two of each card)
-        """
-        self.suit = suit
-        self.rank = rank
-        self.is_second = is_second
-        
-    def __str__(self):
-        # Emoji mappings for suits
-        suit_emojis = {
-            Suit.HEARTS: "♥️",
-            Suit.DIAMONDS: "♦️",
-            Suit.CLUBS: "♣️",
-            Suit.SPADES: "♠️"
-        }
-        
-        # Emoji mappings for ranks
-        rank_emojis = {
-            Rank.ACE: "🅰️",
-            Rank.KING: "👑",
-            Rank.QUEEN: "👸",
-            Rank.JACK: "🤴",
-            Rank.TEN: "🔟",
-            Rank.NINE: "9️⃣"
-        }
-        
-        # Get the emoji representations
-        suit_emoji = suit_emojis[self.suit]
-        rank_emoji = rank_emojis[self.rank]
-        
-        # Create a compact emoji representation
-        emoji_repr = f"{rank_emoji}{suit_emoji}"
-        
-        # Return both the emoji and the text representation
-        return f"{emoji_repr} {self.rank} of {self.suit}" + (" (2)" if self.is_second else "")
+    Returns:
+        A dictionary representing the card
+    """
+    return {
+        'suit': suit,
+        'rank': rank,
+        'is_second': is_second
+    }
+
+def card_to_string(card: Dict) -> str:
+    """
+    Convert a card to a string representation.
     
-    def __eq__(self, other):
-        if not isinstance(other, Card):
-            return False
-        return (self.suit == other.suit and 
-                self.rank == other.rank and 
-                self.is_second == other.is_second)
+    Args:
+        card: The card dictionary
+        
+    Returns:
+        A string representation of the card
+    """
+    suit_emoji = SUIT_EMOJIS[card['suit']]
+    rank_emoji = RANK_EMOJIS[card['rank']]
     
-    def __hash__(self):
-        return hash((self.suit, self.rank, self.is_second))
+    # Create a compact emoji representation
+    emoji_repr = f"{rank_emoji}{suit_emoji}"
     
-    def is_trump(self, game_variant: 'GameVariant') -> bool:
-        """Check if this card is a trump card in the given game variant."""
-        # In normal game and hochzeit (marriage)
-        if game_variant == GameVariant.NORMAL or game_variant == GameVariant.HOCHZEIT:
-            # Queens and Jacks are always trump
-            if self.rank == Rank.QUEEN or self.rank == Rank.JACK:
-                return True
+    # Return both the emoji and the text representation
+    return f"{emoji_repr} {RANK_NAMES[card['rank']]} of {SUIT_NAMES[card['suit']]}" + (" (2)" if card['is_second'] else "")
+
+def cards_equal(card1: Dict, card2: Dict) -> bool:
+    """
+    Check if two cards are equal.
+    
+    Args:
+        card1: The first card
+        card2: The second card
+        
+    Returns:
+        True if the cards are equal, False otherwise
+    """
+    return (card1['suit'] == card2['suit'] and 
+            card1['rank'] == card2['rank'] and 
+            card1['is_second'] == card2['is_second'])
+
+def card_hash(card: Dict) -> int:
+    """
+    Get a hash value for a card.
+    
+    Args:
+        card: The card dictionary
+        
+    Returns:
+        A hash value for the card
+    """
+    return hash((card['suit'], card['rank'], card['is_second']))
+
+def is_trump(card: Dict, game_variant: int) -> bool:
+    """
+    Check if a card is a trump card in the given game variant.
+    
+    Args:
+        card: The card dictionary
+        game_variant: The game variant
+        
+    Returns:
+        True if the card is a trump, False otherwise
+    """
+    # In normal game and hochzeit (marriage)
+    if game_variant == VARIANT_NORMAL or game_variant == VARIANT_HOCHZEIT:
+        # Queens and Jacks are always trump
+        if card['rank'] == RANK_QUEEN or card['rank'] == RANK_JACK:
+            return True
+        
+        # Diamonds are trump
+        if card['suit'] == SUIT_DIAMONDS:
+            return True
             
-            # Diamonds are trump
-            if self.suit == Suit.DIAMONDS:
-                return True
-                
-            # Ten of Hearts is also trump
-            if self.rank == Rank.TEN and self.suit == Suit.HEARTS:
-                return True
+        # Ten of Hearts is also trump
+        if card['rank'] == RANK_TEN and card['suit'] == SUIT_HEARTS:
+            return True
+    
+    # In Queen solo, only Queens are trump
+    elif game_variant == VARIANT_QUEEN_SOLO:
+        return card['rank'] == RANK_QUEEN
+    
+    # In Jack solo, only Jacks are trump
+    elif game_variant == VARIANT_JACK_SOLO:
+        return card['rank'] == RANK_JACK
         
-        # In Queen solo, only Queens are trump
-        elif game_variant == GameVariant.QUEEN_SOLO:
-            return self.rank == Rank.QUEEN
-        
-        # In Jack solo, only Jacks are trump
-        elif game_variant == GameVariant.JACK_SOLO:
-            return self.rank == Rank.JACK
+    # In Fleshless, no Kings, Queens, or Jacks are trump
+    elif game_variant == VARIANT_FLESHLESS:
+        # Only Diamonds and Ten of Hearts are trump
+        if card['suit'] == SUIT_DIAMONDS:
+            return True
             
-        # In Fleshless, no Kings, Queens, or Jacks are trump
-        elif game_variant == GameVariant.FLESHLESS:
-            # Only Diamonds and Ten of Hearts are trump
-            if self.suit == Suit.DIAMONDS:
-                return True
-                
-            if self.rank == Rank.TEN and self.suit == Suit.HEARTS:
-                return True
-                
-            # Kings, Queens, and Jacks are not trump
-            if self.rank == Rank.KING or self.rank == Rank.QUEEN or self.rank == Rank.JACK:
-                return False
-                
+        if card['rank'] == RANK_TEN and card['suit'] == SUIT_HEARTS:
+            return True
+            
+        # Kings, Queens, and Jacks are not trump
+        if card['rank'] == RANK_KING or card['rank'] == RANK_QUEEN or card['rank'] == RANK_JACK:
             return False
             
         return False
-    
-    def get_value(self) -> int:
-        """Get the point value of this card."""
-        if self.rank == Rank.ACE:
-            return 11
-        elif self.rank == Rank.TEN:
-            return 10
-        elif self.rank == Rank.KING:
-            return 4
-        elif self.rank == Rank.QUEEN:
-            return 3
-        elif self.rank == Rank.JACK:
-            return 2
-        else:  # NINE
-            return 0
-    
-    def get_order_value(self, game_variant: 'GameVariant') -> int:
-        """
-        Get the order value of this card for comparison.
-        Higher value means stronger card.
-        """
-        if not self.is_trump(game_variant):
-            # Non-trump cards
-            return self.rank.value
         
-        # Trump cards have a special order
-        if self.rank == Rank.TEN and self.suit == Suit.HEARTS:
-            # Ten of Hearts is the highest trump
-            base = 120
-        elif self.rank == Rank.QUEEN:
-            base = 100
-        elif self.rank == Rank.JACK:
-            base = 80
-        else:  # Diamond cards in normal game
-            base = 60
-            
-        # Add suit value for ordering within same rank
-        suit_value = 4 - self.suit.value  # Clubs highest, Diamonds lowest
-        
-        return base + suit_value
+    return False
 
-class GameVariant(Enum):
-    """Different variants of Doppelkopf game."""
-    NORMAL = auto()  # Normal game with diamonds as trump
-    HOCHZEIT = auto()  # Marriage - player with both Queens of Clubs announces partnership
-    QUEEN_SOLO = auto()  # Solo game where only Queens are trump
-    JACK_SOLO = auto()  # Solo game where only Jacks are trump
-    FLESHLESS = auto()  # Fleshless - no Kings, Queens, or Jacks are trump
-
-class PlayerTeam(Enum):
-    """Teams in Doppelkopf."""
-    RE = auto()  # Players with Queens of Clubs
-    KONTRA = auto()  # Players without Queens of Clubs
-    UNKNOWN = auto()  # Team not yet revealed
-
-class DoppelkopfGame:
-    """Implementation of the Doppelkopf card game."""
+def get_card_value(card: Dict) -> int:
+    """
+    Get the point value of a card.
     
-    def __init__(self):
-        """Initialize a new Doppelkopf game."""
-        self.num_players = 4
-        self.reset()
-    
-    def reset(self):
-        """Reset the game to its initial state."""
-        # Create a deck of cards (2 copies of each card)
-        self.deck = []
-        for suit in Suit:
-            for rank in Rank:
-                # Skip Nine cards
-                if rank != Rank.NINE:
-                    self.deck.append(Card(suit, rank, False))
-                    self.deck.append(Card(suit, rank, True))
+    Args:
+        card: The card dictionary
         
-        # Game state
-        self.hands = [[] for _ in range(self.num_players)]
-        self.tricks = []
-        self.current_trick = []
-        self.current_player = 0
-        self.game_variant = GameVariant.NORMAL
-        self.scores = [0, 0]  # [RE score, KONTRA score]
-        self.player_scores = [0, 0, 0, 0]  # Individual player scores
-        self.teams = [PlayerTeam.UNKNOWN] * self.num_players
-        self.trick_winner = None
-        self.game_over = False
+    Returns:
+        The point value of the card
+    """
+    if card['rank'] == RANK_ACE:
+        return 11
+    elif card['rank'] == RANK_TEN:
+        return 10
+    elif card['rank'] == RANK_KING:
+        return 4
+    elif card['rank'] == RANK_QUEEN:
+        return 3
+    elif card['rank'] == RANK_JACK:
+        return 2
+    else:  # NINE
+        return 0
+
+def get_card_order_value(card: Dict, game_variant: int) -> int:
+    """
+    Get the order value of a card for comparison.
+    Higher value means stronger card.
+    
+    Args:
+        card: The card dictionary
+        game_variant: The game variant
+        
+    Returns:
+        The order value of the card
+    """
+    if not is_trump(card, game_variant):
+        # Non-trump cards
+        return card['rank']
+    
+    # Trump cards have a special order
+    if card['rank'] == RANK_TEN and card['suit'] == SUIT_HEARTS:
+        # Ten of Hearts is the highest trump
+        base = 120
+    elif card['rank'] == RANK_QUEEN:
+        base = 100
+    elif card['rank'] == RANK_JACK:
+        base = 80
+    else:  # Diamond cards in normal game
+        base = 60
+        
+    # Add suit value for ordering within same rank
+    suit_value = 4 - card['suit']  # Clubs highest, Diamonds lowest
+    
+    return base + suit_value
+
+def create_game_state() -> Dict:
+    """
+    Create a new game state.
+    
+    Returns:
+        A dictionary representing the game state
+    """
+    state = {
+        'num_players': 4,
+        'deck': [],
+        'hands': [[] for _ in range(4)],
+        'tricks': [],
+        'current_trick': [],
+        'current_player': 0,
+        'game_variant': VARIANT_NORMAL,
+        'scores': [0, 0],  # [RE score, KONTRA score]
+        'player_scores': [0, 0, 0, 0],  # Individual player scores
+        'teams': [TEAM_UNKNOWN] * 4,
+        'trick_winner': None,
+        'game_over': False,
+        'players_with_hochzeit': set(),  # Cache for players who have hochzeit
         
         # Variant selection phase
-        self.variant_selection_phase = True
-        self.player_variant_choices = [None] * self.num_players  # Track each player's variant choice
-        self.variant_priority = {
+        'variant_selection_phase': True,
+        'player_variant_choices': [None] * 4,  # Track each player's variant choice
+        'variant_priority': {
             'trump_solo': 1,  # Highest priority
             'queen_solo': 2,
             'jack_solo': 3,
             'fleshless': 4,
             'normal': 5,      # Lowest priority
             'hochzeit': 5     # Same priority as normal
-        }
+        },
         
         # Announcement tracking
-        self.re_announced = False
-        self.contra_announced = False
-        self.can_announce = True  # Can announce until the fifth card is played
-        
-        # Deal cards
-        self._deal_cards()
-        
-        # Determine teams based on Queens of Clubs
-        self._determine_teams()
+        're_announced': False,
+        'contra_announced': False,
+        'can_announce': True  # Can announce until the fifth card is played
+    }
     
-    def _deal_cards(self):
-        """Deal cards to players."""
-        random.shuffle(self.deck)
-        cards_per_player = len(self.deck) // self.num_players
-        
-        for i in range(self.num_players):
-            self.hands[i] = self.deck[i * cards_per_player:(i + 1) * cards_per_player]
+    # Create a deck of cards (2 copies of each card)
+    for suit in [SUIT_CLUBS, SUIT_SPADES, SUIT_HEARTS, SUIT_DIAMONDS]:
+        for rank in [RANK_NINE, RANK_JACK, RANK_QUEEN, RANK_KING, RANK_TEN, RANK_ACE]:
+            # Skip Nine cards
+            if rank != RANK_NINE:
+                state['deck'].append(create_card(suit, rank, False))
+                state['deck'].append(create_card(suit, rank, True))
     
-    def _determine_teams(self):
-        """Determine which players are on which team based on Queens of Clubs."""
-        queens_of_clubs = [Card(Suit.CLUBS, Rank.QUEEN, False), Card(Suit.CLUBS, Rank.QUEEN, True)]
-        
-        for i, hand in enumerate(self.hands):
-            if any(card in queens_of_clubs for card in hand):
-                self.teams[i] = PlayerTeam.RE
-            else:
-                self.teams[i] = PlayerTeam.KONTRA
+    # Deal cards
+    deal_cards(state)
     
-    def has_hochzeit(self, player_idx: int) -> bool:
-        """
-        Check if the player has both Queens of Clubs (Hochzeit/Marriage).
-        
-        Args:
-            player_idx: Index of the player
-            
-        Returns:
-            True if the player has both Queens of Clubs, False otherwise
-        """
-        queens_of_clubs = [Card(Suit.CLUBS, Rank.QUEEN, False), Card(Suit.CLUBS, Rank.QUEEN, True)]
-        return all(queen in self.hands[player_idx] for queen in queens_of_clubs)
+    # Determine teams based on Queens of Clubs
+    determine_teams(state)
     
-    def get_legal_actions(self, player_idx: int) -> List[Card]:
-        """
-        Get the legal actions (cards that can be played) for the given player.
+    # Cache hochzeit status for each player
+    cache_hochzeit_status(state)
+    
+    return state
+
+def deal_cards(state: Dict) -> None:
+    """
+    Deal cards to players.
+    
+    Args:
+        state: The game state
+    """
+    random.shuffle(state['deck'])
+    cards_per_player = len(state['deck']) // state['num_players']
+    
+    for i in range(state['num_players']):
+        state['hands'][i] = state['deck'][i * cards_per_player:(i + 1) * cards_per_player]
+
+def determine_teams(state: Dict) -> None:
+    """
+    Determine which players are on which team based on Queens of Clubs.
+    
+    Args:
+        state: The game state
+    """
+    queens_of_clubs = [
+        create_card(SUIT_CLUBS, RANK_QUEEN, False), 
+        create_card(SUIT_CLUBS, RANK_QUEEN, True)
+    ]
+    
+    for i, hand in enumerate(state['hands']):
+        if any(cards_equal(card, queen) for card in hand for queen in queens_of_clubs):
+            state['teams'][i] = TEAM_RE
+        else:
+            state['teams'][i] = TEAM_KONTRA
+
+def cache_hochzeit_status(state: Dict) -> None:
+    """
+    Cache which players have hochzeit (both Queens of Clubs).
+    
+    Args:
+        state: The game state
+    """
+    queens_of_clubs = [
+        create_card(SUIT_CLUBS, RANK_QUEEN, False), 
+        create_card(SUIT_CLUBS, RANK_QUEEN, True)
+    ]
+    state['players_with_hochzeit'].clear()
+    
+    for player_idx in range(state['num_players']):
+        if all(any(cards_equal(card, queen) for card in state['hands'][player_idx]) for queen in queens_of_clubs):
+            state['players_with_hochzeit'].add(player_idx)
+
+def has_hochzeit(state: Dict, player_idx: int) -> bool:
+    """
+    Check if the player has both Queens of Clubs (Hochzeit/Marriage).
+    
+    Args:
+        state: The game state
+        player_idx: Index of the player
         
-        Args:
-            player_idx: Index of the player
-            
-        Returns:
-            List of legal cards to play
-        """
-        # Cannot play cards during variant selection phase
-        if self.variant_selection_phase:
-            return []
-            
-        if player_idx != self.current_player or self.game_over:
-            return []
+    Returns:
+        True if the player has both Queens of Clubs, False otherwise
+    """
+    return player_idx in state['players_with_hochzeit']
+
+def get_legal_actions(state: Dict, player_idx: int) -> List[Dict]:
+    """
+    Get the legal actions (cards that can be played) for the given player.
+    
+    Args:
+        state: The game state
+        player_idx: Index of the player
         
-        hand = self.hands[player_idx]
+    Returns:
+        List of legal cards to play
+    """
+    # Cannot play cards during variant selection phase
+    if state['variant_selection_phase']:
+        return []
         
-        # If this is the first card in the trick, any card can be played
-        if not self.current_trick:
-            return hand.copy()
-        
-        # Otherwise, must follow suit if possible
-        lead_card = self.current_trick[0]
-        lead_suit = lead_card.suit
-        
-        # Check if the lead card is trump
-        lead_is_trump = lead_card.is_trump(self.game_variant)
-        
-        # Find cards of the same type (trump or same suit)
-        matching_cards = []
-        for card in hand:
-            card_is_trump = card.is_trump(self.game_variant)
-            
-            if lead_is_trump and card_is_trump:
-                matching_cards.append(card)
-            elif not lead_is_trump and not card_is_trump and card.suit == lead_suit:
-                matching_cards.append(card)
-        
-        # If player has matching cards, they must play one
-        if matching_cards:
-            return matching_cards
-        
-        # Otherwise, any card can be played
+    if player_idx != state['current_player'] or state['game_over']:
+        return []
+    
+    hand = state['hands'][player_idx]
+    
+    # If this is the first card in the trick, any card can be played
+    if not state['current_trick']:
         return hand.copy()
     
-    def play_card(self, player_idx: int, card: Card) -> bool:
-        """
-        Play a card for the given player.
-        
-        Args:
-            player_idx: Index of the player
-            card: The card to play
-            
-        Returns:
-            True if the move was legal and executed, False otherwise
-        """
-        # Cannot play cards during variant selection phase
-        if self.variant_selection_phase:
-            return False
-            
-        if player_idx != self.current_player or self.game_over:
-            return False
-        
-        legal_actions = self.get_legal_actions(player_idx)
-        if card not in legal_actions:
-            return False
-        
-        # Remove the card from the player's hand
-        self.hands[player_idx].remove(card)
-        
-        # Add the card to the current trick
-        self.current_trick.append(card)
-        
-        # Move to the next player
-        self.current_player = (self.current_player + 1) % self.num_players
-        
-        # If the trick is complete, determine the winner
-        if len(self.current_trick) == self.num_players:
-            self._complete_trick()
-        
-        # Check if the game is over
-        if all(len(hand) == 0 for hand in self.hands):
-            self._end_game()
-        
-        # Update announcement eligibility
-        # Can announce until the fifth card is played
-        cards_played = len(self.current_trick)
-        for trick in self.tricks:
-            cards_played += len(trick)
-        self.can_announce = cards_played < 5
-        
-        return True
+    # Otherwise, must follow suit if possible
+    lead_card = state['current_trick'][0]
+    lead_suit = lead_card['suit']
     
-    def announce(self, player_idx: int, announcement: str) -> bool:
-        """
-        Make an announcement (Re, Contra, or Hochzeit).
-        
-        Args:
-            player_idx: Index of the player
-            announcement: The announcement to make ('re', 'contra', or 'hochzeit')
-            
-        Returns:
-            True if the announcement was legal and executed, False otherwise
-        """
-        # Cannot announce during variant selection phase
-        if self.variant_selection_phase:
-            return False
-            
-        # Cannot announce if not allowed
-        if not self.can_announce:
-            return False
-        
-        # Handle hochzeit announcement
-        if announcement == 'hochzeit':
-            # Check if the player has both Queens of Clubs
-            if self.has_hochzeit(player_idx):
-                # Set the game variant to Hochzeit
-                self.game_variant = GameVariant.HOCHZEIT
-                return True
-            return False
-        
-        # Check if the player is in the appropriate team for the announcement
-        player_team = self.teams[player_idx]
-        
-        if announcement == 're' and player_team != PlayerTeam.RE:
-            return False
-        elif announcement == 'contra' and player_team != PlayerTeam.KONTRA:
-            return False
-        
-        # Check if the announcement has already been made
-        if announcement == 're' and self.re_announced:
-            return False
-        elif announcement == 'contra' and self.contra_announced:
-            return False
-        
-        # Make the announcement
-        if announcement == 're':
-            self.re_announced = True
-        else:  # 'contra'
-            self.contra_announced = True
-        
-        return True
+    # Check if the lead card is trump
+    lead_is_trump = is_trump(lead_card, state['game_variant'])
     
-    def set_variant(self, variant: str, player_idx: int = None) -> bool:
-        """
-        Set the game variant for a player.
+    # Find cards of the same type (trump or same suit)
+    matching_cards = []
+    for card in hand:
+        card_is_trump = is_trump(card, state['game_variant'])
         
-        Args:
-            variant: The variant to set ('normal', 'hochzeit', 'queen_solo', 'jack_solo', 'fleshless')
-            player_idx: Index of the player making the choice (if None, uses current_player)
+        if lead_is_trump and card_is_trump:
+            matching_cards.append(card)
+        elif not lead_is_trump and not card_is_trump and card['suit'] == lead_suit:
+            matching_cards.append(card)
+    
+    # If player has matching cards, they must play one
+    if matching_cards:
+        return matching_cards
+    
+    # Otherwise, any card can be played
+    return hand.copy()
+
+def play_card(state: Dict, player_idx: int, card: Dict) -> bool:
+    """
+    Play a card for the given player.
+    
+    Args:
+        state: The game state
+        player_idx: Index of the player
+        card: The card to play
+        
+    Returns:
+        True if the move was legal and executed, False otherwise
+    """
+    # Cannot play cards during variant selection phase
+    if state['variant_selection_phase']:
+        return False
+        
+    if player_idx != state['current_player'] or state['game_over']:
+        return False
+    
+    legal_actions = get_legal_actions(state, player_idx)
+    if not any(cards_equal(card, legal_card) for legal_card in legal_actions):
+        return False
+    
+    # Remove the card from the player's hand
+    state['hands'][player_idx] = [c for c in state['hands'][player_idx] if not cards_equal(c, card)]
+    
+    # If the card is a Queen of Clubs, update hochzeit cache
+    if card['suit'] == SUIT_CLUBS and card['rank'] == RANK_QUEEN and player_idx in state['players_with_hochzeit']:
+        # Player no longer has both Queens of Clubs
+        state['players_with_hochzeit'].discard(player_idx)
+    
+    # Add the card to the current trick
+    state['current_trick'].append(card)
+    
+    # Move to the next player
+    state['current_player'] = (state['current_player'] + 1) % state['num_players']
+    
+    # If the trick is complete, determine the winner
+    if len(state['current_trick']) == state['num_players']:
+        complete_trick(state)
+    
+    # Check if the game is over
+    if all(len(hand) == 0 for hand in state['hands']):
+        end_game(state)
+    
+    # Update announcement eligibility
+    # Can announce until the fifth card is played
+    cards_played = len(state['current_trick'])
+    for trick in state['tricks']:
+        cards_played += len(trick)
+    state['can_announce'] = cards_played < 5
+    
+    return True
+
+def announce(state: Dict, player_idx: int, announcement: str) -> bool:
+    """
+    Make an announcement (Re, Contra, or Hochzeit).
+    
+    Args:
+        state: The game state
+        player_idx: Index of the player
+        announcement: The announcement to make ('re', 'contra', or 'hochzeit')
+        
+    Returns:
+        True if the announcement was legal and executed, False otherwise
+    """
+    # Cannot announce during variant selection phase
+    if state['variant_selection_phase']:
+        return False
+        
+    # Cannot announce if not allowed
+    if not state['can_announce']:
+        return False
+    
+    # Handle hochzeit announcement
+    if announcement == 'hochzeit':
+        # Check if the player has both Queens of Clubs
+        if has_hochzeit(state, player_idx):
+            # Set the game variant to Hochzeit
+            state['game_variant'] = VARIANT_HOCHZEIT
+            return True
+        return False
+    
+    # Check if the player is in the appropriate team for the announcement
+    player_team = state['teams'][player_idx]
+    
+    if announcement == 're' and player_team != TEAM_RE:
+        return False
+    elif announcement == 'contra' and player_team != TEAM_KONTRA:
+        return False
+    
+    # Check if the announcement has already been made
+    if announcement == 're' and state['re_announced']:
+        return False
+    elif announcement == 'contra' and state['contra_announced']:
+        return False
+    
+    # Make the announcement
+    if announcement == 're':
+        state['re_announced'] = True
+    else:  # 'contra'
+        state['contra_announced'] = True
+    
+    return True
+
+def set_variant(state: Dict, variant: str, player_idx: int = None) -> bool:
+    """
+    Set the game variant for a player.
+    
+    Args:
+        state: The game state
+        variant: The variant to set ('normal', 'hochzeit', 'queen_solo', 'jack_solo', 'fleshless')
+        player_idx: Index of the player making the choice (if None, uses current_player)
+        
+    Returns:
+        True if the variant was set, False otherwise
+    """
+    # Can only set variant during variant selection phase
+    if not state['variant_selection_phase']:
+        return False
+    
+    # Use current player if player_idx is not provided
+    if player_idx is None:
+        player_idx = state['current_player']
+        
+    # Validate the variant
+    valid_variant = False
+    variant_enum = None
+    
+    if variant == 'normal':
+        valid_variant = True
+        variant_enum = VARIANT_NORMAL
+        variant_key = 'normal'
+    elif variant == 'hochzeit':
+        valid_variant = True
+        variant_enum = VARIANT_HOCHZEIT
+        variant_key = 'hochzeit'
+    elif variant == 'queen_solo':
+        valid_variant = True
+        variant_enum = VARIANT_QUEEN_SOLO
+        variant_key = 'queen_solo'
+    elif variant == 'jack_solo':
+        valid_variant = True
+        variant_enum = VARIANT_JACK_SOLO
+        variant_key = 'jack_solo'
+    elif variant == 'fleshless':
+        valid_variant = True
+        variant_enum = VARIANT_FLESHLESS
+        variant_key = 'fleshless'
+    elif variant == 'trump_solo':  # This is not implemented yet, but included for priority
+        valid_variant = True
+        variant_enum = VARIANT_NORMAL  # Fallback to normal for now
+        variant_key = 'trump_solo'
+        
+    if not valid_variant:
+        return False
+        
+    # Record the player's choice
+    state['player_variant_choices'][player_idx] = variant_key
+    
+    # Move to the next player
+    state['current_player'] = (state['current_player'] + 1) % state['num_players']
+    
+    # Check if all players have made a choice
+    if all(choice is not None for choice in state['player_variant_choices']):
+        # Determine the final game variant based on choices
+        determine_final_variant(state)
+        
+        # End variant selection phase
+        state['variant_selection_phase'] = False
+        
+    return True
+
+def determine_final_variant(state: Dict) -> None:
+    """
+    Determine the final game variant based on player choices.
+    
+    Args:
+        state: The game state
+    """
+    # Count the occurrences of each variant
+    variant_counts = {}
+    for choice in state['player_variant_choices']:
+        if choice in variant_counts:
+            variant_counts[choice] += 1
+        else:
+            variant_counts[choice] = 1
             
-        Returns:
-            True if the variant was set, False otherwise
-        """
-        # Can only set variant during variant selection phase
-        if not self.variant_selection_phase:
-            return False
+    # If everyone chose normal, play normal
+    if len(variant_counts) == 1 and 'normal' in variant_counts:
+        state['game_variant'] = VARIANT_NORMAL
+        return
         
-        # Use current player if player_idx is not provided
-        if player_idx is None:
-            player_idx = self.current_player
-            
-        # Validate the variant
-        valid_variant = False
-        variant_enum = None
-        
-        if variant == 'normal':
-            valid_variant = True
-            variant_enum = GameVariant.NORMAL
-            variant_key = 'normal'
-        elif variant == 'hochzeit':
-            valid_variant = True
-            variant_enum = GameVariant.HOCHZEIT
-            variant_key = 'hochzeit'
-        elif variant == 'queen_solo':
-            valid_variant = True
-            variant_enum = GameVariant.QUEEN_SOLO
-            variant_key = 'queen_solo'
+    # If only one player chose a non-normal variant, play that variant
+    non_normal_variants = [v for v in state['player_variant_choices'] if v != 'normal' and v != 'hochzeit']
+    if len(set(non_normal_variants)) == 1 and len(non_normal_variants) == 1:
+        variant = non_normal_variants[0]
+        if variant == 'queen_solo':
+            state['game_variant'] = VARIANT_QUEEN_SOLO
         elif variant == 'jack_solo':
-            valid_variant = True
-            variant_enum = GameVariant.JACK_SOLO
-            variant_key = 'jack_solo'
+            state['game_variant'] = VARIANT_JACK_SOLO
         elif variant == 'fleshless':
-            valid_variant = True
-            variant_enum = GameVariant.FLESHLESS
-            variant_key = 'fleshless'
-        elif variant == 'trump_solo':  # This is not implemented yet, but included for priority
-            valid_variant = True
-            variant_enum = GameVariant.NORMAL  # Fallback to normal for now
-            variant_key = 'trump_solo'
-            
-        if not valid_variant:
-            return False
-            
-        # Record the player's choice
-        self.player_variant_choices[player_idx] = variant_key
+            state['game_variant'] = VARIANT_FLESHLESS
+        elif variant == 'trump_solo':
+            state['game_variant'] = VARIANT_NORMAL  # Fallback to normal for now
+        return
         
-        # Move to the next player
-        self.current_player = (self.current_player + 1) % self.num_players
+    # If multiple players chose different non-normal variants, use priority
+    if len(set(non_normal_variants)) > 1:
+        # Find the variant with the highest priority (lowest priority number)
+        highest_priority_variant = None
+        highest_priority = float('inf')
         
-        # Check if all players have made a choice
-        if all(choice is not None for choice in self.player_variant_choices):
-            # Determine the final game variant based on choices
-            self._determine_final_variant()
-            
-            # End variant selection phase
-            self.variant_selection_phase = False
-            
-        return True
-        
-    def _determine_final_variant(self):
-        """Determine the final game variant based on player choices."""
-        # Count the occurrences of each variant
-        variant_counts = {}
-        for choice in self.player_variant_choices:
-            if choice in variant_counts:
-                variant_counts[choice] += 1
-            else:
-                variant_counts[choice] = 1
+        for variant in set(non_normal_variants):
+            priority = state['variant_priority'].get(variant, float('inf'))
+            if priority < highest_priority:
+                highest_priority = priority
+                highest_priority_variant = variant
                 
-        # If everyone chose normal, play normal
-        if len(variant_counts) == 1 and 'normal' in variant_counts:
-            self.game_variant = GameVariant.NORMAL
-            return
-            
-        # If only one player chose a non-normal variant, play that variant
-        non_normal_variants = [v for v in self.player_variant_choices if v != 'normal' and v != 'hochzeit']
-        if len(set(non_normal_variants)) == 1 and len(non_normal_variants) == 1:
-            variant = non_normal_variants[0]
-            if variant == 'queen_solo':
-                self.game_variant = GameVariant.QUEEN_SOLO
-            elif variant == 'jack_solo':
-                self.game_variant = GameVariant.JACK_SOLO
-            elif variant == 'fleshless':
-                self.game_variant = GameVariant.FLESHLESS
-            elif variant == 'trump_solo':
-                self.game_variant = GameVariant.NORMAL  # Fallback to normal for now
-            return
-            
-        # If multiple players chose different non-normal variants, use priority
-        if len(set(non_normal_variants)) > 1:
-            # Find the variant with the highest priority (lowest priority number)
-            highest_priority_variant = None
-            highest_priority = float('inf')
-            
-            for variant in set(non_normal_variants):
-                priority = self.variant_priority.get(variant, float('inf'))
-                if priority < highest_priority:
-                    highest_priority = priority
-                    highest_priority_variant = variant
-                    
-            if highest_priority_variant == 'queen_solo':
-                self.game_variant = GameVariant.QUEEN_SOLO
-            elif highest_priority_variant == 'jack_solo':
-                self.game_variant = GameVariant.JACK_SOLO
-            elif highest_priority_variant == 'fleshless':
-                self.game_variant = GameVariant.FLESHLESS
-            elif highest_priority_variant == 'trump_solo':
-                self.game_variant = GameVariant.NORMAL  # Fallback to normal for now
-            return
-            
-        # Default to normal game
-        self.game_variant = GameVariant.NORMAL
+        if highest_priority_variant == 'queen_solo':
+            state['game_variant'] = VARIANT_QUEEN_SOLO
+        elif highest_priority_variant == 'jack_solo':
+            state['game_variant'] = VARIANT_JACK_SOLO
+        elif highest_priority_variant == 'fleshless':
+            state['game_variant'] = VARIANT_FLESHLESS
+        elif highest_priority_variant == 'trump_solo':
+            state['game_variant'] = VARIANT_NORMAL  # Fallback to normal for now
+        return
+        
+    # Default to normal game
+    state['game_variant'] = VARIANT_NORMAL
+
+def complete_trick(state: Dict) -> None:
+    """
+    Complete the current trick and determine the winner.
     
-    def _complete_trick(self):
-        """Complete the current trick and determine the winner."""
-        # Determine the winner of the trick
-        lead_card = self.current_trick[0]
-        lead_is_trump = lead_card.is_trump(self.game_variant)
+    Args:
+        state: The game state
+    """
+    # Determine the winner of the trick
+    lead_card = state['current_trick'][0]
+    lead_is_trump = is_trump(lead_card, state['game_variant'])
+    
+    # Find the highest card of the same type
+    highest_card_idx = 0
+    highest_card_value = get_card_order_value(lead_card, state['game_variant'])
+    
+    for i in range(1, len(state['current_trick'])):
+        card = state['current_trick'][i]
+        card_is_trump = is_trump(card, state['game_variant'])
         
-        # Find the highest card of the same type
-        highest_card_idx = 0
-        highest_card_value = lead_card.get_order_value(self.game_variant)
+        # Trump beats non-trump
+        if card_is_trump and not lead_is_trump:
+            highest_card_idx = i
+            highest_card_value = get_card_order_value(card, state['game_variant'])
+            lead_is_trump = True
+        # Compare cards of the same type
+        elif card_is_trump == lead_is_trump:
+            if card_is_trump or card['suit'] == lead_card['suit']:
+                card_value = get_card_order_value(card, state['game_variant'])
+                if card_value > highest_card_value:
+                    highest_card_idx = i
+                    highest_card_value = card_value
+    
+    # The winner is the player who played the highest card
+    state['trick_winner'] = (state['current_player'] - (state['num_players'] - highest_card_idx)) % state['num_players']
+    
+    # Add the trick to the list of completed tricks
+    state['tricks'].append(state['current_trick'].copy())
+    
+    # Calculate points for the trick
+    trick_points = sum(get_card_value(card) for card in state['current_trick'])
+    
+    # Check for Diamond Ace capture in normal or hochzeit game
+    diamond_ace_bonus = 0
+    diamond_aces_captured = []
+    
+    if (state['game_variant'] == VARIANT_NORMAL or state['game_variant'] == VARIANT_HOCHZEIT):
+        # Check if there are Diamond Aces in the trick
+        for i, card in enumerate(state['current_trick']):
+            if card['suit'] == SUIT_DIAMONDS and card['rank'] == RANK_ACE:
+                # Calculate which player played this card
+                card_player = (state['current_player'] - (state['num_players'] - i)) % state['num_players']
+                # Check if the card player's team is different from the trick winner's team
+                if state['teams'][card_player] != state['teams'][state['trick_winner']]:
+                    # Award a bonus point for capturing opponent's Diamond Ace
+                    diamond_ace_bonus += 1
+                    # Store information about this Diamond Ace capture
+                    diamond_aces_captured.append({
+                        'winner': state['trick_winner'],
+                        'winner_team': TEAM_NAMES[state['teams'][state['trick_winner']]],
+                        'loser': card_player,
+                        'loser_team': TEAM_NAMES[state['teams'][card_player]],
+                        'is_second': card['is_second'],  # Track which copy of the Diamond Ace
+                        'type': 'diamond_ace'
+                    })
+    
+    # Check for 40+ point trick
+    forty_plus_bonus = 0
+    if trick_points >= 40:
+        # Award a bonus point for a 40+ point trick
+        forty_plus_bonus = 1
+        # Store information about the 40+ point trick
+        if 'special_tricks' not in state:
+            state['special_tricks'] = []
         
-        for i in range(1, len(self.current_trick)):
-            card = self.current_trick[i]
-            card_is_trump = card.is_trump(self.game_variant)
-            
-            # Trump beats non-trump
-            if card_is_trump and not lead_is_trump:
-                highest_card_idx = i
-                highest_card_value = card.get_order_value(self.game_variant)
-                lead_is_trump = True
-            # Compare cards of the same type
-            elif card_is_trump == lead_is_trump:
-                if card_is_trump or card.suit == lead_card.suit:
-                    card_value = card.get_order_value(self.game_variant)
-                    if card_value > highest_card_value:
-                        highest_card_idx = i
-                        highest_card_value = card_value
+        state['special_tricks'].append({
+            'winner': state['trick_winner'],
+            'winner_team': TEAM_NAMES[state['teams'][state['trick_winner']]],
+            'points': trick_points,
+            'type': 'forty_plus'
+        })
+    
+    # Store information about Diamond Ace captures if any occurred
+    if diamond_aces_captured:
+        state['diamond_ace_captured'] = diamond_aces_captured
         
-        # The winner is the player who played the highest card
-        self.trick_winner = (self.current_player - (self.num_players - highest_card_idx)) % self.num_players
-        
-        # Add the trick to the list of completed tricks
-        self.tricks.append(self.current_trick)
-        
-        # Calculate points for the trick
-        trick_points = sum(card.get_value() for card in self.current_trick)
-        
-        # Check for Diamond Ace capture in normal or hochzeit game
-        diamond_ace_bonus = 0
-        diamond_aces_captured = []
-        
-        if (self.game_variant == GameVariant.NORMAL or self.game_variant == GameVariant.HOCHZEIT):
-            # Check if there are Diamond Aces in the trick
-            for i, card in enumerate(self.current_trick):
-                if card.suit == Suit.DIAMONDS and card.rank == Rank.ACE:
-                    # Calculate which player played this card
-                    card_player = (self.current_player - (self.num_players - i)) % self.num_players
-                    # Check if the card player's team is different from the trick winner's team
-                    if self.teams[card_player] != self.teams[self.trick_winner]:
-                        # Award a bonus point for capturing opponent's Diamond Ace
-                        diamond_ace_bonus += 1
-                        # Store information about this Diamond Ace capture
-                        diamond_aces_captured.append({
-                            'winner': self.trick_winner,
-                            'winner_team': self.teams[self.trick_winner].name,
-                            'loser': card_player,
-                            'loser_team': self.teams[card_player].name,
-                            'is_second': card.is_second,  # Track which copy of the Diamond Ace
-                            'type': 'diamond_ace'
-                        })
-        
-        # Check for 40+ point trick
-        forty_plus_bonus = 0
-        if trick_points >= 40:
-            # Award a bonus point for a 40+ point trick
-            forty_plus_bonus = 1
-            # Store information about the 40+ point trick
-            if not hasattr(self, 'special_tricks'):
-                self.special_tricks = []
-            
-            self.special_tricks.append({
-                'winner': self.trick_winner,
-                'winner_team': self.teams[self.trick_winner].name,
+    # Store information about the 40+ point trick if it occurred
+    if forty_plus_bonus > 0:
+        # If we already have diamond_ace_captured, add the 40+ trick to it
+        if 'diamond_ace_captured' in state:
+            # Add a special entry for the 40+ trick
+            state['diamond_ace_captured'].append({
+                'winner': state['trick_winner'],
+                'winner_team': TEAM_NAMES[state['teams'][state['trick_winner']]],
                 'points': trick_points,
                 'type': 'forty_plus'
             })
-        
-        # Store information about Diamond Ace captures if any occurred
-        if diamond_aces_captured:
-            self.diamond_ace_captured = diamond_aces_captured
-            
-        # Store information about the 40+ point trick if it occurred
-        if forty_plus_bonus > 0:
-            # If we already have diamond_ace_captured, add the 40+ trick to it
-            if hasattr(self, 'diamond_ace_captured'):
-                # Add a special entry for the 40+ trick
-                self.diamond_ace_captured.append({
-                    'winner': self.trick_winner,
-                    'winner_team': self.teams[self.trick_winner].name,
-                    'points': trick_points,
-                    'type': 'forty_plus'
-                })
-            else:
-                # Create a new list with just the 40+ trick
-                self.diamond_ace_captured = [{
-                    'winner': self.trick_winner,
-                    'winner_team': self.teams[self.trick_winner].name,
-                    'points': trick_points,
-                    'type': 'forty_plus'
-                }]
-        
-        # Add points to the winner's team
-        winner_team = self.teams[self.trick_winner]
-        if winner_team == PlayerTeam.RE:
-            self.scores[0] += trick_points
-            # Add bonus points for Diamond Ace capture
-            if diamond_ace_bonus > 0:
-                self.scores[0] += diamond_ace_bonus
-                # Subtract from the other team
-                self.scores[1] -= diamond_ace_bonus
-            # Add bonus point for 40+ point trick (zero-sum)
-            if forty_plus_bonus > 0:
-                self.scores[0] += forty_plus_bonus
-                # Subtract from the other team to keep total at 240
-                self.scores[1] -= forty_plus_bonus
         else:
-            self.scores[1] += trick_points
-            # Add bonus points for Diamond Ace capture
-            if diamond_ace_bonus > 0:
-                self.scores[1] += diamond_ace_bonus
-                # Subtract from the other team
-                self.scores[0] -= diamond_ace_bonus
-            # Add bonus point for 40+ point trick (zero-sum)
-            if forty_plus_bonus > 0:
-                self.scores[1] += forty_plus_bonus
-                # Subtract from the other team to keep total at 240
-                self.scores[0] -= forty_plus_bonus
-            
-        # Add points to the individual player's score
-        self.player_scores[self.trick_winner] += trick_points
-        
-        # Add bonus points for Diamond Ace capture to all players on the winner's team
+            # Create a new list with just the 40+ trick
+            state['diamond_ace_captured'] = [{
+                'winner': state['trick_winner'],
+                'winner_team': TEAM_NAMES[state['teams'][state['trick_winner']]],
+                'points': trick_points,
+                'type': 'forty_plus'
+            }]
+    
+    # Add points to the winner's team
+    winner_team = state['teams'][state['trick_winner']]
+    if winner_team == TEAM_RE:
+        state['scores'][0] += trick_points
+        # Add bonus points for Diamond Ace capture
         if diamond_ace_bonus > 0:
-            winner_team = self.teams[self.trick_winner]
-            for i, team in enumerate(self.teams):
-                if team == winner_team:
-                    self.player_scores[i] += diamond_ace_bonus
-            
-        # Add bonus point for 40+ point trick to all players on the winner's team
+            state['scores'][0] += diamond_ace_bonus
+            # Subtract from the other team
+            state['scores'][1] -= diamond_ace_bonus
+        # Add bonus point for 40+ point trick (zero-sum)
         if forty_plus_bonus > 0:
-            winner_team = self.teams[self.trick_winner]
-            for i, team in enumerate(self.teams):
-                if team == winner_team:
-                    self.player_scores[i] += forty_plus_bonus
+            state['scores'][0] += forty_plus_bonus
+            # Subtract from the other team to keep total at 240
+            state['scores'][1] -= forty_plus_bonus
+    else:
+        state['scores'][1] += trick_points
+        # Add bonus points for Diamond Ace capture
+        if diamond_ace_bonus > 0:
+            state['scores'][1] += diamond_ace_bonus
+            # Subtract from the other team
+            state['scores'][0] -= diamond_ace_bonus
+        # Add bonus point for 40+ point trick (zero-sum)
+        if forty_plus_bonus > 0:
+            state['scores'][1] += forty_plus_bonus
+            # Subtract from the other team to keep total at 240
+            state['scores'][0] -= forty_plus_bonus
         
-        # Store the last trick points for display
-        self.last_trick_points = trick_points
-        # Store the Diamond Ace bonus for display
-        self.last_trick_diamond_ace_bonus = diamond_ace_bonus
-        
-        # Store the trick winner and set them as the next player to play
-        # When a player wins a trick, it is their turn to play next
-        
-        # The current_player will be updated to the trick winner when the trick is cleared
-        # This is handled by the server after a delay to show the completed trick
-        
-        # IMPORTANT: Do not clear the current trick here
-        # The current trick will be cleared by the server after a delay
-        # self.current_trick = []
+    # Add points to the individual player's score
+    state['player_scores'][state['trick_winner']] += trick_points
     
-    def _end_game(self):
-        """End the game and calculate final scores."""
-        self.game_over = True
+    # Add bonus points for Diamond Ace capture to all players on the winner's team
+    if diamond_ace_bonus > 0:
+        winner_team = state['teams'][state['trick_winner']]
+        for i, team in enumerate(state['teams']):
+            if team == winner_team:
+                state['player_scores'][i] += diamond_ace_bonus
         
-        # Ensure the total points add up to 240
-        total_points = sum(self.scores)
-        if total_points != 240:
-            # Adjust the scores to ensure they add up to 240
-            adjustment = 240 - total_points
-            # Add the adjustment to both teams equally
-            self.scores[0] += adjustment // 2
-            self.scores[1] += adjustment // 2
-            # If the adjustment is odd, add the extra point to the team with more points
-            if adjustment % 2 == 1:
-                if self.scores[0] > self.scores[1]:
-                    self.scores[0] += 1
-                else:
-                    self.scores[1] += 1
-        
-        re_points = self.scores[0]
-        kontra_points = self.scores[1]
-        
-        # In Doppelkopf, winning team needs at least 121 points
-        # (total points is 240, so other team would have at most 119)
-        if re_points >= 121:
-            self.winner = PlayerTeam.RE
-        else:
-            self.winner = PlayerTeam.KONTRA
-            
-        # Calculate game points for each player (zero-sum)
-        self.player_game_points = [0, 0, 0, 0]
-        
-        # Count players in each team
-        re_players = sum(1 for team in self.teams if team == PlayerTeam.RE)
-        kontra_players = sum(1 for team in self.teams if team == PlayerTeam.KONTRA)
-        
-        # Check if this is a solo game (one player in RE team)
-        is_solo_game = re_players == 1
-        
-        # Special handling for solo variants
-        if is_solo_game and (self.game_variant == GameVariant.JACK_SOLO or 
-                             self.game_variant == GameVariant.QUEEN_SOLO or 
-                             self.game_variant == GameVariant.FLESHLESS):
-            # Multiplier for RE announcement
-            multiplier = 2 if self.re_announced else 1
-            
-            if self.winner == PlayerTeam.RE:
-                # RE team won (solo player)
-                # Find the solo player (the only RE player)
-                solo_player_idx = self.teams.index(PlayerTeam.RE)
-                
-                # Solo player gets 3 points per opponent, doubled for RE announcement
-                solo_points = kontra_players * multiplier
-                self.player_game_points[solo_player_idx] = solo_points
-                
-                # Each KONTRA player gets -1 point, doubled for RE announcement
-                for i, team in enumerate(self.teams):
-                    if team == PlayerTeam.KONTRA:
-                        self.player_game_points[i] = -1 * multiplier
+    # Add bonus point for 40+ point trick to all players on the winner's team
+    if forty_plus_bonus > 0:
+        winner_team = state['teams'][state['trick_winner']]
+        for i, team in enumerate(state['teams']):
+            if team == winner_team:
+                state['player_scores'][i] += forty_plus_bonus
+    
+    # Store the last trick points for display
+    state['last_trick_points'] = trick_points
+    # Store the Diamond Ace bonus for display
+    state['last_trick_diamond_ace_bonus'] = diamond_ace_bonus
+    
+    # The current_player will be updated to the trick winner when the trick is cleared
+    # This is handled by the server after a delay to show the completed trick
+    
+    # IMPORTANT: Do not clear the current trick here
+    # The current trick will be cleared by the server after a delay
+    # state['current_trick'] = []
+
+def end_game(state: Dict) -> None:
+    """
+    End the game and calculate final scores.
+    
+    Args:
+        state: The game state
+    """
+    state['game_over'] = True
+    
+    # Ensure the total points add up to 240
+    total_points = sum(state['scores'])
+    if total_points != 240:
+        # Adjust the scores to ensure they add up to 240
+        adjustment = 240 - total_points
+        # Add the adjustment to both teams equally
+        state['scores'][0] += adjustment // 2
+        state['scores'][1] += adjustment // 2
+        # If the adjustment is odd, add the extra point to the team with more points
+        if adjustment % 2 == 1:
+            if state['scores'][0] > state['scores'][1]:
+                state['scores'][0] += 1
             else:
-                # KONTRA team won
-                # Find the solo player (the only RE player)
-                solo_player_idx = self.teams.index(PlayerTeam.RE)
-                
-                # Solo player gets -3 points per opponent, doubled for RE announcement
-                solo_points = -kontra_players * multiplier
-                self.player_game_points[solo_player_idx] = solo_points
-                
-                # Each KONTRA player gets 1 point, doubled for RE announcement
-                for i, team in enumerate(self.teams):
-                    if team == PlayerTeam.KONTRA:
-                        self.player_game_points[i] = 1 * multiplier
+                state['scores'][1] += 1
+    
+    re_points = state['scores'][0]
+    kontra_points = state['scores'][1]
+    
+    # In Doppelkopf, winning team needs at least 121 points
+    # (total points is 240, so other team would have at most 119)
+    if re_points >= 121:
+        state['winner'] = TEAM_RE
+    else:
+        state['winner'] = TEAM_KONTRA
+        
+    # Calculate game points for each player (zero-sum)
+    state['player_game_points'] = [0, 0, 0, 0]
+    
+    # Count players in each team
+    re_players = sum(1 for team in state['teams'] if team == TEAM_RE)
+    kontra_players = sum(1 for team in state['teams'] if team == TEAM_KONTRA)
+    
+    # Check if this is a solo game (one player in RE team)
+    is_solo_game = re_players == 1
+    
+    # Special handling for solo variants
+    if is_solo_game and (state['game_variant'] == VARIANT_JACK_SOLO or 
+                         state['game_variant'] == VARIANT_QUEEN_SOLO or 
+                         state['game_variant'] == VARIANT_FLESHLESS):
+        # Multiplier for RE announcement
+        multiplier = 2 if state['re_announced'] else 1
+        
+        if state['winner'] == TEAM_RE:
+            # RE team won (solo player)
+            # Find the solo player (the only RE player)
+            solo_player_idx = state['teams'].index(TEAM_RE)
+            
+            # Solo player gets 3 points per opponent, doubled for RE announcement
+            solo_points = kontra_players * multiplier
+            state['player_game_points'][solo_player_idx] = solo_points
+            
+            # Each KONTRA player gets -1 point, doubled for RE announcement
+            for i, team in enumerate(state['teams']):
+                if team == TEAM_KONTRA:
+                    state['player_game_points'][i] = -1 * multiplier
         else:
-            # Normal game variant
-            # Base points for winning/losing
-            for i, team in enumerate(self.teams):
-                if team == self.winner:
-                    self.player_game_points[i] = 1  # Winning team players get +1
+            # KONTRA team won
+            # Find the solo player (the only RE player)
+            solo_player_idx = state['teams'].index(TEAM_RE)
+            
+            # Solo player gets -3 points per opponent, doubled for RE announcement
+            solo_points = -kontra_players * multiplier
+            state['player_game_points'][solo_player_idx] = solo_points
+            
+            # Each KONTRA player gets 1 point, doubled for RE announcement
+            for i, team in enumerate(state['teams']):
+                if team == TEAM_KONTRA:
+                    state['player_game_points'][i] = 1 * multiplier
+    else:
+        # Normal game variant
+        # Base points for winning/losing
+        for i, team in enumerate(state['teams']):
+            if team == state['winner']:
+                state['player_game_points'][i] = 1  # Winning team players get +1
+            else:
+                state['player_game_points'][i] = -1  # Losing team players get -1
+                
+        # Points for being KONTRA (zero-sum)
+        for i, team in enumerate(state['teams']):
+            if team == TEAM_KONTRA:
+                state['player_game_points'][i] += 1  # KONTRA team players get +1
+            else:
+                state['player_game_points'][i] -= 1  # RE team players get -1
+                
+        # No 90 achievement (opponent got less than 90 points)
+        if state['winner'] == TEAM_KONTRA and re_points < 90:
+            # KONTRA team prevented RE team from getting 90 points
+            for i, team in enumerate(state['teams']):
+                if team == TEAM_KONTRA:
+                    state['player_game_points'][i] += 1  # KONTRA team players get +1
                 else:
-                    self.player_game_points[i] = -1  # Losing team players get -1
+                    state['player_game_points'][i] -= 1  # RE team players get -1
                     
-            # Points for being KONTRA (zero-sum)
-            for i, team in enumerate(self.teams):
-                if team == PlayerTeam.KONTRA:
-                    self.player_game_points[i] += 1  # KONTRA team players get +1
-                else:
-                    self.player_game_points[i] -= 1  # RE team players get -1
-                    
-            # No 90 achievement (opponent got less than 90 points)
-            if self.winner == PlayerTeam.KONTRA and re_points < 90:
-                # KONTRA team prevented RE team from getting 90 points
-                for i, team in enumerate(self.teams):
-                    if team == PlayerTeam.KONTRA:
-                        self.player_game_points[i] += 1  # KONTRA team players get +1
+        # Diamond ace captures - all players on the team get points
+        if 'diamond_ace_captured' in state:
+            diamond_ace_captures = [capture for capture in state['diamond_ace_captured'] if capture.get('type') == 'diamond_ace']
+            for capture in diamond_ace_captures:
+                winner_team_name = capture['winner_team']
+                winner_team = TEAM_RE if winner_team_name == 'RE' else TEAM_KONTRA
+                for i, team in enumerate(state['teams']):
+                    if team == winner_team:
+                        state['player_game_points'][i] += 1  # Each player on the team gets +1
                     else:
-                        self.player_game_points[i] -= 1  # RE team players get -1
+                        state['player_game_points'][i] -= 1  # Each player on the opposing team gets -1
                         
-            # Diamond ace captures - all players on the team get points
-            if hasattr(self, 'diamond_ace_captured'):
-                diamond_ace_captures = [capture for capture in self.diamond_ace_captured if capture.get('type') == 'diamond_ace']
-                for capture in diamond_ace_captures:
-                    winner_team = capture['winner_team']
-                    for i, team in enumerate(self.teams):
-                        if team.name == winner_team:
-                            self.player_game_points[i] += 1  # Each player on the team gets +1
-                        else:
-                            self.player_game_points[i] -= 1  # Each player on the opposing team gets -1
-                            
-            # 40+ tricks - all players on the team get points
-            if hasattr(self, 'diamond_ace_captured'):
-                forty_plus_tricks = [capture for capture in self.diamond_ace_captured if capture.get('type') == 'forty_plus']
-                for trick in forty_plus_tricks:
-                    winner_team = trick['winner_team']
-                    for i, team in enumerate(self.teams):
-                        if team.name == winner_team:
-                            self.player_game_points[i] += 1  # Each player on the team gets +1
-                        else:
-                            self.player_game_points[i] -= 1  # Each player on the opposing team gets -1
+        # 40+ tricks - all players on the team get points
+        if 'diamond_ace_captured' in state:
+            forty_plus_tricks = [capture for capture in state['diamond_ace_captured'] if capture.get('type') == 'forty_plus']
+            for trick in forty_plus_tricks:
+                winner_team_name = trick['winner_team']
+                winner_team = TEAM_RE if winner_team_name == 'RE' else TEAM_KONTRA
+                for i, team in enumerate(state['teams']):
+                    if team == winner_team:
+                        state['player_game_points'][i] += 1  # Each player on the team gets +1
+                    else:
+                        state['player_game_points'][i] -= 1  # Each player on the opposing team gets -1
+
+def get_state(state: Dict) -> Dict:
+    """
+    Get the current state of the game.
     
-    def get_state(self) -> Dict:
-        """
-        Get the current state of the game.
+    Args:
+        state: The game state
         
-        Returns:
-            A dictionary representing the current game state
-        """
-        return {
-            'hands': self.hands.copy(),
-            'current_trick': self.current_trick.copy(),
-            'tricks': [trick.copy() for trick in self.tricks],
-            'current_player': self.current_player,
-            'game_variant': self.game_variant,
-            'scores': self.scores.copy(),
-            'player_scores': self.player_scores.copy(),
-            'teams': self.teams.copy(),
-            'trick_winner': self.trick_winner,
-            'game_over': self.game_over,
-            'last_trick_points': getattr(self, 'last_trick_points', 0),
-            'variant_selection_phase': self.variant_selection_phase,
-            're_announced': self.re_announced,
-            'contra_announced': self.contra_announced,
-            'can_announce': self.can_announce
-        }
+    Returns:
+        A dictionary representing the current game state
+    """
+    return {
+        'hands': state['hands'].copy(),
+        'current_trick': state['current_trick'].copy(),
+        'tricks': [trick.copy() for trick in state['tricks']],
+        'current_player': state['current_player'],
+        'game_variant': state['game_variant'],
+        'scores': state['scores'].copy(),
+        'player_scores': state['player_scores'].copy(),
+        'teams': state['teams'].copy(),
+        'trick_winner': state['trick_winner'],
+        'game_over': state['game_over'],
+        'last_trick_points': state.get('last_trick_points', 0),
+        'variant_selection_phase': state['variant_selection_phase'],
+        're_announced': state['re_announced'],
+        'contra_announced': state['contra_announced'],
+        'can_announce': state['can_announce'],
+        'winner': state.get('winner', None)
+    }
+
+def get_state_size() -> int:
+    """
+    Get the size of the state representation for the RL agent.
     
-    def get_state_size(self) -> int:
-        """
-        Get the size of the state representation for the RL agent.
-        
-        Returns:
-            The size of the state vector
-        """
-        # This is a simplified representation for the RL agent
-        # 48 cards (one-hot encoded) + 4 players (one-hot encoded) + current trick (48 cards)
-        # + variant_selection_phase (1) + re_announced (1) + contra_announced (1) + can_announce (1) + player_team (1)
-        return 48 + 4 + 48 + 5
+    Returns:
+        The size of the state vector
+    """
+    # This is a simplified representation for the RL agent
+    # 48 cards (one-hot encoded) + 4 players (one-hot encoded) + current trick (48 cards)
+    # + variant_selection_phase (1) + re_announced (1) + contra_announced (1) + can_announce (1) + player_team (1)
+    return 48 + 4 + 48 + 5
+
+def get_action_size() -> int:
+    """
+    Get the size of the action space for the RL agent.
     
-    def get_action_size(self) -> int:
-        """
-        Get the size of the action space for the RL agent.
-        
-        Returns:
-            The size of the action space
-        """
-        # There are 48 possible cards to play
-        return 48
+    Returns:
+        The size of the action space
+    """
+    # There are 48 possible cards to play
+    return 48
+
+def get_state_for_player(state: Dict, player_idx: int) -> np.ndarray:
+    """
+    Get the state representation for the given player.
     
-    def get_state_for_player(self, player_idx: int) -> np.ndarray:
-        """
-        Get the state representation for the given player.
+    Args:
+        state: The game state
+        player_idx: Index of the player
         
-        Args:
-            player_idx: Index of the player
-            
-        Returns:
-            A numpy array representing the state from the player's perspective
-        """
-        # Create a state vector
-        # Extended state size to include:
-        # - variant_selection_phase (1 element)
-        # - re_announced (1 element)
-        # - contra_announced (1 element)
-        # - can_announce (1 element)
-        # - player's team (1 element)
-        state = np.zeros(self.get_state_size())
-        
-        # Encode the player's hand (first 48 elements)
-        for card in self.hands[player_idx]:
-            card_idx = self._card_to_idx(card)
-            state[card_idx] = 1
-        
-        # Encode the current player (next 4 elements)
-        state[48 + self.current_player] = 1
-        
-        # Encode the current trick (next 48 elements)
-        for card in self.current_trick:
-            card_idx = self._card_to_idx(card)
-            state[52 + card_idx] = 1
-        
-        # Encode additional state information
-        state[100] = 1 if self.variant_selection_phase else 0
-        state[101] = 1 if self.re_announced else 0
-        state[102] = 1 if self.contra_announced else 0
-        state[103] = 1 if self.can_announce else 0
-        state[104] = 1 if self.teams[player_idx] == PlayerTeam.RE else 0
-        
-        return state
+    Returns:
+        A numpy array representing the state from the player's perspective
+    """
+    # Create a state vector
+    # Extended state size to include:
+    # - variant_selection_phase (1 element)
+    # - re_announced (1 element)
+    # - contra_announced (1 element)
+    # - can_announce (1 element)
+    # - player's team (1 element)
+    state_vector = np.zeros(get_state_size())
     
-    def _card_to_idx(self, card: Card) -> int:
-        """
-        Convert a card to an index in the state representation.
-        
-        Args:
-            card: The card to convert
-            
-        Returns:
-            The index of the card
-        """
-        suit_idx = card.suit.value - 1
-        rank_idx = card.rank.value - 9  # 9 is the lowest rank
-        is_second_idx = 1 if card.is_second else 0
-        
-        # 6 ranks, 4 suits, 2 copies
-        return suit_idx * 12 + rank_idx * 2 + is_second_idx
+    # Encode the player's hand (first 48 elements)
+    for card in state['hands'][player_idx]:
+        card_idx = card_to_idx(card)
+        state_vector[card_idx] = 1
     
-    def _idx_to_card(self, idx: int) -> Card:
-        """
-        Convert an index to a card.
-        
-        Args:
-            idx: The index to convert
-            
-        Returns:
-            The corresponding card
-        """
-        is_second = idx % 2 == 1
-        rank_idx = (idx // 2) % 6
-        suit_idx = idx // 12
-        
-        suit = Suit(suit_idx + 1)
-        rank = Rank(rank_idx + 9)  # 9 is the lowest rank
-        
-        return Card(suit, rank, is_second)
+    # Encode the current player (next 4 elements)
+    state_vector[48 + state['current_player']] = 1
     
-    def action_to_card(self, action: int, player_idx: int) -> Optional[Card]:
-        """
-        Convert an action index to a card for the given player.
+    # Encode the current trick (next 48 elements)
+    for card in state['current_trick']:
+        card_idx = card_to_idx(card)
+        state_vector[52 + card_idx] = 1
+    
+    # Encode additional state information
+    state_vector[100] = 1 if state['variant_selection_phase'] else 0
+    state_vector[101] = 1 if state['re_announced'] else 0
+    state_vector[102] = 1 if state['contra_announced'] else 0
+    state_vector[103] = 1 if state['can_announce'] else 0
+    state_vector[104] = 1 if state['teams'][player_idx] == TEAM_RE else 0
+    
+    return state_vector
+
+def card_to_idx(card: Dict) -> int:
+    """
+    Convert a card to an index in the state representation.
+    
+    Args:
+        card: The card dictionary
         
-        Args:
-            action: The action index
-            player_idx: Index of the player
-            
-        Returns:
-            The corresponding card, or None if the action is invalid
-        """
-        if action < 0 or action >= self.get_action_size():
-            return None
+    Returns:
+        The index of the card
+    """
+    suit_idx = card['suit'] - 1
+    rank_idx = card['rank'] - 9  # 9 is the lowest rank
+    is_second_idx = 1 if card['is_second'] else 0
+    
+    # 6 ranks, 4 suits, 2 copies
+    return suit_idx * 12 + rank_idx * 2 + is_second_idx
+
+def idx_to_card(idx: int) -> Dict:
+    """
+    Convert an index to a card.
+    
+    Args:
+        idx: The index to convert
         
-        card = self._idx_to_card(action)
+    Returns:
+        The corresponding card
+    """
+    is_second = idx % 2 == 1
+    rank_idx = (idx // 2) % 6
+    suit_idx = idx // 12
+    
+    suit = suit_idx + 1
+    rank = rank_idx + 9  # 9 is the lowest rank
+    
+    return create_card(suit, rank, is_second)
+
+def action_to_card(state: Dict, action: int, player_idx: int) -> Optional[Dict]:
+    """
+    Convert an action index to a card for the given player.
+    
+    Args:
+        state: The game state
+        action: The action index
+        player_idx: Index of the player
         
-        # Check if the card is in the player's hand and is a legal move
-        legal_actions = self.get_legal_actions(player_idx)
-        for legal_card in legal_actions:
-            if (legal_card.suit == card.suit and 
-                legal_card.rank == card.rank and 
-                legal_card.is_second == card.is_second):
-                return legal_card
-        
+    Returns:
+        The corresponding card, or None if the action is invalid
+    """
+    if action < 0 or action >= get_action_size():
         return None
+    
+    card = idx_to_card(action)
+    
+    # Check if the card is in the player's hand and is a legal move
+    legal_actions = get_legal_actions(state, player_idx)
+    for legal_card in legal_actions:
+        if (legal_card['suit'] == card['suit'] and 
+            legal_card['rank'] == card['rank'] and 
+            legal_card['is_second'] == card['is_second']):
+            return legal_card
+    
+    return None

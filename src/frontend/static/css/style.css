@@ -583,6 +583,18 @@ h1, h2, h3 {
     filter: grayscale(50%);
 }
 
+.card-container.playable {
+    border: 2px solid green;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+}
+
+.card-container.playable .card {
+    opacity: 1;
+    cursor: pointer;
+    filter: none;
+}
+
 .card.selected {
     border-color: #3498db;
     transform: translateY(-10px);

@@ -14,6 +14,7 @@ from typing import List, Dict, Any, Tuple
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
 
 import src.backend.utils.logger as logger
+from src.backend.game.doppelkopf import TEAM_RE, TEAM_KONTRA
 
 def train(game, rl_agent, opponents, num_episodes: int, eval_interval: int, save_interval: int, model_dir: str):
     """
@@ -85,18 +86,12 @@ def calculate_reward(game, player_idx: int, action_type: str = 'card', announcem
     
     # Get the player's team
     player_team = game.teams[player_idx]
-    team_idx = 0 if player_team.name == 'RE' else 1
+    team_idx = 0 if player_team == TEAM_RE else 1
     
     # Reward for winning a trick (only applies to card actions)
     if action_type == 'card' and game.trick_winner == player_idx:
-        # Get the points in the trick
-        trick_points = sum(card.get_value() for card in game.tricks[-1])
-        reward += trick_points / 5  # Scale down the points but give more weight than before
-        
-        # Additional reward for capturing high-value cards
-        for card in game.tricks[-1]:
-            if card.get_value() >= 10:  # Ten, Queen, King, Ace
-                reward += 0.5  # Extra reward for capturing high-value cards
+        # Simple reward for winning a trick
+        reward += 1.0
     
     # Reward for making announcements
     if action_type == 'announce':
@@ -104,8 +99,8 @@ def calculate_reward(game, player_idx: int, action_type: str = 'card', announcem
         reward += 1.0
         
         # Additional reward based on the player's team
-        if (announcement == 're' and player_team.name == 'RE') or \
-           (announcement == 'contra' and player_team.name == 'KONTRA'):
+        if (announcement == 're' and player_team == TEAM_RE) or \
+           (announcement == 'contra' and player_team == TEAM_KONTRA):
             # Correct team announcement
             reward += 1.0
             
@@ -126,16 +121,8 @@ def calculate_reward(game, player_idx: int, action_type: str = 'card', announcem
         
         # Reward for selecting solo variants when appropriate
         if announcement in ['queen_solo', 'jack_solo'] and player_idx == 0:
-            # Count relevant cards in hand
-            count = 0
-            for card in game.hands[player_idx]:
-                if (announcement == 'queen_solo' and card.rank.name == 'QUEEN') or \
-                   (announcement == 'jack_solo' and card.rank.name == 'JACK'):
-                    count += 1
-            
-            # Reward based on count (more queens/jacks = better for solo)
-            if count >= 4:  # Having at least 4 queens/jacks is good for solo
-                reward += count / 2.0
+            # Simple reward for selecting a solo variant
+            reward += 1.0
     
     # Continuous reward based on score difference
     if hasattr(game, 'scores') and len(game.scores) == 2:
@@ -181,17 +168,17 @@ def play_episode(game, rl_agent, opponents) -> Tuple[float, bool]:
             action_type, variant = action_result
             
             # Set the game variant
-            from src.backend.game.doppelkopf import GameVariant
+            from src.backend.game.doppelkopf import VARIANT_NORMAL, VARIANT_HOCHZEIT, VARIANT_QUEEN_SOLO, VARIANT_JACK_SOLO, VARIANT_FLESHLESS
             if variant == 'normal':
-                game.game_variant = GameVariant.NORMAL
+                game.game_variant = VARIANT_NORMAL
             elif variant == 'hochzeit':
-                game.game_variant = GameVariant.HOCHZEIT
+                game.game_variant = VARIANT_HOCHZEIT
             elif variant == 'queen_solo':
-                game.game_variant = GameVariant.QUEEN_SOLO
+                game.game_variant = VARIANT_QUEEN_SOLO
             elif variant == 'jack_solo':
-                game.game_variant = GameVariant.JACK_SOLO
+                game.game_variant = VARIANT_JACK_SOLO
             elif variant == 'fleshless':
-                game.game_variant = GameVariant.FLESHLESS
+                game.game_variant = VARIANT_FLESHLESS
             
             # Get the next state
             next_state = game.get_state_for_player(rl_player_idx)
@@ -231,7 +218,7 @@ def play_episode(game, rl_agent, opponents) -> Tuple[float, bool]:
                     game.play_card(current_player, action)
                     
                     # Convert the card to an action index for the RL agent
-                    action_idx = game._card_to_idx(action)
+                    action_idx = game.card_to_idx(action)
                     
                     # Get the next state
                     next_state = game.get_state_for_player(current_player)
@@ -291,7 +278,7 @@ def play_episode(game, rl_agent, opponents) -> Tuple[float, bool]:
     win = game.winner == rl_team
     
     # Get the player's team index
-    team_idx = 0 if rl_team.name == 'RE' else 1
+    team_idx = 0 if rl_team == TEAM_RE else 1
     
     # Calculate score difference
     score_diff = game.scores[team_idx] - game.scores[1 - team_idx]
@@ -358,17 +345,17 @@ def play_evaluation_episode(game, rl_agent, opponents) -> Tuple[float, bool]:
             action_type, variant = action_result
             
             # Set the game variant
-            from src.backend.game.doppelkopf import GameVariant
+            from src.backend.game.doppelkopf import VARIANT_NORMAL, VARIANT_HOCHZEIT, VARIANT_QUEEN_SOLO, VARIANT_JACK_SOLO, VARIANT_FLESHLESS
             if variant == 'normal':
-                game.game_variant = GameVariant.NORMAL
+                game.game_variant = VARIANT_NORMAL
             elif variant == 'hochzeit':
-                game.game_variant = GameVariant.HOCHZEIT
+                game.game_variant = VARIANT_HOCHZEIT
             elif variant == 'queen_solo':
-                game.game_variant = GameVariant.QUEEN_SOLO
+                game.game_variant = VARIANT_QUEEN_SOLO
             elif variant == 'jack_solo':
-                game.game_variant = GameVariant.JACK_SOLO
+                game.game_variant = VARIANT_JACK_SOLO
             elif variant == 'fleshless':
-                game.game_variant = GameVariant.FLESHLESS
+                game.game_variant = VARIANT_FLESHLESS
             
             # Calculate reward for variant selection
             reward = calculate_reward(game, rl_player_idx, 'variant', variant)
@@ -434,7 +421,7 @@ def play_evaluation_episode(game, rl_agent, opponents) -> Tuple[float, bool]:
     win = game.winner == rl_team
     
     # Get the player's team index
-    team_idx = 0 if rl_team.name == 'RE' else 1
+    team_idx = 0 if rl_team == TEAM_RE else 1
     
     # Calculate score difference
     score_diff = game.scores[team_idx] - game.scores[1 - team_idx]

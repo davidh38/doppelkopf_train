@@ -61,6 +61,17 @@ export function startNewGame() {
       gameState.gameVariant = data.state.game_variant;
       gameState.legalActions = data.state.legal_actions || [];
       
+      // Update hasHochzeit property to control Hochzeit button visibility
+      if (data.state.has_hochzeit !== undefined) {
+        console.log("Updating hasHochzeit from new_game response:", data.state.has_hochzeit);
+        gameState.hasHochzeit = data.state.has_hochzeit;
+      }
+      
+      // Update canAnnounce property
+      if (data.state.can_announce !== undefined) {
+        gameState.canAnnounce = data.state.can_announce;
+      }
+      
       // Emit event that game state has been updated
       eventBus.emit('gameStateUpdated', gameState);
     }
@@ -85,6 +96,13 @@ export function startNewGame() {
  */
 export function setGameVariant(variant) {
   console.log("Setting game variant:", variant);
+  
+  // Debug output to help diagnose issues
+  console.log("Current game state before setting variant:", {
+    currentPlayer: gameState.currentPlayer,
+    hand: gameState.hand,
+    legalActions: gameState.legalActions
+  });
   
   // Emit event that game state has been updated to make sure the player's hand is visible during variant selection
   eventBus.emit('gameStateUpdated', gameState);
@@ -155,6 +173,24 @@ export function setGameVariant(variant) {
       gameState.canAnnounceNo30 = data.state.can_announce_no30 || false;
       gameState.canAnnounceBlack = data.state.can_announce_black || false;
       
+      // Update hasHochzeit property to control Hochzeit button visibility
+      if (data.state.has_hochzeit !== undefined) {
+        console.log("Updating hasHochzeit from set_variant response:", data.state.has_hochzeit);
+        gameState.hasHochzeit = data.state.has_hochzeit;
+      }
+      
+      // Update canAnnounce property
+      if (data.state.can_announce !== undefined) {
+        gameState.canAnnounce = data.state.can_announce;
+      }
+      
+      // Debug output to help diagnose issues
+      console.log("Updated game state after setting variant:", {
+        currentPlayer: gameState.currentPlayer,
+        hand: gameState.hand,
+        legalActions: gameState.legalActions
+      });
+      
       // Emit event that game state has been updated
       eventBus.emit('gameStateUpdated', gameState);
     }
@@ -181,6 +217,9 @@ export function setGameVariant(variant) {
     if (gameVariantSelection) {
       gameVariantSelection.classList.add('hidden');
     }
+    
+    // Force a re-render of the hand to make sure the cards are properly displayed
+    eventBus.emit('gameStateUpdated', gameState);
   })
   .catch(error => {
     console.error('Error setting game variant:', error);
@@ -237,6 +276,17 @@ export function makeAnnouncement(announcement) {
       gameState.canAnnounceNo30 = data.state.can_announce_no30 || false;
       gameState.canAnnounceBlack = data.state.can_announce_black || false;
       
+      // Update hasHochzeit property to control Hochzeit button visibility
+      if (data.state.has_hochzeit !== undefined) {
+        console.log("Updating hasHochzeit from announcement response:", data.state.has_hochzeit);
+        gameState.hasHochzeit = data.state.has_hochzeit;
+      }
+      
+      // Update canAnnounce property
+      if (data.state.can_announce !== undefined) {
+        gameState.canAnnounce = data.state.can_announce;
+      }
+      
       // Update announcements
       if (!gameState.announcements) {
         gameState.announcements = {};
@@ -255,6 +305,12 @@ export function makeAnnouncement(announcement) {
         gameState.announcements.no30 = true;
       } else if (announcement === 'black') {
         gameState.announcements.black = true;
+      } else if (announcement === 'hochzeit') {
+        gameState.announcements.hochzeit = true;
+        // Update game variant to HOCHZEIT
+        gameState.gameVariant = 'HOCHZEIT';
+        // Reset hasHochzeit flag since it's been announced
+        gameState.hasHochzeit = false;
       }
       
       // Update multiplier

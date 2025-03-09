@@ -12,7 +12,13 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from collections import deque, namedtuple
-from typing import Any, List, Tuple
+from typing import Any, List, Tuple, Dict
+
+# Import game functions
+from src.backend.game.doppelkopf import (
+    get_legal_actions, get_state_for_player, card_to_idx,
+    TEAM_RE, TEAM_KONTRA
+)
 
 # Define a transition for the replay buffer
 Transition = namedtuple('Transition', 
@@ -147,12 +153,12 @@ class RLAgent:
         # Initialize step counter
         self.steps_done = 0
     
-    def select_action(self, game, player_idx: int) -> Any:
+    def select_action(self, game: Dict, player_idx: int) -> Any:
         """
         Select an action using epsilon-greedy policy.
         
         Args:
-            game: The game instance
+            game: The game state dictionary
             player_idx: Index of the player
             
         Returns:
@@ -163,10 +169,8 @@ class RLAgent:
             return self._select_variant_action(game, player_idx)
         
         # Check if we can make an announcement
-        can_announce = False
-        if hasattr(game, 'can_announce'):
-            can_announce = game.can_announce
-        else:
+        can_announce = hasattr(game, 'can_announce') and game.can_announce
+        if not can_announce:
             # If not explicitly tracked, we can announce until the fifth card is played
             cards_played = len(game.current_trick)
             for trick in game.tricks:
@@ -196,9 +200,9 @@ class RLAgent:
             # Add announcement actions if allowed
             if can_announce:
                 player_team = game.teams[player_idx]
-                if player_team.name == 'RE':
+                if player_team == TEAM_RE:
                     all_possible_actions.append(('announce', 're'))
-                elif player_team.name == 'KONTRA':
+                elif player_team == TEAM_KONTRA:
                     all_possible_actions.append(('announce', 'contra'))
             
             # Randomly select one action
@@ -216,16 +220,16 @@ class RLAgent:
                 
                 # Add card actions
                 for card in legal_card_actions:
-                    card_idx = game._card_to_idx(card)
+                    card_idx = game.card_to_idx(card)
                     action_q_values.append(('card', card, q_values[0][card_idx].item()))
                 
                 # Add announcement actions if allowed
                 if can_announce:
                     player_team = game.teams[player_idx]
-                    if player_team.name == 'RE':
+                    if player_team == TEAM_RE:
                         re_idx = self.action_size  # First announcement action
                         action_q_values.append(('announce', 're', q_values[0][re_idx].item()))
-                    elif player_team.name == 'KONTRA':
+                    elif player_team == TEAM_KONTRA:
                         contra_idx = self.action_size + 1  # Second announcement action
                         action_q_values.append(('announce', 'contra', q_values[0][contra_idx].item()))
                 
@@ -235,12 +239,12 @@ class RLAgent:
                     return (action_type, action)
                 return None
     
-    def _select_variant_action(self, game, player_idx: int) -> Any:
+    def _select_variant_action(self, game: Dict, player_idx: int) -> Any:
         """
         Select a game variant action.
         
         Args:
-            game: The game instance
+            game: The game state dictionary
             player_idx: Index of the player
             
         Returns:

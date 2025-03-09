@@ -12,7 +12,7 @@ import time
 # Add the project root directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
-from src.backend.game.doppelkopf import DoppelkopfGame
+from src.reinforcementlearning.doppelkopf_game import DoppelkopfGame
 from src.reinforcementlearning.agents.random_agent import select_random_action
 from src.reinforcementlearning.agents.rl_agent import RLAgent
 import src.reinforcementlearning.training.trainer as trainer

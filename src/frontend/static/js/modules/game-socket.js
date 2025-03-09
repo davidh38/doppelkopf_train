@@ -2,7 +2,7 @@
  * Socket.IO event handling
  */
 import { eventBus } from './event-bus.js';
-import { updateGameState } from './game-core.js';
+import { updateGameState, gameState } from './game-core.js';
 import { showGameOverScreen } from './game-ui.js';
 
 // Socket.IO instance
@@ -25,8 +25,22 @@ export function initSocket() {
   socket.on('game_update', function(data) {
     console.log('Received game update:', data);
     
+    // Debug output to help diagnose issues
+    console.log("Current game state before update:", {
+      currentPlayer: gameState.currentPlayer,
+      hand: gameState.hand,
+      legalActions: gameState.legalActions
+    });
+    
     // Update game state with the response data
     updateGameState(data);
+    
+    // Debug output to help diagnose issues
+    console.log("Updated game state after update:", {
+      currentPlayer: gameState.currentPlayer,
+      hand: gameState.hand,
+      legalActions: gameState.legalActions
+    });
     
     // Check if the game is over
     if (data.game_over) {
@@ -99,7 +113,6 @@ export function handleProgressUpdate(data) {
       }
       
       // Show the game board with variant selection if we have a game ID
-      const gameState = window.gameState; // Access the global game state
       if (gameState && gameState.gameId) {
         console.log("Game ready, showing game board with variant selection");
         
@@ -151,10 +164,10 @@ export function handleTrickCompleted(data) {
   console.log('Handling trick completed:', data);
   
   // Check if there were special captures (Diamond Aces or 40+ point tricks)
-  if (window.gameState && window.gameState.diamondAceCaptured && Array.isArray(window.gameState.diamondAceCaptured)) {
+  if (gameState && gameState.diamondAceCaptured && Array.isArray(gameState.diamondAceCaptured)) {
     // Group captures by type
-    const diamondAceCaptures = window.gameState.diamondAceCaptured.filter(capture => capture.type === 'diamond_ace' || !capture.type);
-    const fortyPlusCaptures = window.gameState.diamondAceCaptured.filter(capture => capture.type === 'forty_plus');
+    const diamondAceCaptures = gameState.diamondAceCaptured.filter(capture => capture.type === 'diamond_ace' || !capture.type);
+    const fortyPlusCaptures = gameState.diamondAceCaptured.filter(capture => capture.type === 'forty_plus');
     
     // Process Diamond Ace captures
     if (diamondAceCaptures.length > 0) {
@@ -272,7 +285,7 @@ export function handleTrickCompleted(data) {
     }
     
     // Clear the diamond_ace_captured flag
-    delete window.gameState.diamondAceCaptured;
+    delete gameState.diamondAceCaptured;
   }
 }
 

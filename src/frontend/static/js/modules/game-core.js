@@ -50,7 +50,15 @@ export function updateGameState(data) {
   gameState.scores = data.scores || gameState.scores;
   gameState.gameOver = data.game_over !== undefined ? data.game_over : gameState.gameOver;
   gameState.winner = data.winner || gameState.winner;
+  // Debug output to help diagnose issues with legal actions
+  console.log("Legal actions before update:", gameState.legalActions);
+  console.log("Legal actions from data:", data.legal_actions);
+  
+  // Update legal actions
   gameState.legalActions = data.legal_actions || gameState.legalActions;
+  
+  // Debug output to help diagnose issues with legal actions
+  console.log("Legal actions after update:", gameState.legalActions);
   gameState.otherPlayers = data.other_players || gameState.otherPlayers;
   
   // Explicitly update announcement capabilities with default values of false if not provided
