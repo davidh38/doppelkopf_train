@@ -11,19 +11,33 @@ This project implements a comprehensive Doppelkopf card game system with multipl
 
 ** Game Flow
 
-The game follows these steps in order:
+The game follows these steps in order, with the corresponding API routes:
 
 1. *Start a New Game*: Click the "New Game" button to create a new game session
+   - API Route: =/new_game= (POST)
+
 2. *Select a Game Variant*: Choose from Normal, Hochzeit (Marriage), Queen Solo, Jack Solo, or Fleshless
+   - API Route: =/set_variant= (POST)
+
 3. *Play Cards*: Take turns playing cards by clicking on them when it's your turn
+   - API Route: =/play_card= (POST)
+
 4. *Make Announcements (Optional)*: 
    - If you're on the Re team (have Queens of Clubs), you can announce "Re"
    - If you're on the Kontra team (no Queens of Clubs), you can announce "Contra"
    - If you have both Queens of Clubs, you can announce "Hochzeit" (Marriage)
    - Announcements must be made before the fifth card is played
+   - API Route: =/announce= (POST)
+
 5. *Complete Tricks*: The highest card in each trick wins and collects points
+   - Current trick info: =/get_current_trick= (GET)
+   - Last trick info: =/get_last_trick= (GET)
+
 6. *Game Ends*: After all cards are played, the team with more points wins
+   - Scoreboard: =/get_scoreboard= (GET)
+
 7. *View Summary*: See the final score and game statistics
+   - API Route: =/game-summary/<game_id>= (GET)
 
 Socket.IO provides real-time updates during gameplay, showing AI player moves and trick completions automatically.
 
