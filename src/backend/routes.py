@@ -17,9 +17,9 @@ from src.backend.game.doppelkopf import (
     TEAM_RE, TEAM_KONTRA, TEAM_UNKNOWN,
     VARIANT_NORMAL, VARIANT_HOCHZEIT, VARIANT_QUEEN_SOLO, VARIANT_JACK_SOLO, VARIANT_FLESHLESS,
     SUIT_NAMES, RANK_NAMES, TEAM_NAMES, VARIANT_NAMES,
-    create_card, create_game_state, get_legal_actions, play_card, announce, set_variant, has_hochzeit,
-    cards_equal
+    create_card, create_game_state, get_legal_actions, play_card, announce, set_variant, has_hochzeit
 )
+from src.backend.card_utils import cards_equal
 from config import games, scoreboard, MODEL_PATH
 from game_state import (
     get_game_state, check_for_hochzeit, card_to_dict, 
