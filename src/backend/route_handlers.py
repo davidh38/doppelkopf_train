@@ -347,12 +347,6 @@ def new_game(socketio):
     # Initialize player variants dictionary
     player_variants = {}
     
-    # Have AI players choose variants immediately
-    while game['variant_selection_phase'] and game['current_player'] != 0:
-        current_player = game['current_player']
-        set_variant(game, 'normal', current_player)
-        player_variants[current_player] = 'normal'
-    
     # Store game state
     games[game_id] = {
         'game': game,
@@ -374,11 +368,20 @@ def new_game(socketio):
         'revealed_teams': [False, False, False, False]
     }
     
-    # If it's not the player's turn, have AI play
-    if game['current_player'] != 0:
+    # Have AI players choose variants immediately
+    while game['variant_selection_phase'] and game['current_player'] != 0:
+        current_player = game['current_player']
+        set_variant(game, 'normal', current_player)
+        player_variants[current_player] = 'normal'
+        
+        # Update the player_variants in the game data
+        games[game_id]['player_variants'] = player_variants
+    
+    # If the variant selection phase is over and it's not the player's turn, have AI play
+    if not game['variant_selection_phase'] and game['current_player'] != 0:
         ai_play_turn(socketio, game_id)
-    else:
-        # Set legal actions for the player if it's their turn
+    # If it's the player's turn, set legal actions
+    elif game['current_player'] == 0:
         game['legal_actions'] = get_legal_actions(game, 0)
         print(f"Setting legal actions for player in new game: {game['legal_actions']}")
     

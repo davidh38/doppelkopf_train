@@ -617,10 +617,19 @@ def determine_final_variant(state: Dict) -> None:
             variant_counts[choice] += 1
         else:
             variant_counts[choice] = 1
+    
+    # Track which player chose each variant
+    state['variant_choosers'] = {}
+    for player_idx, choice in enumerate(state['player_variant_choices']):
+        if choice not in state['variant_choosers']:
+            state['variant_choosers'][choice] = []
+        state['variant_choosers'][choice].append(player_idx)
             
     # If everyone chose normal, play normal
     if len(variant_counts) == 1 and 'normal' in variant_counts:
         state['game_variant'] = VARIANT_NORMAL
+        # Use standard team determination for normal games
+        reassign_teams(state)
         return
         
     # If only one player chose a non-normal variant, play that variant
@@ -637,6 +646,9 @@ def determine_final_variant(state: Dict) -> None:
             state['game_variant'] = VARIANT_FLESHLESS
         elif variant == 'trump_solo':
             state['game_variant'] = VARIANT_NORMAL  # Fallback to normal for now
+        
+        # Reassign teams based on the solo variant
+        reassign_teams(state)
         return
         
     # If multiple players chose different non-normal variants, use priority
@@ -661,10 +673,77 @@ def determine_final_variant(state: Dict) -> None:
             state['game_variant'] = VARIANT_FLESHLESS
         elif highest_priority_variant == 'trump_solo':
             state['game_variant'] = VARIANT_NORMAL  # Fallback to normal for now
+        
+        # Reassign teams based on the solo variant
+        reassign_teams(state)
+        return
+    
+    # Check for hochzeit variant
+    if 'hochzeit' in variant_counts:
+        state['game_variant'] = VARIANT_HOCHZEIT
+        # Initialize hochzeit-specific state
+        state['hochzeit_active'] = True
+        state['hochzeit_non_trump_trick_played'] = False
+        state['hochzeit_partner'] = None
+        
+        # Reassign teams based on hochzeit variant
+        reassign_teams(state)
         return
         
     # Default to normal game
     state['game_variant'] = VARIANT_NORMAL
+    # Use standard team determination for normal games
+    reassign_teams(state)
+
+def reassign_teams(state: Dict) -> None:
+    """
+    Reassign teams based on the game variant.
+    
+    Args:
+        state: The game state
+    """
+    # For solo variants, the player who chose the solo variant is on team RE, all others on team KONTRA
+    if state['game_variant'] in [VARIANT_QUEEN_SOLO, VARIANT_JACK_SOLO, VARIANT_KING_SOLO, VARIANT_FLESHLESS]:
+        # Find the player who chose the solo variant
+        solo_player = None
+        solo_variants = ['queen_solo', 'jack_solo', 'king_solo', 'fleshless']
+        
+        for variant in solo_variants:
+            if variant in state['variant_choosers'] and state['variant_choosers'][variant]:
+                solo_player = state['variant_choosers'][variant][0]  # Take the first player who chose this variant
+                break
+        
+        if solo_player is not None:
+            # Assign the solo player to team RE, all others to team KONTRA
+            for i in range(state['num_players']):
+                if i == solo_player:
+                    state['teams'][i] = TEAM_RE
+                else:
+                    state['teams'][i] = TEAM_KONTRA
+        else:
+            # Fallback to standard team determination if no solo player found
+            determine_teams(state)
+    
+    # For hochzeit variant, the player who chose hochzeit is on team RE
+    # The partner will be determined when a non-trump trick is won
+    elif state['game_variant'] == VARIANT_HOCHZEIT:
+        # Find the player(s) who chose hochzeit
+        if 'hochzeit' in state['variant_choosers'] and state['variant_choosers']['hochzeit']:
+            hochzeit_player = state['variant_choosers']['hochzeit'][0]  # Take the first player who chose hochzeit
+            
+            # Initially assign the hochzeit player to team RE, all others to team KONTRA
+            for i in range(state['num_players']):
+                if i == hochzeit_player:
+                    state['teams'][i] = TEAM_RE
+                else:
+                    state['teams'][i] = TEAM_KONTRA
+        else:
+            # Fallback to standard team determination if no hochzeit player found
+            determine_teams(state)
+    
+    # For normal games, use the standard team determination based on Queens of Clubs
+    else:
+        determine_teams(state)
 
 def complete_trick(state: Dict) -> None:
     """
@@ -699,7 +778,25 @@ def complete_trick(state: Dict) -> None:
                     highest_card_value = card_value
     
     # The winner is the player who played the highest card
-    state['trick_winner'] = (state['current_player'] - (state['num_players'] - highest_card_idx)) % state['num_players']
+    trick_winner = (state['current_player'] - (state['num_players'] - highest_card_idx)) % state['num_players']
+    state['trick_winner'] = trick_winner
+    
+    # Handle hochzeit partner determination
+    if state['game_variant'] == VARIANT_HOCHZEIT and state.get('hochzeit_active', False):
+        # Check if this is a non-trump trick (no trump cards played)
+        is_non_trump_trick = True
+        for card in state['current_trick']:
+            if is_trump(card, state['game_variant']):
+                is_non_trump_trick = False
+                break
+        
+        # If this is a non-trump trick and the winner is not already on team RE
+        if is_non_trump_trick and state['teams'][trick_winner] != TEAM_RE:
+            # This player becomes the hochzeit partner
+            state['teams'][trick_winner] = TEAM_RE
+            state['hochzeit_partner'] = trick_winner
+            state['hochzeit_non_trump_trick_played'] = True
+            state['hochzeit_active'] = False  # Hochzeit is resolved
     
     # Add the trick to the list of completed tricks
     state['tricks'].append(state['current_trick'].copy())

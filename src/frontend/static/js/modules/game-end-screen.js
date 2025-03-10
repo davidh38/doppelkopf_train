@@ -32,7 +32,7 @@ export function showGameOverScreen() {
         // Clear any previous content
         gameResultEl.innerHTML = '';
         
-        const winnerTeam = gameState.winner === 'RE' ? 'RE' : 'KONTRA';
+        const winnerTeam = gameState.winner === 1 ? 'RE' : 'KONTRA';
         const winnerHeader = document.createElement('h3');
         winnerHeader.id = 'winner';
         winnerHeader.textContent = `Team ${winnerTeam} wins!`;
