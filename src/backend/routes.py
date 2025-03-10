@@ -11,12 +11,20 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 
 from flask import request
 
-from src.backend.route_handlers import (
-    index, game_summary, model_info, new_game, set_variant_route,
-    play_card_route, get_current_trick, get_last_trick, announce_route
+from src.backend.handlers.basic_routes import (
+    index, model_info
+)
+from src.backend.handlers.game_management import (
+    new_game, get_scoreboard
+)
+from src.backend.handlers.game_actions import (
+    set_variant_route, play_card_route, announce_route
+)
+from src.backend.handlers.game_state_routes import (
+    get_current_trick, get_last_trick, game_summary, get_ai_hands
 )
 from src.backend.card_utils import cards_equal
-from config import games, scoreboard
+from src.backend.config import games, scoreboard
 
 def register_routes(app, socketio):
     """Register all HTTP route handlers."""
@@ -72,28 +80,12 @@ def register_routes(app, socketio):
         return announce_route(socketio, data)
 
     @app.route('/get_ai_hands', methods=['GET'])
-    def get_ai_hands():
+    def get_ai_hands_route():
         """Get the hands of AI players for debugging purposes."""
-        from src.backend.game_state import card_to_dict
-        
         game_id = request.args.get('game_id')
-        
-        if game_id not in games:
-            return {'error': 'Game not found'}, 404
-        
-        game = games[game_id]['game']
-        
-        # Get the AI hands (players 1, 2, and 3)
-        ai_hands = {
-            'player1': [card_to_dict(card) for card in game['hands'][1]],
-            'player2': [card_to_dict(card) for card in game['hands'][2]],
-            'player3': [card_to_dict(card) for card in game['hands'][3]]
-        }
-        
-        return ai_hands
+        return get_ai_hands(game_id)
 
     @app.route('/get_scoreboard', methods=['GET'])
-    def get_scoreboard():
+    def get_scoreboard_route():
         """Get the current scoreboard."""
-        from flask import jsonify
-        return jsonify(scoreboard)
+        return get_scoreboard()

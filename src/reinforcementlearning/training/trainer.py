@@ -156,6 +156,8 @@ def play_episode(game, rl_agent, opponents) -> Tuple[float, bool]:
     # Add variant selection phase flag to the game
     game.variant_selection_phase = True
     
+    logger.info("Starting new episode - Variant selection phase")
+    
     # First, select game variant (only for player 0)
     if rl_player_idx == 0:
         # Get the current state
@@ -198,12 +200,22 @@ def play_episode(game, rl_agent, opponents) -> Tuple[float, bool]:
     re_announced = False
     contra_announced = False
     
+    logger.info("Starting card play phase")
+    
     # Play until the game is over
+    trick_count = 0
+    card_count = 0
+    
     while not game.game_over:
         current_player = game.current_player
         
         # Get the current state
         state = game.get_state_for_player(current_player)
+        
+        # Log current game state
+        if len(game.current_trick) == 0:
+            trick_count += 1
+            logger.info(f"Starting trick #{trick_count}")
         
         # Select an action
         if current_player == rl_player_idx:
@@ -214,6 +226,10 @@ def play_episode(game, rl_agent, opponents) -> Tuple[float, bool]:
                 action_type, action = action_result
                 
                 if action_type == 'card':
+                    # Log card play
+                    card_count += 1
+                    logger.info(f"Player {current_player} (RL agent) plays card #{card_count}")
+                    
                     # Play the card
                     game.play_card(current_player, action)
                     
@@ -270,6 +286,10 @@ def play_episode(game, rl_agent, opponents) -> Tuple[float, bool]:
             opponent_idx = current_player - 1  # Adjust for the RL agent
             action = select_opponent_action(opponents[opponent_idx], game, current_player)
             
+            # Log card play
+            card_count += 1
+            logger.info(f"Player {current_player} (AI opponent) plays card #{card_count}")
+            
             # Play the card
             game.play_card(current_player, action)
     
@@ -293,6 +313,10 @@ def play_episode(game, rl_agent, opponents) -> Tuple[float, bool]:
     # Total end-game reward
     end_game_reward = score_reward + win_bonus
     total_reward += end_game_reward
+    
+    # Log game end
+    winner_team = "RE" if win else "KONTRA"
+    logger.info(f"Game over! {winner_team} team wins with score {score_diff}. RL agent reward: {total_reward:.2f}")
     
     return total_reward, win
 

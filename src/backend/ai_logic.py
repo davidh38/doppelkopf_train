@@ -16,8 +16,8 @@ from src.reinforcementlearning.agents.rl_agent import RLAgent
 from src.backend.game.doppelkopf import (
     get_card_value, get_state_size, get_action_size, cards_equal
 )
-from config import games, MODEL_PATH
-from game_state import print_scoreboard, check_team_revelation, get_game_state, generate_game_summary, update_scoreboard_for_game_over, card_to_dict
+from src.backend.config import games, MODEL_PATH
+from src.backend.game_state import print_scoreboard, check_team_revelation, get_game_state, generate_game_summary, update_scoreboard_for_game_over, card_to_dict
 
 def handle_trick_completion(socketio, game_id, game):
     """Handle the completion of a trick."""

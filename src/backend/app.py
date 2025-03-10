@@ -12,9 +12,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 from flask import Flask
 from flask_socketio import SocketIO
 
-from config import args, TEMPLATE_FOLDER, STATIC_FOLDER
-from routes import register_routes
-from socket_handlers import register_socket_handlers
+from src.backend.config import args, TEMPLATE_FOLDER, STATIC_FOLDER
+from src.backend.routes import register_routes
+from src.backend.socket_handlers import register_socket_handlers
 
 # Configure Flask to find templates and static files in the frontend directory
 app = Flask(__name__, 

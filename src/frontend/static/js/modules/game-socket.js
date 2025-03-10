@@ -59,6 +59,11 @@ export function initSocket() {
     eventBus.emit('progressUpdate', data);
   });
   
+  socket.on('ai_selecting_variant', function(data) {
+    console.log('AI selecting variant:', data);
+    eventBus.emit('aiSelectingVariant', data);
+  });
+  
   // Listen for events from other modules
   eventBus.on('joinRoom', function(data) {
     socket.emit('join', { game_id: data.game_id });
@@ -171,6 +176,39 @@ export function handleTrickCompleted(data) {
 }
 
 /**
+ * Handle AI selecting variant event
+ * @param {Object} data - AI selecting variant data
+ */
+export function handleAiSelectingVariant(data) {
+  console.log('Handling AI selecting variant:', data);
+  
+  // Update the UI to show which AI player is selecting a variant
+  const playerIdx = data.player;
+  const variant = data.variant;
+  
+  // Get the player element
+  const playerElement = document.querySelector(`.player-${playerIdx}`);
+  if (playerElement) {
+    // Add a visual indicator that this player is selecting a variant
+    playerElement.classList.add('selecting-variant');
+    
+    // Show a message indicating the variant being selected
+    const variantMessage = document.createElement('div');
+    variantMessage.className = 'variant-message';
+    variantMessage.textContent = `Selecting ${variant}...`;
+    playerElement.appendChild(variantMessage);
+    
+    // Remove the indicator after a short delay
+    setTimeout(() => {
+      playerElement.classList.remove('selecting-variant');
+      if (variantMessage.parentNode) {
+        variantMessage.parentNode.removeChild(variantMessage);
+      }
+    }, 1500);
+  }
+}
+
+/**
  * Initialize socket event listeners
  */
 export function initSocketEvents() {
@@ -179,4 +217,7 @@ export function initSocketEvents() {
   
   // Listen for trick completed events
   eventBus.on('trickCompleted', handleTrickCompleted);
+  
+  // Listen for AI selecting variant events
+  eventBus.on('aiSelectingVariant', handleAiSelectingVariant);
 }

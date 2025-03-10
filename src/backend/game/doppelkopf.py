@@ -1005,3 +1005,63 @@ def get_action_size() -> int:
     """
     # Card actions: 48 cards (4 suits * 6 ranks * 2 copies)
     return 48
+
+def idx_to_card(idx: int) -> Dict:
+    """
+    Convert an index to a card.
+    
+    Args:
+        idx: The index to convert
+        
+    Returns:
+        The corresponding card
+    """
+    # Each suit has 12 cards (6 ranks * 2 copies)
+    suit_idx = idx // 12 + 1  # +1 because suits start at 1
+    
+    # Calculate the rank and copy within the suit
+    rank_copy_idx = idx % 12
+    
+    # Determine the rank
+    rank = 0
+    if rank_copy_idx < 2:
+        rank = RANK_NINE
+    elif rank_copy_idx < 4:
+        rank = RANK_JACK
+    elif rank_copy_idx < 6:
+        rank = RANK_QUEEN
+    elif rank_copy_idx < 8:
+        rank = RANK_KING
+    elif rank_copy_idx < 10:
+        rank = RANK_TEN
+    else:
+        rank = RANK_ACE
+    
+    # Determine if it's the second copy
+    is_second = rank_copy_idx % 2 == 1
+    
+    return create_card(suit_idx, rank, is_second)
+
+def action_to_card(state: Dict, action: int, player_idx: int) -> Optional[Dict]:
+    """
+    Convert an action index to a card for the given player.
+    
+    Args:
+        state: The game state
+        action: The action index
+        player_idx: Index of the player
+        
+    Returns:
+        The corresponding card, or None if the action is invalid
+    """
+    # Convert the action index to a card
+    card = idx_to_card(action)
+    
+    # Check if the card is in the player's hand
+    hand = state['hands'][player_idx]
+    for hand_card in hand:
+        if cards_equal(card, hand_card):
+            return hand_card
+    
+    # Card not in hand
+    return None

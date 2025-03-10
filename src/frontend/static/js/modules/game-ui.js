@@ -44,6 +44,40 @@ export function initUI() {
   // Set up event listeners
   eventBus.on('gameStateUpdated', renderUI);
   eventBus.on('gameOver', showGameOverScreen);
+  eventBus.on('aiSelectingVariant', handleAiSelectingVariant);
+}
+
+/**
+ * Handle AI selecting variant event
+ * @param {Object} data - AI selecting variant data
+ */
+export function handleAiSelectingVariant(data) {
+  console.log('Handling AI selecting variant:', data);
+  
+  // Update the UI to show which AI player is selecting a variant
+  const playerIdx = data.player;
+  const variant = data.variant;
+  
+  // Get the player element
+  const playerElement = document.querySelector(`.player-box[data-player-id="${playerIdx}"]`);
+  if (playerElement) {
+    // Add a visual indicator that this player is selecting a variant
+    playerElement.classList.add('selecting-variant');
+    
+    // Show a message indicating the variant being selected
+    const variantMessage = document.createElement('div');
+    variantMessage.className = 'variant-message';
+    variantMessage.textContent = `Selecting ${variant}...`;
+    playerElement.appendChild(variantMessage);
+    
+    // Remove the indicator after a short delay
+    setTimeout(() => {
+      playerElement.classList.remove('selecting-variant');
+      if (variantMessage.parentNode) {
+        variantMessage.parentNode.removeChild(variantMessage);
+      }
+    }, 1500);
+  }
 }
 
 /**

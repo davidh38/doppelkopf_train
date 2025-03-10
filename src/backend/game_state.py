@@ -17,7 +17,7 @@ from src.backend.game.doppelkopf import (
     SUIT_EMOJIS, RANK_EMOJIS,
     create_card, cards_equal, has_hochzeit
 )
-from config import games, scoreboard
+from src.backend.config import games, scoreboard
 
 def print_scoreboard(label, game=None):
     """Print the current scoreboard with a label."""
