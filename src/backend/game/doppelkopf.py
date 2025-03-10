@@ -27,6 +27,7 @@ VARIANT_HOCHZEIT = 2
 VARIANT_QUEEN_SOLO = 3
 VARIANT_JACK_SOLO = 4
 VARIANT_FLESHLESS = 5
+VARIANT_KING_SOLO = 6
 
 # Constants for player teams
 TEAM_RE = 1
@@ -55,7 +56,8 @@ VARIANT_NAMES = {
     VARIANT_HOCHZEIT: "HOCHZEIT",
     VARIANT_QUEEN_SOLO: "QUEEN_SOLO",
     VARIANT_JACK_SOLO: "JACK_SOLO",
-    VARIANT_FLESHLESS: "FLESHLESS"
+    VARIANT_FLESHLESS: "FLESHLESS",
+    VARIANT_KING_SOLO: "KING_SOLO"
 }
 
 TEAM_NAMES = {
@@ -179,6 +181,10 @@ def is_trump(card: Dict, game_variant: int) -> bool:
     elif game_variant == VARIANT_JACK_SOLO:
         return card['rank'] == RANK_JACK
         
+    # In King solo, only Kings are trump
+    elif game_variant == VARIANT_KING_SOLO:
+        return card['rank'] == RANK_KING
+        
     # In Fleshless, no Kings, Queens, or Jacks are trump
     elif game_variant == VARIANT_FLESHLESS:
         # Only Diamonds and Ten of Hearts are trump
@@ -280,9 +286,10 @@ def create_game_state() -> Dict:
             'trump_solo': 1,  # Highest priority
             'queen_solo': 2,
             'jack_solo': 3,
-            'fleshless': 4,
-            'normal': 5,      # Lowest priority
-            'hochzeit': 5     # Same priority as normal
+            'king_solo': 4,
+            'fleshless': 5,
+            'normal': 6,      # Lowest priority
+            'hochzeit': 6     # Same priority as normal
         },
         
         # Announcement tracking
@@ -568,6 +575,10 @@ def set_variant(state: Dict, variant: str, player_idx: int = None) -> bool:
         valid_variant = True
         variant_enum = VARIANT_FLESHLESS
         variant_key = 'fleshless'
+    elif variant == 'king_solo':
+        valid_variant = True
+        variant_enum = VARIANT_KING_SOLO
+        variant_key = 'king_solo'
     elif variant == 'trump_solo':  # This is not implemented yet, but included for priority
         valid_variant = True
         variant_enum = VARIANT_NORMAL  # Fallback to normal for now
@@ -620,6 +631,8 @@ def determine_final_variant(state: Dict) -> None:
             state['game_variant'] = VARIANT_QUEEN_SOLO
         elif variant == 'jack_solo':
             state['game_variant'] = VARIANT_JACK_SOLO
+        elif variant == 'king_solo':
+            state['game_variant'] = VARIANT_KING_SOLO
         elif variant == 'fleshless':
             state['game_variant'] = VARIANT_FLESHLESS
         elif variant == 'trump_solo':
@@ -642,6 +655,8 @@ def determine_final_variant(state: Dict) -> None:
             state['game_variant'] = VARIANT_QUEEN_SOLO
         elif highest_priority_variant == 'jack_solo':
             state['game_variant'] = VARIANT_JACK_SOLO
+        elif highest_priority_variant == 'king_solo':
+            state['game_variant'] = VARIANT_KING_SOLO
         elif highest_priority_variant == 'fleshless':
             state['game_variant'] = VARIANT_FLESHLESS
         elif highest_priority_variant == 'trump_solo':
@@ -859,6 +874,7 @@ def end_game(state: Dict) -> None:
     # Special handling for solo variants
     if is_solo_game and (state['game_variant'] == VARIANT_JACK_SOLO or 
                          state['game_variant'] == VARIANT_QUEEN_SOLO or 
+                         state['game_variant'] == VARIANT_KING_SOLO or
                          state['game_variant'] == VARIANT_FLESHLESS):
         # Multiplier for RE announcement
         multiplier = 2 if state['re_announced'] else 1

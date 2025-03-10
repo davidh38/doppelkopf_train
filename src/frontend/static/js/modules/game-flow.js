@@ -383,12 +383,14 @@ export function initGameFlowEvents() {
   const hochzeitBtn = document.getElementById('hochzeit-btn');
   const queenSoloBtn = document.getElementById('queen-solo-btn');
   const jackSoloBtn = document.getElementById('jack-solo-btn');
+  const kingSoloBtn = document.getElementById('king-solo-btn');
   const fleshlessBtn = document.getElementById('fleshless-btn');
   
   if (normalBtn) normalBtn.addEventListener('click', () => setGameVariant('normal'));
   if (hochzeitBtn) hochzeitBtn.addEventListener('click', () => setGameVariant('hochzeit'));
   if (queenSoloBtn) queenSoloBtn.addEventListener('click', () => setGameVariant('queen_solo'));
   if (jackSoloBtn) jackSoloBtn.addEventListener('click', () => setGameVariant('jack_solo'));
+  if (kingSoloBtn) kingSoloBtn.addEventListener('click', () => setGameVariant('king_solo'));
   if (fleshlessBtn) fleshlessBtn.addEventListener('click', () => setGameVariant('fleshless'));
   
   // Add event listener for the Show Last Trick button

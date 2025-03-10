@@ -18,7 +18,7 @@ from src.backend.game.doppelkopf import (
     get_action_size as get_doppelkopf_action_size,
     get_state_for_player, action_to_card, card_to_idx, idx_to_card,
     TEAM_RE, TEAM_KONTRA, TEAM_UNKNOWN,
-    VARIANT_NORMAL, VARIANT_HOCHZEIT, VARIANT_QUEEN_SOLO, VARIANT_JACK_SOLO, VARIANT_FLESHLESS
+    VARIANT_NORMAL, VARIANT_HOCHZEIT, VARIANT_QUEEN_SOLO, VARIANT_JACK_SOLO, VARIANT_FLESHLESS, VARIANT_KING_SOLO
 )
 
 class DoppelkopfGame:

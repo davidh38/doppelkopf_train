@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test script to verify the Jack Solo variant with RE announcement and scoring.
+Test script to verify the King Solo variant with RE announcement and scoring.
 """
 
 import sys
@@ -16,12 +16,12 @@ from src.backend.game.doppelkopf import (
     VARIANT_NORMAL, VARIANT_HOCHZEIT, VARIANT_QUEEN_SOLO, VARIANT_JACK_SOLO, VARIANT_FLESHLESS, VARIANT_KING_SOLO
 )
 
-def test_jack_solo_re_win():
+def test_king_solo_re_win():
     """
-    Test the scenario where a player plays Jack Solo, wins as RE with 128 points,
+    Test the scenario where a player plays King Solo, wins as RE with 128 points,
     and announces RE. The final score should be 6 points for the player and -2 for each other player.
     """
-    print("\n=== Testing Jack Solo with RE Announcement and Win ===")
+    print("\n=== Testing King Solo with RE Announcement and Win ===")
     
     # Create a new game
     game = create_game_state()
@@ -34,12 +34,12 @@ def test_jack_solo_re_win():
         print(f"Player {i}: {'RE' if team == TEAM_RE else 'KONTRA'}")
     
     # Each player must choose a game variant
-    # Player 0 chooses Jack Solo, others choose normal
+    # Player 0 chooses King Solo, others choose normal
     
-    # Player 0 chooses Jack Solo
+    # Player 0 chooses King Solo
     game['current_player'] = 0
-    print(f"Player 0 chooses Jack Solo variant")
-    set_variant(game, 'jack_solo', 0)
+    print(f"Player 0 chooses King Solo variant")
+    set_variant(game, 'king_solo', 0)
     
     # Other players choose normal
     for player_idx in range(1, game['num_players']):
@@ -51,8 +51,8 @@ def test_jack_solo_re_win():
     assert not game['variant_selection_phase'], "Variant selection phase should be over"
     print(f"Game variant: {game['game_variant']}")
     
-    # Verify that Jack Solo was selected
-    assert game['game_variant'] == VARIANT_JACK_SOLO, "Game variant should be Jack Solo"
+    # Verify that King Solo was selected
+    assert game['game_variant'] == VARIANT_KING_SOLO, "Game variant should be King Solo"
     
     # Player 0 announces RE (which doubles the score)
     game['current_player'] = 0
@@ -304,17 +304,17 @@ def test_jack_solo_re_win():
     print(f"\nTotal points in the game: {total_points}")
     assert total_points == 240, f"Total points should be 240, but is {total_points}"
     
-    print("Jack Solo with RE announcement and win test passed!")
+    print("King Solo with RE announcement and win test passed!")
     return True
 
 def main():
     """Run the test."""
-    print("Starting Jack Solo with RE announcement and win test...\n")
+    print("Starting King Solo with RE announcement and win test...\n")
     
-    test_success = test_jack_solo_re_win()
+    test_success = test_king_solo_re_win()
     
     print("\n=== Test Result ===")
-    print(f"Jack Solo with RE announcement and win: {'PASSED' if test_success else 'FAILED'}")
+    print(f"King Solo with RE announcement and win: {'PASSED' if test_success else 'FAILED'}")
 
 if __name__ == "__main__":
     main()
