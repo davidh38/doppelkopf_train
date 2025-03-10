@@ -60,6 +60,13 @@ export function startNewGame() {
       gameState.playerTeam = data.state.player_team;
       gameState.gameVariant = data.state.game_variant;
       gameState.legalActions = data.state.legal_actions || [];
+      gameState.cardGiver = data.state.card_giver;
+      
+      // Update the card giver display in the variant selection area
+      const cardGiverName = document.getElementById('card-giver-name');
+      if (cardGiverName) {
+        cardGiverName.textContent = gameState.cardGiver === 0 ? 'You' : `Player ${gameState.cardGiver}`;
+      }
       
       // Update hasHochzeit property to control Hochzeit button visibility
       if (data.state.has_hochzeit !== undefined) {
