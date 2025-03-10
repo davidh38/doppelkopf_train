@@ -283,13 +283,12 @@ def create_game_state() -> Dict:
         'variant_selection_phase': True,
         'player_variant_choices': [None] * 4,  # Track each player's variant choice
         'variant_priority': {
-            'trump_solo': 1,  # Highest priority
-            'queen_solo': 2,
-            'jack_solo': 3,
-            'king_solo': 4,
-            'fleshless': 5,
+            'fleshless': 1,   # Highest priority
+            'king_solo': 2,
+            'queen_solo': 3,
+            'jack_solo': 4,   # This is the trump solo
+            'hochzeit': 5,
             'normal': 6,      # Lowest priority
-            'hochzeit': 6     # Same priority as normal
         },
         
         # Announcement tracking
@@ -822,10 +821,6 @@ def complete_trick(state: Dict) -> None:
     
     # The current_player will be updated to the trick winner when the trick is cleared
     # This is handled by the server after a delay to show the completed trick
-    
-    # IMPORTANT: Do not clear the current trick here
-    # The current trick will be cleared by the server after a delay
-    # state['current_trick'] = []
 
 def end_game(state: Dict) -> None:
     """
@@ -836,276 +831,176 @@ def end_game(state: Dict) -> None:
     """
     state['game_over'] = True
     
-    # Ensure the total points add up to 240
-    total_points = sum(state['scores'])
-    if total_points != 240:
-        # Adjust the scores to ensure they add up to 240
-        adjustment = 240 - total_points
-        # Add the adjustment to both teams equally
-        state['scores'][0] += adjustment // 2
-        state['scores'][1] += adjustment // 2
-        # If the adjustment is odd, add the extra point to the team with more points
-        if adjustment % 2 == 1:
-            if state['scores'][0] > state['scores'][1]:
-                state['scores'][0] += 1
-            else:
-                state['scores'][1] += 1
+    # Determine the winner based on scores
+    re_score = state['scores'][0]
+    kontra_score = state['scores'][1]
     
-    re_points = state['scores'][0]
-    kontra_points = state['scores'][1]
-    
-    # In Doppelkopf, winning team needs at least 121 points
-    # (total points is 240, so other team would have at most 119)
-    if re_points >= 121:
+    # In normal game, RE team needs 121 points to win
+    if re_score > kontra_score:
         state['winner'] = TEAM_RE
     else:
         state['winner'] = TEAM_KONTRA
+    
+    # Handle special variants
+    if state['game_variant'] in [VARIANT_QUEEN_SOLO, VARIANT_JACK_SOLO, VARIANT_KING_SOLO, VARIANT_FLESHLESS]:
+        # Find the player who chose the solo variant
+        solo_player = None
+        for i, choice in enumerate(state['player_variant_choices']):
+            if choice in ['queen_solo', 'jack_solo', 'king_solo', 'fleshless']:
+                solo_player = i
+                break
         
-    # Calculate game points for each player (zero-sum)
-    state['player_game_points'] = [0, 0, 0, 0]
-    
-    # Count players in each team
-    re_players = sum(1 for team in state['teams'] if team == TEAM_RE)
-    kontra_players = sum(1 for team in state['teams'] if team == TEAM_KONTRA)
-    
-    # Check if this is a solo game (one player in RE team)
-    is_solo_game = re_players == 1
-    
-    # Special handling for solo variants
-    if is_solo_game and (state['game_variant'] == VARIANT_JACK_SOLO or 
-                         state['game_variant'] == VARIANT_QUEEN_SOLO or 
-                         state['game_variant'] == VARIANT_KING_SOLO or
-                         state['game_variant'] == VARIANT_FLESHLESS):
-        # Multiplier for RE announcement
-        multiplier = 2 if state['re_announced'] else 1
-        
-        if state['winner'] == TEAM_RE:
-            # RE team won (solo player)
-            # Find the solo player (the only RE player)
-            solo_player_idx = state['teams'].index(TEAM_RE)
-            
-            # Solo player gets 3 points per opponent, doubled for RE announcement
-            solo_points = kontra_players * multiplier
-            state['player_game_points'][solo_player_idx] = solo_points
-            
-            # Each KONTRA player gets -1 point, doubled for RE announcement
-            for i, team in enumerate(state['teams']):
-                if team == TEAM_KONTRA:
-                    state['player_game_points'][i] = -1 * multiplier
-        else:
-            # KONTRA team won
-            # Find the solo player (the only RE player)
-            solo_player_idx = state['teams'].index(TEAM_RE)
-            
-            # Solo player gets -3 points per opponent, doubled for RE announcement
-            solo_points = -kontra_players * multiplier
-            state['player_game_points'][solo_player_idx] = solo_points
-            
-            # Each KONTRA player gets 1 point, doubled for RE announcement
-            for i, team in enumerate(state['teams']):
-                if team == TEAM_KONTRA:
-                    state['player_game_points'][i] = 1 * multiplier
-    else:
-        # Normal game variant
-        # Base points for winning/losing
-        for i, team in enumerate(state['teams']):
-            if team == state['winner']:
-                state['player_game_points'][i] = 1  # Winning team players get +1
+        if solo_player is not None:
+            # The solo player is always on the RE team
+            if state['winner'] == TEAM_RE:
+                # Solo player wins
+                state['solo_winner'] = True
             else:
-                state['player_game_points'][i] = -1  # Losing team players get -1
-                
-        # Points for being KONTRA (zero-sum)
-        for i, team in enumerate(state['teams']):
-            if team == TEAM_KONTRA:
-                state['player_game_points'][i] += 1  # KONTRA team players get +1
-            else:
-                state['player_game_points'][i] -= 1  # RE team players get -1
-                
-        # No 90 achievement (opponent got less than 90 points)
-        if state['winner'] == TEAM_KONTRA and re_points < 90:
-            # KONTRA team prevented RE team from getting 90 points
-            for i, team in enumerate(state['teams']):
-                if team == TEAM_KONTRA:
-                    state['player_game_points'][i] += 1  # KONTRA team players get +1
-                else:
-                    state['player_game_points'][i] -= 1  # RE team players get -1
-                    
-        # Diamond ace captures - all players on the team get points
-        if 'diamond_ace_captured' in state:
-            diamond_ace_captures = [capture for capture in state['diamond_ace_captured'] if capture.get('type') == 'diamond_ace']
-            for capture in diamond_ace_captures:
-                winner_team_name = capture['winner_team']
-                winner_team = TEAM_RE if winner_team_name == 'RE' else TEAM_KONTRA
-                for i, team in enumerate(state['teams']):
-                    if team == winner_team:
-                        state['player_game_points'][i] += 1  # Each player on the team gets +1
-                    else:
-                        state['player_game_points'][i] -= 1  # Each player on the opposing team gets -1
-                        
-        # 40+ tricks - all players on the team get points
-        if 'diamond_ace_captured' in state:
-            forty_plus_tricks = [capture for capture in state['diamond_ace_captured'] if capture.get('type') == 'forty_plus']
-            for trick in forty_plus_tricks:
-                winner_team_name = trick['winner_team']
-                winner_team = TEAM_RE if winner_team_name == 'RE' else TEAM_KONTRA
-                for i, team in enumerate(state['teams']):
-                    if team == winner_team:
-                        state['player_game_points'][i] += 1  # Each player on the team gets +1
-                    else:
-                        state['player_game_points'][i] -= 1  # Each player on the opposing team gets -1
+                # Solo player loses
+                state['solo_winner'] = False
 
-def get_state(state: Dict) -> Dict:
+def get_state_for_player(state: Dict, player_idx: int) -> List[float]:
     """
-    Get the current state of the game.
-    
-    Args:
-        state: The game state
-        
-    Returns:
-        A dictionary representing the current game state
-    """
-    return {
-        'hands': state['hands'].copy(),
-        'current_trick': state['current_trick'].copy(),
-        'tricks': [trick.copy() for trick in state['tricks']],
-        'current_player': state['current_player'],
-        'game_variant': state['game_variant'],
-        'scores': state['scores'].copy(),
-        'player_scores': state['player_scores'].copy(),
-        'teams': state['teams'].copy(),
-        'trick_winner': state['trick_winner'],
-        'game_over': state['game_over'],
-        'last_trick_points': state.get('last_trick_points', 0),
-        'variant_selection_phase': state['variant_selection_phase'],
-        're_announced': state['re_announced'],
-        'contra_announced': state['contra_announced'],
-        'can_announce': state['can_announce'],
-        'winner': state.get('winner', None)
-    }
-
-def get_state_size() -> int:
-    """
-    Get the size of the state representation for the RL agent.
-    
-    Returns:
-        The size of the state vector
-    """
-    # This is a simplified representation for the RL agent
-    # 48 cards (one-hot encoded) + 4 players (one-hot encoded) + current trick (48 cards)
-    # + variant_selection_phase (1) + re_announced (1) + contra_announced (1) + can_announce (1) + player_team (1)
-    return 48 + 4 + 48 + 5
-
-def get_action_size() -> int:
-    """
-    Get the size of the action space for the RL agent.
-    
-    Returns:
-        The size of the action space
-    """
-    # There are 48 possible cards to play
-    return 48
-
-def get_state_for_player(state: Dict, player_idx: int) -> np.ndarray:
-    """
-    Get the state representation for the given player.
+    Get a state representation for a specific player.
     
     Args:
         state: The game state
         player_idx: Index of the player
         
     Returns:
-        A numpy array representing the state from the player's perspective
+        A list of floats representing the state
     """
-    # Create a state vector
-    # Extended state size to include:
-    # - variant_selection_phase (1 element)
-    # - re_announced (1 element)
-    # - contra_announced (1 element)
-    # - can_announce (1 element)
-    # - player's team (1 element)
-    state_vector = np.zeros(get_state_size())
+    # Initialize state representation
+    state_repr = []
     
-    # Encode the player's hand (first 48 elements)
-    for card in state['hands'][player_idx]:
+    # Add player's hand
+    hand = state['hands'][player_idx]
+    # One-hot encoding for each possible card (24 cards * 2 copies = 48 cards)
+    hand_repr = [0] * 48
+    for card in hand:
         card_idx = card_to_idx(card)
-        state_vector[card_idx] = 1
+        hand_repr[card_idx] = 1
+    state_repr.extend(hand_repr)
     
-    # Encode the current player (next 4 elements)
-    state_vector[48 + state['current_player']] = 1
-    
-    # Encode the current trick (next 48 elements)
-    for card in state['current_trick']:
+    # Add current trick
+    trick = state['current_trick']
+    # One-hot encoding for each card in the trick
+    trick_repr = [0] * 48
+    for card in trick:
         card_idx = card_to_idx(card)
-        state_vector[52 + card_idx] = 1
+        trick_repr[card_idx] = 1
+    state_repr.extend(trick_repr)
     
-    # Encode additional state information
-    state_vector[100] = 1 if state['variant_selection_phase'] else 0
-    state_vector[101] = 1 if state['re_announced'] else 0
-    state_vector[102] = 1 if state['contra_announced'] else 0
-    state_vector[103] = 1 if state['can_announce'] else 0
-    state_vector[104] = 1 if state['teams'][player_idx] == TEAM_RE else 0
+    # Add played cards
+    played_cards = []
+    for past_trick in state['tricks']:
+        played_cards.extend(past_trick)
+    # One-hot encoding for each played card
+    played_repr = [0] * 48
+    for card in played_cards:
+        card_idx = card_to_idx(card)
+        played_repr[card_idx] = 1
+    state_repr.extend(played_repr)
     
-    return state_vector
+    # Add game variant
+    variant_repr = [0] * 6  # 6 possible variants
+    variant_repr[state['game_variant'] - 1] = 1  # -1 because variants start at 1
+    state_repr.extend(variant_repr)
+    
+    # Add player's team
+    team_repr = [0] * 3  # 3 possible teams
+    team_repr[state['teams'][player_idx] - 1] = 1  # -1 because teams start at 1
+    state_repr.extend(team_repr)
+    
+    # Add current player
+    current_player_repr = [0] * 4  # 4 players
+    current_player_repr[state['current_player']] = 1
+    state_repr.extend(current_player_repr)
+    
+    # Add scores
+    state_repr.append(state['scores'][0] / 240.0)  # Normalize RE score
+    state_repr.append(state['scores'][1] / 240.0)  # Normalize KONTRA score
+    
+    # Add announcements
+    state_repr.append(1.0 if state.get('re_announced', False) else 0.0)
+    state_repr.append(1.0 if state.get('contra_announced', False) else 0.0)
+    
+    return state_repr
 
 def card_to_idx(card: Dict) -> int:
     """
-    Convert a card to an index in the state representation.
+    Convert a card to an index.
     
     Args:
         card: The card dictionary
         
     Returns:
-        The index of the card
+        An index representing the card
     """
-    suit_idx = card['suit'] - 1
-    rank_idx = card['rank'] - 9  # 9 is the lowest rank
-    is_second_idx = 1 if card['is_second'] else 0
+    # Calculate base index based on suit and rank
+    # Each suit has 6 ranks (9, J, Q, K, 10, A), and each rank has 2 copies
+    suit_offset = (card['suit'] - 1) * 12  # 12 cards per suit (6 ranks * 2 copies)
+    rank_offset = 0
     
-    # 6 ranks, 4 suits, 2 copies
-    return suit_idx * 12 + rank_idx * 2 + is_second_idx
+    # Map rank to offset
+    if card['rank'] == RANK_NINE:
+        rank_offset = 0
+    elif card['rank'] == RANK_JACK:
+        rank_offset = 2
+    elif card['rank'] == RANK_QUEEN:
+        rank_offset = 4
+    elif card['rank'] == RANK_KING:
+        rank_offset = 6
+    elif card['rank'] == RANK_TEN:
+        rank_offset = 8
+    elif card['rank'] == RANK_ACE:
+        rank_offset = 10
+    
+    # Add 1 if it's the second copy
+    copy_offset = 1 if card['is_second'] else 0
+    
+    return suit_offset + rank_offset + copy_offset
 
-def idx_to_card(idx: int) -> Dict:
+def get_state_size() -> int:
     """
-    Convert an index to a card.
+    Get the size of the state representation.
     
-    Args:
-        idx: The index to convert
-        
     Returns:
-        The corresponding card
+        The size of the state representation
     """
-    is_second = idx % 2 == 1
-    rank_idx = (idx // 2) % 6
-    suit_idx = idx // 12
+    # Hand representation: 48 cards (one-hot encoding)
+    hand_size = 48
     
-    suit = suit_idx + 1
-    rank = rank_idx + 9  # 9 is the lowest rank
+    # Current trick representation: 48 cards (one-hot encoding)
+    trick_size = 48
     
-    return create_card(suit, rank, is_second)
+    # Played cards representation: 48 cards (one-hot encoding)
+    played_size = 48
+    
+    # Game variant representation: 6 variants (one-hot encoding)
+    variant_size = 6
+    
+    # Team representation: 3 teams (one-hot encoding)
+    team_size = 3
+    
+    # Current player representation: 4 players (one-hot encoding)
+    current_player_size = 4
+    
+    # Scores representation: 2 scores (normalized)
+    scores_size = 2
+    
+    # Announcements representation: 2 announcements (re, contra)
+    announcements_size = 2
+    
+    # Total state size
+    return hand_size + trick_size + played_size + variant_size + team_size + current_player_size + scores_size + announcements_size
 
-def action_to_card(state: Dict, action: int, player_idx: int) -> Optional[Dict]:
+def get_action_size() -> int:
     """
-    Convert an action index to a card for the given player.
+    Get the size of the action space.
     
-    Args:
-        state: The game state
-        action: The action index
-        player_idx: Index of the player
-        
     Returns:
-        The corresponding card, or None if the action is invalid
+        The size of the action space
     """
-    if action < 0 or action >= get_action_size():
-        return None
-    
-    card = idx_to_card(action)
-    
-    # Check if the card is in the player's hand and is a legal move
-    legal_actions = get_legal_actions(state, player_idx)
-    for legal_card in legal_actions:
-        if (legal_card['suit'] == card['suit'] and 
-            legal_card['rank'] == card['rank'] and 
-            legal_card['is_second'] == card['is_second']):
-            return legal_card
-    
-    return None
+    # Card actions: 48 cards (4 suits * 6 ranks * 2 copies)
+    return 48
