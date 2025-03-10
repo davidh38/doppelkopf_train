@@ -27,6 +27,9 @@ export function isTrumpCard(card) {
   } else if (gameState.gameVariant === 'QUEEN_SOLO') {
     // In Queen Solo, only Queens are trump
     return card.rank === 'QUEEN';
+  } else if (gameState.gameVariant === 'KING_SOLO') {
+    // In King Solo, only Kings are trump
+    return card.rank === 'KING';
   } else if (gameState.gameVariant === 'TRUMP_SOLO') {
     // In Trump Solo, all normal trumps are trump
     return card.suit === 'DIAMONDS' || card.rank === 'JACK' || card.rank === 'QUEEN';
@@ -137,14 +140,30 @@ export function sortCards(cards) {
       if (a.suit === 'HEARTS' && a.rank === 'TEN') return -1;
       if (b.suit === 'HEARTS' && b.rank === 'TEN') return 1;
       
-      // For trumps, sort by rank first (Queens, Jacks, then Diamonds)
-      if (a.rank === 'QUEEN' && b.rank !== 'QUEEN') return -1;
-      if (a.rank !== 'QUEEN' && b.rank === 'QUEEN') return 1;
-      if (a.rank === 'JACK' && b.rank !== 'JACK') return -1;
-      if (a.rank !== 'JACK' && b.rank === 'JACK') return 1;
+      // For trumps, sort by rank first based on game variant
+      if (gameState.gameVariant === 'KING_SOLO') {
+        // In King Solo, Kings come first
+        if (a.rank === 'KING' && b.rank !== 'KING') return -1;
+        if (a.rank !== 'KING' && b.rank === 'KING') return 1;
+        
+        // If both are Kings, sort by suit
+        if (a.rank === 'KING' && b.rank === 'KING') {
+          // Clubs, Spades, Hearts, Diamonds
+          const suitOrder = { 'CLUBS': 0, 'SPADES': 1, 'HEARTS': 2, 'DIAMONDS': 3 };
+          return suitOrder[a.suit] - suitOrder[b.suit];
+        }
+      } else {
+        // Normal sorting for other variants (Queens, Jacks, then Diamonds)
+        if (a.rank === 'QUEEN' && b.rank !== 'QUEEN') return -1;
+        if (a.rank !== 'QUEEN' && b.rank === 'QUEEN') return 1;
+        if (a.rank === 'JACK' && b.rank !== 'JACK') return -1;
+        if (a.rank !== 'JACK' && b.rank === 'JACK') return 1;
+      }
       
-      // If both are the same rank (both Queens or both Jacks), sort by suit
-      if ((a.rank === 'QUEEN' && b.rank === 'QUEEN') || (a.rank === 'JACK' && b.rank === 'JACK')) {
+      // If both are the same rank (both Queens, Kings, or Jacks), sort by suit
+      if ((a.rank === 'QUEEN' && b.rank === 'QUEEN') || 
+          (a.rank === 'KING' && b.rank === 'KING') || 
+          (a.rank === 'JACK' && b.rank === 'JACK')) {
         // Clubs, Spades, Hearts, Diamonds
         const suitOrder = { 'CLUBS': 0, 'SPADES': 1, 'HEARTS': 2, 'DIAMONDS': 3 };
         return suitOrder[a.suit] - suitOrder[b.suit];
