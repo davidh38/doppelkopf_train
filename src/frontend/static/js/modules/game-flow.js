@@ -386,8 +386,10 @@ export function initGameFlowEvents() {
   const jackSoloBtn = document.getElementById('jack-solo-btn');
   const kingSoloBtn = document.getElementById('king-solo-btn');
   const fleshlessBtn = document.getElementById('fleshless-btn');
+  const trumpSoloBtn = document.getElementById('trump-btn');
   
   if (normalBtn) normalBtn.addEventListener('click', () => setGameVariant('normal'));
+  if (trumpSoloBtn) trumpSoloBtn.addEventListener('click', () => setGameVariant('trump_solo'));
   if (hochzeitBtn) {
     // Disable the hochzeit button if the player doesn't have two Queens of Clubs
     eventBus.on('gameStateUpdated', () => {
