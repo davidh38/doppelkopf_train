@@ -65,9 +65,6 @@
             <h2>Game Over</h2>
             <div id="game-result">
                 <h3 id="winner" style="color: {{ winner_color }};">Team {{ winner_team }} wins!</h3>
-                {% if game_summary %}
-                <pre style="text-align: left; margin: 20px auto; padding: 15px; background-color: #f8f9fa; border: 1px solid #ddd; border-radius: 5px; max-width: 600px; white-space: pre-wrap; font-size: 14px; font-family: monospace;">{{ game_summary }}</pre>
-                {% endif %}
             </div>
             
             <div class="final-scores">
