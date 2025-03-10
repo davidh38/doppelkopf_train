@@ -382,6 +382,21 @@ export function initGameFlowEvents() {
   
   if (normalBtn) normalBtn.addEventListener('click', () => setGameVariant('normal'));
   if (hochzeitBtn) {
+    // Disable the hochzeit button if the player doesn't have two Queens of Clubs
+    eventBus.on('gameStateUpdated', () => {
+      if (hochzeitBtn) {
+        if (!gameState.hasHochzeit) {
+          hochzeitBtn.disabled = true;
+          hochzeitBtn.classList.add('disabled');
+          hochzeitBtn.title = "You need two Queens of Clubs to select Hochzeit";
+        } else {
+          hochzeitBtn.disabled = false;
+          hochzeitBtn.classList.remove('disabled');
+          hochzeitBtn.title = "";
+        }
+      }
+    });
+    
     hochzeitBtn.addEventListener('click', () => {
       // Only allow hochzeit if the player has two Queens of Clubs
       if (gameState.hasHochzeit) {
