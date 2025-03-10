@@ -842,6 +842,13 @@ def end_game(state: Dict) -> None:
     else:
         state['winner'] = TEAM_KONTRA
     
+    # Initialize player_game_points if it doesn't exist
+    state['player_game_points'] = [0, 0, 0, 0]
+    
+    # Determine the winning and losing teams
+    winning_team = state['winner']
+    losing_team = TEAM_KONTRA if winning_team == TEAM_RE else TEAM_RE
+    
     # Handle special variants
     if state['game_variant'] in [VARIANT_QUEEN_SOLO, VARIANT_JACK_SOLO, VARIANT_KING_SOLO, VARIANT_FLESHLESS]:
         # Find the player who chose the solo variant
@@ -856,9 +863,51 @@ def end_game(state: Dict) -> None:
             if state['winner'] == TEAM_RE:
                 # Solo player wins
                 state['solo_winner'] = True
+                
+                # Calculate points for solo win
+                # Base points: 3 (one for each opponent)
+                base_points = 3
+                
+                # Double points if RE was announced
+                if state.get('re_announced', False):
+                    base_points *= 2
+                
+                # Award points to solo player
+                state['player_game_points'][solo_player] = base_points
+                
+                # Each opponent gets negative points
+                opponent_points = -base_points / 3  # Divide by number of opponents
+                for i in range(len(state['teams'])):
+                    if i != solo_player:
+                        state['player_game_points'][i] = opponent_points
             else:
                 # Solo player loses
                 state['solo_winner'] = False
+                
+                # Calculate points for solo loss
+                # Base points: 3 (one for each opponent)
+                base_points = 3
+                
+                # Double points if RE was announced
+                if state.get('re_announced', False):
+                    base_points *= 2
+                
+                # Solo player gets negative points
+                state['player_game_points'][solo_player] = -base_points
+                
+                # Each opponent gets positive points
+                opponent_points = base_points / 3  # Divide by number of opponents
+                for i in range(len(state['teams'])):
+                    if i != solo_player:
+                        state['player_game_points'][i] = opponent_points
+    else:
+        # Normal game - award positive points to winning team and negative points to losing team
+        # This implements a zero-sum approach for game points
+        for i, team in enumerate(state['teams']):
+            if team == winning_team:
+                state['player_game_points'][i] = 1  # Positive points for winners
+            elif team == losing_team:
+                state['player_game_points'][i] = -1  # Negative points for losers
 
 def get_state_for_player(state: Dict, player_idx: int) -> List[float]:
     """
