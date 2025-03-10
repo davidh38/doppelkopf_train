@@ -56,7 +56,23 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Add event listeners for variant selection buttons
     if (normalBtn) normalBtn.addEventListener('click', () => setGameVariant('normal'));
-    if (hochzeitBtn) hochzeitBtn.addEventListener('click', () => setGameVariant('hochzeit'));
+    if (hochzeitBtn) {
+        hochzeitBtn.addEventListener('click', () => {
+            // Only allow hochzeit if the player has two Queens of Clubs
+            if (gameState.hasHochzeit) {
+                setGameVariant('hochzeit');
+            } else {
+                console.log("Cannot select Hochzeit: Player does not have two Queens of Clubs");
+                // Provide visual feedback to the user
+                hochzeitBtn.classList.add('btn-error');
+                setTimeout(() => {
+                    hochzeitBtn.classList.remove('btn-error');
+                }, 1000);
+                // Optionally show a message to the user
+                alert("You can only select Hochzeit (Marriage) if you have two Queens of Clubs");
+            }
+        });
+    }
     if (queenSoloBtn) queenSoloBtn.addEventListener('click', () => setGameVariant('queen_solo'));
     if (jackSoloBtn) jackSoloBtn.addEventListener('click', () => setGameVariant('jack_solo'));
     if (fleshlessBtn) fleshlessBtn.addEventListener('click', () => setGameVariant('fleshless'));
