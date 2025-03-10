@@ -11,6 +11,7 @@ import { updateAICardVisualization } from './game-ai-visualization.js';
 import { updateAnnouncementButtons } from './game-announcements.js';
 import { updateGameScores } from './game-scoreboard.js';
 import { showGameOverScreen } from './game-end-screen.js';
+import { updatePlayerTeamIndicator } from './game-team-indicators.js';
 
 // DOM elements
 export let gameSetupScreen;
@@ -61,6 +62,7 @@ export function renderUI() {
   renderHand();
   renderCurrentTrick();
   updateTurnIndicator();
+  updatePlayerTeamIndicator();
   updateGameVariantDisplay();
   updateAICardVisualization();
   updateAnnouncementButtons();
