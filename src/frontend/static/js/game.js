@@ -147,7 +147,6 @@ document.addEventListener('DOMContentLoaded', function() {
             gameState.canAnnounceNo60 = data.can_announce_no60 || false;
             gameState.canAnnounceNo30 = data.can_announce_no30 || false;
             gameState.canAnnounceBlack = data.can_announce_black || false;
-            gameState.multiplier = data.multiplier || 1;
             gameState.playerScores = data.player_scores || [0, 0, 0, 0];
             
             // Store player announcements if available

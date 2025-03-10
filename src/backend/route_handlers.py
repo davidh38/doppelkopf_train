@@ -57,9 +57,6 @@ def game_summary(game_id):
     no30_announced = game_data.get('no30_announced', False)
     black_announced = game_data.get('black_announced', False)
     
-    # Get the multiplier
-    multiplier = game_data.get('multiplier', 1)
-    
     # Get the player scores
     player_scores = scoreboard['player_scores']
     
@@ -126,31 +123,27 @@ def game_summary(game_id):
     re_achievement_points += diamond_ace_re_points + forty_plus_re_points
     kontra_achievement_points += diamond_ace_kontra_points + forty_plus_kontra_points
     
-    # Apply multiplier
-    re_achievement_points_with_multiplier = re_achievement_points * multiplier
-    kontra_achievement_points_with_multiplier = kontra_achievement_points * multiplier
-    
     # Calculate player achievement scores
     for i, team in enumerate(game['teams']):
         player_name = "You" if i == 0 else f"Player {i}"
         if team == TEAM_RE:
-            points = re_achievement_points_with_multiplier - kontra_achievement_points_with_multiplier
+            points = re_achievement_points - kontra_achievement_points
             details = {
                 'name': player_name,
                 'team': 'RE',
                 'points': points,
-                're_points': re_achievement_points_with_multiplier,
-                'kontra_points': -kontra_achievement_points_with_multiplier,
+                're_points': re_achievement_points,
+                'kontra_points': -kontra_achievement_points,
                 'total': player_scores[i]
             }
         else:  # KONTRA team
-            points = kontra_achievement_points_with_multiplier - re_achievement_points_with_multiplier
+            points = kontra_achievement_points - re_achievement_points
             details = {
                 'name': player_name,
                 'team': 'KONTRA',
                 'points': points,
-                're_points': -re_achievement_points_with_multiplier,
-                'kontra_points': kontra_achievement_points_with_multiplier,
+                're_points': -re_achievement_points,
+                'kontra_points': kontra_achievement_points,
                 'total': player_scores[i]
             }
         player_achievement_scores.append(details)
@@ -290,12 +283,9 @@ def game_summary(game_id):
                 </tr>
                 """
     
-    # Close the table and add multiplier
+    # Close the table
     score_calculation_details += f"""
     </table>
-    <div class="total">
-        Multiplier: {multiplier}x
-    </div>
     """
     
     return render_template('game-summary.html',
@@ -310,7 +300,6 @@ def game_summary(game_id):
                           no60_announced=no60_announced,
                           no30_announced=no30_announced,
                           black_announced=black_announced,
-                          multiplier=multiplier,
                           player_scores=player_scores,
                           player_achievement_scores=player_achievement_scores,
                           score_calculation_details=score_calculation_details)
@@ -380,7 +369,6 @@ def new_game(socketio):
         'black_announced': False,
         're_announcement_card': -1,
         'contra_announcement_card': -1,
-        'multiplier': 1,
         'starting_player': next_starting_player,
         'player_variants': player_variants,
         'revealed_teams': [False, False, False, False]
@@ -636,11 +624,9 @@ def announce_route(socketio, data):
         if announcement == 're':
             game_data['re_announced'] = True
             game_data['re_announcement_card'] = cards_played  # Track when Re was announced
-            game_data['multiplier'] = 2  # Set multiplier to 2 for Re
         elif announcement == 'contra':
             game_data['contra_announced'] = True
             game_data['contra_announcement_card'] = cards_played  # Track when Contra was announced
-            game_data['multiplier'] = 2  # Set multiplier to 2 for Contra
     
     # Handle additional announcements (No 90, No 60, No 30, Black)
     elif announcement in ['no90', 'no60', 'no30', 'black']:
@@ -662,16 +648,12 @@ def announce_route(socketio, data):
         # Check if the announcements are made in the correct order
         if announcement == 'no90' and not game_data.get('no90_announced', False):
             game_data['no90_announced'] = True
-            game_data['multiplier'] = 3  # Set multiplier to 3 for No 90
         elif announcement == 'no60' and game_data.get('no90_announced', False) and not game_data.get('no60_announced', False):
             game_data['no60_announced'] = True
-            game_data['multiplier'] = 4  # Set multiplier to 4 for No 60
         elif announcement == 'no30' and game_data.get('no60_announced', False) and not game_data.get('no30_announced', False):
             game_data['no30_announced'] = True
-            game_data['multiplier'] = 5  # Set multiplier to 5 for No 30
         elif announcement == 'black' and game_data.get('no30_announced', False) and not game_data.get('black_announced', False):
             game_data['black_announced'] = True
-            game_data['multiplier'] = 6  # Set multiplier to 6 for Black
         else:
             return jsonify({'error': 'Invalid announcement order'}), 400
     else:
@@ -690,5 +672,4 @@ def announce_route(socketio, data):
         'no60_announced': game_data.get('no60_announced', False),
         'no30_announced': game_data.get('no30_announced', False),
         'black_announced': game_data.get('black_announced', False),
-        'multiplier': game_data.get('multiplier', 1)
     })

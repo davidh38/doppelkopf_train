@@ -71,7 +71,6 @@ def new_game(socketio):
         'black_announced': False,
         're_announcement_card': -1,
         'contra_announcement_card': -1,
-        'multiplier': 1,
         'starting_player': next_starting_player,
         'player_variants': player_variants,
         'revealed_teams': [False, False, False, False]

@@ -314,8 +314,6 @@ export function makeAnnouncement(announcement) {
         gameState.announcements.black = true;
       }
       
-      // Update multiplier
-      gameState.multiplier = data.multiplier || gameState.multiplier;
     } else {
       // If no state is returned, update from the individual fields
       if (data.re_announced !== undefined) gameState.announcements.re = data.re_announced;
@@ -324,8 +322,6 @@ export function makeAnnouncement(announcement) {
       if (data.no60_announced !== undefined) gameState.announcements.no60 = data.no60_announced;
       if (data.no30_announced !== undefined) gameState.announcements.no30 = data.no30_announced;
       if (data.black_announced !== undefined) gameState.announcements.black = data.black_announced;
-      
-      if (data.multiplier !== undefined) gameState.multiplier = data.multiplier;
     }
     
     // Emit event that game state has been updated

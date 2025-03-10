@@ -223,11 +223,9 @@ def announce_route(socketio, data):
         if announcement == 're':
             game_data['re_announced'] = True
             game_data['re_announcement_card'] = cards_played  # Track when Re was announced
-            game_data['multiplier'] = 2  # Set multiplier to 2 for Re
         elif announcement == 'contra':
             game_data['contra_announced'] = True
             game_data['contra_announcement_card'] = cards_played  # Track when Contra was announced
-            game_data['multiplier'] = 2  # Set multiplier to 2 for Contra
     
     # Handle additional announcements (No 90, No 60, No 30, Black)
     elif announcement in ['no90', 'no60', 'no30', 'black']:
@@ -249,16 +247,12 @@ def announce_route(socketio, data):
         # Check if the announcements are made in the correct order
         if announcement == 'no90' and not game_data.get('no90_announced', False):
             game_data['no90_announced'] = True
-            game_data['multiplier'] = 3  # Set multiplier to 3 for No 90
         elif announcement == 'no60' and game_data.get('no90_announced', False) and not game_data.get('no60_announced', False):
             game_data['no60_announced'] = True
-            game_data['multiplier'] = 4  # Set multiplier to 4 for No 60
         elif announcement == 'no30' and game_data.get('no60_announced', False) and not game_data.get('no30_announced', False):
             game_data['no30_announced'] = True
-            game_data['multiplier'] = 5  # Set multiplier to 5 for No 30
         elif announcement == 'black' and game_data.get('no30_announced', False) and not game_data.get('black_announced', False):
             game_data['black_announced'] = True
-            game_data['multiplier'] = 6  # Set multiplier to 6 for Black
         else:
             return jsonify({'error': 'Invalid announcement order'}), 400
     else:
@@ -276,6 +270,5 @@ def announce_route(socketio, data):
         'no90_announced': game_data.get('no90_announced', False),
         'no60_announced': game_data.get('no60_announced', False),
         'no30_announced': game_data.get('no30_announced', False),
-        'black_announced': game_data.get('black_announced', False),
-        'multiplier': game_data.get('multiplier', 1)
+        'black_announced': game_data.get('black_announced', False)
     })
