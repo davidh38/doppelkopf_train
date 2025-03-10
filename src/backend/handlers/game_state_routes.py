@@ -86,9 +86,6 @@ def game_summary(game_id):
     no30_announced = game_data.get('no30_announced', False)
     black_announced = game_data.get('black_announced', False)
     
-    # Get the multiplier
-    multiplier = game_data.get('multiplier', 1)
-    
     # Get the player scores
     player_scores = scoreboard['player_scores']
     
@@ -155,31 +152,27 @@ def game_summary(game_id):
     re_achievement_points += diamond_ace_re_points + forty_plus_re_points
     kontra_achievement_points += diamond_ace_kontra_points + forty_plus_kontra_points
     
-    # Apply multiplier
-    re_achievement_points_with_multiplier = re_achievement_points * multiplier
-    kontra_achievement_points_with_multiplier = kontra_achievement_points * multiplier
-    
     # Calculate player achievement scores
     for i, team in enumerate(game['teams']):
         player_name = "You" if i == 0 else f"Player {i}"
         if team == TEAM_RE:
-            points = re_achievement_points_with_multiplier - kontra_achievement_points_with_multiplier
+            points = re_achievement_points - kontra_achievement_points
             details = {
                 'name': player_name,
                 'team': 'RE',
                 'points': points,
-                're_points': re_achievement_points_with_multiplier,
-                'kontra_points': -kontra_achievement_points_with_multiplier,
+                're_points': re_achievement_points,
+                'kontra_points': -kontra_achievement_points,
                 'total': player_scores[i]
             }
         else:  # KONTRA team
-            points = kontra_achievement_points_with_multiplier - re_achievement_points_with_multiplier
+            points = kontra_achievement_points - re_achievement_points
             details = {
                 'name': player_name,
                 'team': 'KONTRA',
                 'points': points,
-                're_points': -re_achievement_points_with_multiplier,
-                'kontra_points': kontra_achievement_points_with_multiplier,
+                're_points': -re_achievement_points,
+                'kontra_points': kontra_achievement_points,
                 'total': player_scores[i]
             }
         player_achievement_scores.append(details)
@@ -319,12 +312,9 @@ def game_summary(game_id):
                 </tr>
                 """
     
-    # Close the table and add multiplier
+    # Close the table
     score_calculation_details += f"""
     </table>
-    <div class="total">
-        Multiplier: {multiplier}x
-    </div>
     """
     
     return render_template('game-summary.html',
@@ -339,7 +329,6 @@ def game_summary(game_id):
                           no60_announced=no60_announced,
                           no30_announced=no30_announced,
                           black_announced=black_announced,
-                          multiplier=multiplier,
                           player_scores=player_scores,
                           player_achievement_scores=player_achievement_scores,
                           score_calculation_details=score_calculation_details)
