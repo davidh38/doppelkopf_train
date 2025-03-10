@@ -176,7 +176,13 @@ export function renderCurrentTrick() {
     // Create a player label
     const playerLabel = document.createElement('div');
     playerLabel.className = 'player-label';
-    playerLabel.textContent = pos.playerIdx === 0 ? 'You' : `Player ${pos.playerIdx}`;
+    
+    // Add card giver indicator in brackets if applicable
+    const isCardGiver = pos.playerIdx === gameState.cardGiver;
+    const cardGiverText = isCardGiver ? ' (Card Giver)' : '';
+    playerLabel.textContent = pos.playerIdx === 0 ? 
+      `You${cardGiverText}` : 
+      `Player ${pos.playerIdx}${cardGiverText}`;
     
     // Position the label based on the position
     if (pos.position === "bottom") {
@@ -204,8 +210,12 @@ export function renderCurrentTrick() {
       // Create the card element
       const cardElement = createCardElement(card, false); // Cards in the trick are not playable
       
-      // No team information shown, just the player name
-      playerLabel.textContent = pos.playerIdx === 0 ? 'You' : `Player ${pos.playerIdx}`;
+      // Add card giver indicator in brackets if applicable
+      const isCardGiver = pos.playerIdx === gameState.cardGiver;
+      const cardGiverText = isCardGiver ? ' (Card Giver)' : '';
+      playerLabel.textContent = pos.playerIdx === 0 ? 
+        `You${cardGiverText}` : 
+        `Player ${pos.playerIdx}${cardGiverText}`;
       
       // Add the card to the container
       cardContainer.appendChild(cardElement);
@@ -320,12 +330,23 @@ export function updateGameVariantDisplay() {
         listItem.style.padding = '5px 0';
         listItem.style.borderBottom = i < 3 ? '1px solid #eee' : 'none';
         
-        // Format the variant name to be more readable
-        const formattedVariant = playerVariant.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-        
-        listItem.textContent = i === 0 ? 
-          `You: ${formattedVariant}` : 
-          `Player ${i}: ${formattedVariant}`;
+                // Format the variant name to be more readable
+                const formattedVariant = playerVariant.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                
+                // Add card giver indicator in brackets
+                const isCardGiver = i === gameState.cardGiver;
+                const cardGiverText = isCardGiver ? ' (Card Giver)' : '';
+                
+                listItem.textContent = i === 0 ? 
+                  `You${cardGiverText}: ${formattedVariant}` : 
+                  `Player ${i}${cardGiverText}: ${formattedVariant}`;
+                
+                // Add additional styling for card giver
+                if (isCardGiver) {
+                    listItem.style.backgroundColor = '#f0f8ff'; // Light blue background
+                    listItem.style.padding = '5px';
+                    listItem.style.borderRadius = '3px';
+                }
         
         // Highlight the player's own selection
         if (i === 0) {

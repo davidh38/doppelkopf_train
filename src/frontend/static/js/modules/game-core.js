@@ -28,7 +28,8 @@ export const gameState = {
   playerScores: [0, 0, 0, 0],
   playerVariants: {},
   hasHochzeit: false,
-  canAnnounce: false
+  canAnnounce: false,
+  cardGiver: null
 };
 
 // Store model path
@@ -50,6 +51,7 @@ export function updateGameState(data) {
   gameState.scores = data.scores || gameState.scores;
   gameState.gameOver = data.game_over !== undefined ? data.game_over : gameState.gameOver;
   gameState.winner = data.winner || gameState.winner;
+  gameState.cardGiver = data.card_giver !== undefined ? data.card_giver : gameState.cardGiver;
   // Debug output to help diagnose issues with legal actions
   console.log("Legal actions before update:", gameState.legalActions);
   console.log("Legal actions from data:", data.legal_actions);
@@ -149,6 +151,7 @@ export function resetGameState() {
   gameState.multiplier = 1;
   gameState.playerScores = [0, 0, 0, 0];
   gameState.playerVariants = {};
+  gameState.cardGiver = null;
   
   // Emit event that game state has been reset
   eventBus.emit('gameStateReset');

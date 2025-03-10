@@ -5,6 +5,7 @@ These functions contain the business logic for the HTTP routes.
 """
 
 import os
+import random
 from flask import render_template, jsonify
 
 from src.backend.game.doppelkopf import (
