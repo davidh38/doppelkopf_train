@@ -498,45 +498,8 @@ export function updateAnnouncementButtons() {
     announcements: gameState.announcements
   });
   
-  // First, determine if the player can announce Hochzeit
-  const canAnnounceHochzeit = gameState.hasHochzeit && gameState.canAnnounce;
-  console.log("Can announce hochzeit:", canAnnounceHochzeit, "hasHochzeit:", gameState.hasHochzeit, "canAnnounce:", gameState.canAnnounce);
-  
-  // Get the Hochzeit button if it exists
-  let gameHochzeitBtn = document.getElementById('game-hochzeit-btn');
-  
   // Get the announcement buttons container
   const announcementButtons = document.querySelector('.announcement-buttons');
-  
-  // Handle button creation/removal based on whether player has both Queens of Clubs
-  if (gameState.hasHochzeit) {
-    // Player has both Queens of Clubs - create button if it doesn't exist
-    if (!gameHochzeitBtn && announcementButtons) {
-      console.log("Creating Hochzeit button because player has both Queens of Clubs");
-      gameHochzeitBtn = document.createElement('button');
-      gameHochzeitBtn.id = 'game-hochzeit-btn';
-      gameHochzeitBtn.className = 'btn announcement-btn';
-      gameHochzeitBtn.textContent = 'Hochzeit (Marriage)';
-      gameHochzeitBtn.onclick = () => eventBus.emit('makeAnnouncement', 'hochzeit');
-      
-      // Add the button to the announcement area
-      announcementButtons.appendChild(gameHochzeitBtn);
-    }
-    
-    // Now set visibility based on whether player can announce
-    if (gameHochzeitBtn) {
-      gameHochzeitBtn.style.display = canAnnounceHochzeit ? 'inline-block' : 'none';
-      gameHochzeitBtn.disabled = !canAnnounceHochzeit;
-      gameHochzeitBtn.style.opacity = canAnnounceHochzeit ? '1' : '0.5';
-    }
-  } else {
-    // Player doesn't have both Queens of Clubs - remove button if it exists
-    if (gameHochzeitBtn) {
-      console.log("Removing Hochzeit button because player doesn't have both Queens of Clubs");
-      gameHochzeitBtn.remove();
-      gameHochzeitBtn = null;
-    }
-  }
   
   // Determine which announcement button to show based on the game state
   // For RE team
@@ -647,16 +610,13 @@ export function updateAnnouncementButtons() {
     const canAnnounceNo60 = gameState.canAnnounceNo60;
     const canAnnounceNo30 = gameState.canAnnounceNo30;
     const canAnnounceBlack = gameState.canAnnounceBlack;
-    const canAnnounceHochzeit = gameState.hasHochzeit && gameState.canAnnounce;
     
     const canAnnounce = canAnnounceRe || canAnnounceContra || canAnnounceNo90 || 
-                        canAnnounceNo60 || canAnnounceNo30 || canAnnounceBlack || 
-                        canAnnounceHochzeit;
+                        canAnnounceNo60 || canAnnounceNo30 || canAnnounceBlack;
     
     console.log("Can announce anything:", canAnnounce, 
                 "Re:", canAnnounceRe, 
-                "Contra:", canAnnounceContra, 
-                "Hochzeit:", canAnnounceHochzeit);
+                "Contra:", canAnnounceContra);
     
     gameAnnouncementArea.classList.toggle('hidden', !canAnnounce);
   }

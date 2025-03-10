@@ -305,12 +305,6 @@ export function makeAnnouncement(announcement) {
         gameState.announcements.no30 = true;
       } else if (announcement === 'black') {
         gameState.announcements.black = true;
-      } else if (announcement === 'hochzeit') {
-        gameState.announcements.hochzeit = true;
-        // Update game variant to HOCHZEIT
-        gameState.gameVariant = 'HOCHZEIT';
-        // Reset hasHochzeit flag since it's been announced
-        gameState.hasHochzeit = false;
       }
       
       // Update multiplier

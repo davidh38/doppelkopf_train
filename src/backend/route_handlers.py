@@ -607,33 +607,8 @@ def announce_route(socketio, data):
     # Check if the player is in the appropriate team for the announcement
     player_team = game['teams'][0]  # Player is always index 0
     
-    # Handle Hochzeit announcement
-    if announcement == 'hochzeit':
-        # Check if more than 5 cards have been played
-        if cards_played >= 5:
-            return jsonify({'error': 'Cannot announce Hochzeit after the fifth card has been played'}), 400
-        
-        # Check if the player has both Queens of Clubs
-        if not has_hochzeit(game, 0):
-            return jsonify({'error': 'You need both Queens of Clubs to announce Hochzeit'}), 400
-        
-        # Set the game variant to Hochzeit
-        result = announce(game, 0, 'hochzeit')
-        if not result:
-            return jsonify({'error': 'Failed to announce Hochzeit'}), 400
-        
-        # Set legal actions for the player if it's their turn
-        if game['current_player'] == 0:
-            game['legal_actions'] = get_legal_actions(game, 0)
-            print(f"Setting legal actions for player after hochzeit announcement: {game['legal_actions']}")
-        
-        return jsonify({
-            'state': get_game_state(game_id),
-            'game_variant': VARIANT_NAMES[game['game_variant']]
-        })
-    
     # Handle Re and Contra announcements
-    elif announcement in ['re', 'contra']:
+    if announcement in ['re', 'contra']:
         # Check if more than 5 cards have been played
         if cards_played >= 5:
             return jsonify({'error': 'Cannot announce Re or Contra after the fifth card has been played'}), 400
