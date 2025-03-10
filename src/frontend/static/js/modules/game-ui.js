@@ -246,7 +246,7 @@ export function updateGameVariantDisplay() {
   let variantText = gameState.gameVariant || 'NORMAL';
   gameVariantEl.textContent = variantText;
   
-  // Add player variant selections in a more visible way
+  // Add player variant selections and card giver information in a more visible way
   if (gameState.playerVariants && Object.keys(gameState.playerVariants).length > 0) {
     // Create or get the player variants container
     let variantsContainer = document.getElementById('player-variants-container');
@@ -261,7 +261,7 @@ export function updateGameVariantDisplay() {
       
       // Add a title
       const title = document.createElement('h4');
-      title.textContent = 'Player Variant Selections';
+      title.textContent = 'Game Information';
       title.style.marginTop = '0';
       title.style.marginBottom = '10px';
       title.style.color = '#3498db';
@@ -279,11 +279,33 @@ export function updateGameVariantDisplay() {
     
     // Add the title back
     const title = document.createElement('h4');
-    title.textContent = 'Player Variant Selections';
+    title.textContent = 'Game Information';
     title.style.marginTop = '0';
     title.style.marginBottom = '10px';
     title.style.color = '#3498db';
     variantsContainer.appendChild(title);
+    
+    // Add card giver information
+    if (gameState.cardGiver !== undefined) {
+      const cardGiverInfo = document.createElement('div');
+      cardGiverInfo.style.marginBottom = '10px';
+      cardGiverInfo.style.padding = '5px';
+      cardGiverInfo.style.backgroundColor = '#e8f4f8';
+      cardGiverInfo.style.borderRadius = '3px';
+      
+      const cardGiverName = gameState.cardGiver === 0 ? 'You' : `Player ${gameState.cardGiver}`;
+      cardGiverInfo.innerHTML = `<strong>Card Giver:</strong> ${cardGiverName}`;
+      
+      variantsContainer.appendChild(cardGiverInfo);
+    }
+    
+    // Add variant selections subtitle
+    const variantsSubtitle = document.createElement('h5');
+    variantsSubtitle.textContent = 'Player Variant Selections';
+    variantsSubtitle.style.marginTop = '10px';
+    variantsSubtitle.style.marginBottom = '5px';
+    variantsSubtitle.style.color = '#3498db';
+    variantsContainer.appendChild(variantsSubtitle);
     
     // Create a list of player variants
     const variantsList = document.createElement('ul');
@@ -309,6 +331,12 @@ export function updateGameVariantDisplay() {
         if (i === 0) {
           listItem.style.fontWeight = 'bold';
           listItem.style.color = '#2ecc71';
+        }
+        
+        // Highlight the card giver
+        if (i === gameState.cardGiver) {
+          listItem.style.textDecoration = 'underline';
+          listItem.style.fontStyle = 'italic';
         }
         
         variantsList.appendChild(listItem);

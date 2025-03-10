@@ -328,8 +328,20 @@ def new_game(socketio):
     # Initialize game
     game = create_game_state()
     
-    # Set the starting player based on the last game's starting player
-    next_starting_player = (scoreboard['last_starting_player'] + 1) % 4
+    # For the first game, randomly select a card giver
+    if 'last_card_giver' not in scoreboard:
+        card_giver = random.randint(0, 3)
+        scoreboard['last_card_giver'] = card_giver
+    else:
+        # For subsequent games, rotate the card giver role
+        card_giver = (scoreboard['last_card_giver'] + 1) % 4
+        scoreboard['last_card_giver'] = card_giver
+    
+    # Set the card giver in the game state
+    game['card_giver'] = card_giver
+    
+    # The player next to the card giver starts with choosing the variant
+    next_starting_player = (card_giver + 1) % 4
     game['current_player'] = next_starting_player
     
     # Store the new starting player

@@ -92,7 +92,9 @@ def get_game_state(game_id, player_id=0):
         # Can announce until the fifth card is played
         'can_announce': (len(game['current_trick']) + sum(len(trick) for trick in game['tricks'])) < 5,
         'can_announce_re': game['teams'][player_id] == TEAM_RE and (len(game['current_trick']) + sum(len(trick) for trick in game['tricks'])) < 5,
-        'can_announce_contra': game['teams'][player_id] == TEAM_KONTRA and (len(game['current_trick']) + sum(len(trick) for trick in game['tricks'])) < 5
+        'can_announce_contra': game['teams'][player_id] == TEAM_KONTRA and (len(game['current_trick']) + sum(len(trick) for trick in game['tricks'])) < 5,
+        # Add card giver information
+        'card_giver': game['card_giver']
     }
     
     # If the game is over, include the game summary

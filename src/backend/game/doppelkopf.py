@@ -278,6 +278,7 @@ def create_game_state() -> Dict:
         'trick_winner': None,
         'game_over': False,
         'players_with_hochzeit': set(),  # Cache for players who have hochzeit
+        'card_giver': 0,  # Player who is the card giver
         
         # Variant selection phase
         'variant_selection_phase': True,
