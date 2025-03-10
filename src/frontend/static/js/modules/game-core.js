@@ -24,7 +24,6 @@ export const gameState = {
   canAnnounceNo60: false,
   canAnnounceNo30: false,
   canAnnounceBlack: false,
-  multiplier: 1,
   playerScores: [0, 0, 0, 0],
   playerVariants: {},
   hasHochzeit: false,
@@ -75,7 +74,6 @@ export function updateGameState(data) {
   // Update hasHochzeit property
   gameState.hasHochzeit = data.has_hochzeit === true;
   
-  gameState.multiplier = data.multiplier || gameState.multiplier;
   gameState.playerScores = data.player_scores || gameState.playerScores;
   gameState.revealed_teams = data.revealed_teams || gameState.revealed_teams;
   
@@ -148,7 +146,6 @@ export function resetGameState() {
   // Reset hochzeit state
   gameState.hasHochzeit = false;
   
-  gameState.multiplier = 1;
   gameState.playerScores = [0, 0, 0, 0];
   gameState.playerVariants = {};
   gameState.cardGiver = null;

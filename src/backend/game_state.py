@@ -86,7 +86,6 @@ def get_game_state(game_id, player_id=0):
         'last_trick_diamond_ace_bonus': game.get('last_trick_diamond_ace_bonus', 0),
         're_announced': game_data.get('re_announced', False),
         'contra_announced': game_data.get('contra_announced', False),
-        'multiplier': game_data.get('multiplier', 1),
         # Check if player has both Queens of Clubs for hochzeit (using cached value)
         'has_hochzeit': player_id in game['players_with_hochzeit'],
         # Can announce until the fifth card is played
@@ -198,7 +197,6 @@ def generate_game_summary(game_id):
     """Generate a detailed game summary."""
     game_data = games[game_id]
     game = game_data['game']
-    multiplier = game_data.get('multiplier', 1)
     
     # Count players in each team
     re_players = sum(1 for team in game['teams'] if team == TEAM_RE)
@@ -213,10 +211,6 @@ def generate_game_summary(game_id):
         # KONTRA team won
         re_points = -kontra_players  # Each RE player gets -kontra_players
         kontra_points = re_players  # Each KONTRA player gets +re_players
-    
-    # Apply multiplier
-    re_points_with_multiplier = re_points * multiplier
-    kontra_points_with_multiplier = kontra_points * multiplier
     
     # Create summary text
     summary_text = f"Game Over! {TEAM_NAMES[game['winner']]} team wins!\n\n"
@@ -347,28 +341,24 @@ def generate_game_summary(game_id):
         if game_data.get('black_announced', False):
             summary_text += "- Black announced: +1\n"
         
-        summary_text += f"- Score multiplier: {multiplier}x\n\n"
+        summary_text += "\n"
     
-    # Apply multiplier to achievement points
-    re_achievement_points_with_multiplier = re_achievement_points * multiplier
-    kontra_achievement_points_with_multiplier = kontra_achievement_points * multiplier
-    
-    # Add total achievement points with multiplier
+    # Add total achievement points
     summary_text += "Total Achievement Points:\n"
-    summary_text += f"- RE team: {re_achievement_points} achievement(s) × {multiplier} = {re_achievement_points_with_multiplier} points\n"
-    summary_text += f"- KONTRA team: {kontra_achievement_points} achievement(s) × {multiplier} = {kontra_achievement_points_with_multiplier} points\n\n"
+    summary_text += f"- RE team: {re_achievement_points} achievement(s)\n"
+    summary_text += f"- KONTRA team: {kontra_achievement_points} achievement(s)\n\n"
     
     # Add final scores
     summary_text += "Final Scores:\n"
     for i, team in enumerate(game['teams']):
         player_name = "You" if i == 0 else f"Player {i}"
         if team == TEAM_RE:
-            points = f"+{re_achievement_points_with_multiplier} from RE, -{kontra_achievement_points_with_multiplier} from KONTRA"
-            net_points = re_achievement_points_with_multiplier - kontra_achievement_points_with_multiplier
+            points = f"+{re_achievement_points} from RE, -{kontra_achievement_points} from KONTRA"
+            net_points = re_achievement_points - kontra_achievement_points
             points_display = f"+{net_points}" if net_points > 0 else f"{net_points}"
         else:  # KONTRA team
-            points = f"+{kontra_achievement_points_with_multiplier} from KONTRA, -{re_achievement_points_with_multiplier} from RE"
-            net_points = kontra_achievement_points_with_multiplier - re_achievement_points_with_multiplier
+            points = f"+{kontra_achievement_points} from KONTRA, -{re_achievement_points} from RE"
+            net_points = kontra_achievement_points - re_achievement_points
             points_display = f"+{net_points}" if net_points > 0 else f"{net_points}"
         
         total_score = scoreboard['player_scores'][i]
@@ -383,7 +373,6 @@ def update_scoreboard_for_game_over(game_id):
     """Update the scoreboard when a game is over."""
     game_data = games[game_id]
     game = game_data['game']
-    multiplier = game_data.get('multiplier', 1)
     player_team = game['teams'][0]
     
     print_scoreboard("Before Game Over Update", game)
@@ -425,10 +414,6 @@ def update_scoreboard_for_game_over(game_id):
         re_achievement_points += 1  # RE plays black
     elif game['winner'] == TEAM_KONTRA and re_score == 0:
         kontra_achievement_points += 1  # KONTRA plays black
-    
-    # Apply multiplier to achievement points
-    re_achievement_points *= multiplier
-    kontra_achievement_points *= multiplier
     
     # Update player scores based on team and achievement points
     for i in range(len(game['teams'])):
