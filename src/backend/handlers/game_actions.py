@@ -247,12 +247,32 @@ def announce_route(socketio, data):
         # Check if the announcements are made in the correct order
         if announcement == 'no90' and not game_data.get('no90_announced', False):
             game_data['no90_announced'] = True
+            # Reset the announcement window for the player's team
+            if player_team == TEAM_RE:
+                game_data['re_announcement_card'] = cards_played
+            else:  # TEAM_KONTRA
+                game_data['contra_announcement_card'] = cards_played
         elif announcement == 'no60' and game_data.get('no90_announced', False) and not game_data.get('no60_announced', False):
             game_data['no60_announced'] = True
+            # Reset the announcement window for the player's team
+            if player_team == TEAM_RE:
+                game_data['re_announcement_card'] = cards_played
+            else:  # TEAM_KONTRA
+                game_data['contra_announcement_card'] = cards_played
         elif announcement == 'no30' and game_data.get('no60_announced', False) and not game_data.get('no30_announced', False):
             game_data['no30_announced'] = True
+            # Reset the announcement window for the player's team
+            if player_team == TEAM_RE:
+                game_data['re_announcement_card'] = cards_played
+            else:  # TEAM_KONTRA
+                game_data['contra_announcement_card'] = cards_played
         elif announcement == 'black' and game_data.get('no30_announced', False) and not game_data.get('black_announced', False):
             game_data['black_announced'] = True
+            # Reset the announcement window for the player's team
+            if player_team == TEAM_RE:
+                game_data['re_announcement_card'] = cards_played
+            else:  # TEAM_KONTRA
+                game_data['contra_announcement_card'] = cards_played
         else:
             return jsonify({'error': 'Invalid announcement order'}), 400
     else:

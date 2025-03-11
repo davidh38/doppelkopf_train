@@ -123,13 +123,14 @@ def get_game_state(game_id, player_id=0):
     cards_played = len(game['current_trick']) + sum(len(trick) for trick in game['tricks'])
     
     # Check if player can announce additional announcements (No 90, No 60, No 30, Black)
-    # These can only be announced within 5 cards after Re or Contra
+    # These can only be announced within 5 cards after the most recent announcement
     re_announced_card = game_data.get('re_announcement_card', -1)
     contra_announced_card = game_data.get('contra_announcement_card', -1)
     
     # Player can announce additional announcements if:
     # 1. They are on team RE and have announced Re, or they are on team KONTRA and have announced Contra
-    # 2. The announcement was made within the last 5 cards
+    # 2. The most recent announcement was made within the last 5 cards
+    # Note: Each new announcement resets the 5-card countdown
     can_announce_additional_re = (game['teams'][player_id] == TEAM_RE and 
                                  game_data.get('re_announced', False) and 
                                  re_announced_card >= 0 and 
