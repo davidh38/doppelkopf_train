@@ -110,6 +110,78 @@ The data flow between components follows this general pattern:
    - Chooses cards to play
    - Makes announcements based on hand strength and game state
 
+** General Data Flow Example
+
+This example illustrates the complete flow from when a user first accesses the website to starting and playing a game:
+
+1. *Initial Page Load*
+   - User navigates to the main route (e.g., http://localhost:5007)
+   - Server receives the request and serves the index.html template
+   - Browser loads HTML, CSS, and JavaScript files
+   - JavaScript initializes the game interface and establishes a WebSocket connection
+
+2. *Starting a New Game*
+   - User clicks the "New Game" button on the interface
+   - JavaScript code captures this event and sends a request to the =/new_game= endpoint
+   - Backend creates a new game instance with a unique ID:
+     - Initializes the game state
+     - Creates the deck and deals cards
+     - Determines initial teams based on Queens of Clubs
+     - Sets up AI agents for non-human players
+   - Backend returns the game ID and initial state to the client
+   - JavaScript receives the response and updates the UI to show:
+     - Player's hand
+     - Game variant selection options
+     - Other players' positions
+
+3. *Variant Selection Phase*
+   - If it's the player's turn to choose a variant:
+     - UI displays variant options
+     - Player selects a variant
+     - JavaScript sends the selection to the =/set_variant= endpoint
+     - Backend updates the game state with the player's choice
+   - If it's an AI player's turn:
+     - Backend determines the AI's variant choice
+     - WebSocket sends an =ai_selecting_variant= event to the client
+     - JavaScript animates the AI's selection
+   - This continues until all players have chosen
+   - Backend determines the final game variant based on priority
+   - WebSocket sends a =game_update= event with the updated state
+   - JavaScript updates the UI to show the final variant and transition to the card play phase
+
+4. *Card Play Phase*
+   - If it's the player's turn:
+     - UI highlights legal cards that can be played
+     - Player clicks a card
+     - JavaScript sends the selection to the =/play_card= endpoint
+     - Backend validates the move and updates the game state
+   - If it's an AI player's turn:
+     - Backend determines the AI's card choice
+     - WebSocket sends an =ai_playing_card= event to the client
+     - JavaScript animates the AI playing the card
+   - When a trick is completed:
+     - Backend calculates points and determines the winner
+     - WebSocket sends a =trick_completed= event
+     - JavaScript animates the trick completion and updates scores
+
+5. *Announcements*
+   - If the player can make an announcement:
+     - UI displays announcement buttons (Re, Contra, etc.)
+     - Player clicks an announcement button
+     - JavaScript sends the announcement to the =/announce= endpoint
+     - Backend validates and updates the game state
+   - If an AI player makes an announcement:
+     - Backend determines the AI's announcement
+     - WebSocket sends an event to the client
+     - JavaScript displays the announcement
+
+6. *Game Completion*
+   - When all cards have been played:
+     - Backend calculates final scores and determines the winner
+     - WebSocket sends a =game_over= event with the results
+     - JavaScript displays the game summary screen
+     - UI shows options to start a new game or view the scoreboard
+
 ** API Routes Reference
 
 *** Game Management
