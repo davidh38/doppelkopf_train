@@ -76,15 +76,28 @@ def new_game(socketio):
         'revealed_teams': [False, False, False, False]
     }
     
-    # If it's not the player's turn, have AI choose a variant
+    # If it's not the player's turn, have AI players choose variants in sequence
     if game['current_player'] != 0:
-        # Have the current AI player choose a variant
-        current_player = game['current_player']
-        set_variant(game, 'normal', current_player)
-        games[game_id]['player_variants'][current_player] = 'normal'
-        
-        # Move to the next player
-        # We don't automatically have all AI players choose here
+        # Have all AI players choose their variants in sequence until it's the human player's turn
+        while game['variant_selection_phase'] and game['current_player'] != 0:
+            current_player = game['current_player']
+            
+            # Emit an event to show the variant selection animation for this AI player
+            socketio.emit('ai_selecting_variant', {
+                'player': current_player,
+                'variant': 'normal'
+            })
+            
+            # Add a small delay to allow the animation to be visible
+            import time
+            time.sleep(0.5)
+            
+            # Set the variant for the AI player
+            set_variant(game, 'normal', current_player)
+            games[game_id]['player_variants'][current_player] = 'normal'
+            
+            # Update the game state for the client
+            socketio.emit('game_update', get_game_state(game_id), room=game_id)
     else:
         # Set legal actions for the player if it's their turn
         game['legal_actions'] = get_legal_actions(game, 0)
