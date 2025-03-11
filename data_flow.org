@@ -1,0 +1,158 @@
+#+TITLE: Doppelkopf Game Data Flow
+#+AUTHOR: 
+#+DATE: 2025-03-11
+
+* Game Data Flow
+
+This document describes the data flow in the Doppelkopf game application, including the API routes, WebSocket events, and the sequence of interactions between the frontend and backend.
+
+** Game Flow Sequence
+
+The game follows these steps in order, with the corresponding API routes:
+
+1. *Start a New Game*: Click the "New Game" button to create a new game session
+   - API Route: =/new_game= (POST)
+   - Creates a new game instance with a unique ID
+   - Initializes the game state with default values
+   - Returns the game ID to the client
+
+2. *Select a Game Variant*: Choose from Normal, Hochzeit (Marriage), Queen Solo, Jack Solo, or Fleshless
+   - API Route: =/set_variant= (POST)
+   - Parameters: game_id, variant, player_idx
+   - Sets the chosen variant for the specified player
+   - When all players have chosen, determines the final game variant based on priority
+   - Transitions the game from variant selection phase to card play phase
+
+3. *Play Cards*: Take turns playing cards by clicking on them when it's your turn
+   - API Route: =/play_card= (POST)
+   - Parameters: game_id, card_id
+   - Validates if the move is legal
+   - Updates the game state with the played card
+   - Handles trick completion if all players have played a card
+   - Triggers AI players to take their turns
+
+4. *Make Announcements (Optional)*: 
+   - If you're on the Re team (have Queens of Clubs), you can announce "Re"
+   - If you're on the Kontra team (no Queens of Clubs), you can announce "Contra"
+   - If you have both Queens of Clubs, you can announce "Hochzeit" (Marriage)
+   - Announcements must be made before the fifth card is played
+   - API Route: =/announce= (POST)
+   - Parameters: game_id, announcement
+   - Validates if the announcement is legal
+   - Updates the game state with the announcement
+
+5. *Complete Tricks*: The highest card in each trick wins and collects points
+   - Current trick info: =/get_current_trick= (GET)
+   - Last trick info: =/get_last_trick= (GET)
+   - When a trick is completed, points are calculated and added to the winner's team score
+   - Special rules like Doppelkopf bonus and Diamond Ace capture are applied
+
+6. *Game Ends*: After all cards are played, the team with more points wins
+   - Scoreboard: =/get_scoreboard= (GET)
+   - When all cards have been played, final scores are calculated
+   - The winner is determined (Re team needs at least 121 points to win)
+   - Game points are awarded to players based on the outcome
+
+7. *View Summary*: See the final score and game statistics
+   - API Route: =/game-summary/<game_id>= (GET)
+   - Displays detailed information about the game outcome
+   - Shows points earned, special achievements, and game points awarded
+
+** WebSocket Events
+
+Socket.IO provides real-time updates during gameplay, showing AI player moves and trick completions automatically. The main WebSocket events include:
+
+1. *game_update*: Sent when the game state changes
+   - Contains the complete game state for the client to render
+   - Includes information about current player, hands, tricks, scores, etc.
+
+2. *ai_selecting_variant*: Sent when an AI player is selecting a game variant
+   - Parameters: player, variant
+   - Used to show the variant selection animation for AI players
+
+3. *ai_playing_card*: Sent when an AI player plays a card
+   - Parameters: player, card
+   - Used to show the card playing animation for AI players
+
+4. *trick_completed*: Sent when a trick is completed
+   - Parameters: winner, points, cards
+   - Used to show the trick completion animation and update scores
+
+5. *game_over*: Sent when the game ends
+   - Parameters: winner, scores, summary
+   - Used to show the game over screen with final results
+
+** Data Flow Diagram
+
+The data flow between components follows this general pattern:
+
+1. User Interface (Frontend)
+   - Renders the game state
+   - Captures user inputs (card selection, variant choice, announcements)
+   - Sends requests to the backend via API calls or WebSocket events
+
+2. Backend Server
+   - Processes requests from the frontend
+   - Validates game rules and legal moves
+   - Updates the game state
+   - Manages AI player decisions
+   - Sends updates to connected clients via WebSocket
+
+3. Game Logic
+   - Implements the rules of Doppelkopf
+   - Determines legal actions
+   - Calculates scores and determines winners
+   - Handles special rules and variants
+
+4. AI Logic
+   - Makes decisions for AI players
+   - Selects game variants
+   - Chooses cards to play
+   - Makes announcements based on hand strength and game state
+
+** API Routes Reference
+
+*** Game Management
+- =/new_game= (POST): Create a new game
+- =/join_game= (POST): Join an existing game
+- =/get_game_state= (GET): Get the current state of a game
+- =/get_scoreboard= (GET): Get the current scoreboard
+
+*** Game Actions
+- =/set_variant= (POST): Set a game variant
+- =/play_card= (POST): Play a card
+- =/announce= (POST): Make an announcement (Re, Contra, etc.)
+
+*** Game Information
+- =/get_current_trick= (GET): Get information about the current trick
+- =/get_last_trick= (GET): Get information about the last completed trick
+- =/game-summary/<game_id>= (GET): Get a summary of a completed game
+
+** State Management
+
+The game state is managed on the server and includes:
+
+1. *Game Information*
+   - Game ID
+   - Current phase (variant selection, card play)
+   - Current player
+   - Game variant
+   - Whether the game is over
+
+2. *Player Information*
+   - Hands (cards held by each player)
+   - Teams (Re or Kontra)
+   - Scores
+
+3. *Trick Information*
+   - Current trick (cards played so far)
+   - Completed tricks
+   - Trick winner
+   - Trick points
+
+4. *Announcement Information*
+   - Re announced (yes/no)
+   - Contra announced (yes/no)
+   - Additional announcements (No 90, No 60, No 30, Black)
+
+The state is updated after each action and sent to all connected clients to keep the UI in sync with the game state.
