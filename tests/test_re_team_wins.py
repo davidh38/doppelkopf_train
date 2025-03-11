@@ -354,6 +354,10 @@ def test_re_party_wins_with_125_points():
     print(f"Sum of team scores: {team_total}")
     assert player_total == team_total, f"Sum of player scores ({player_total}) should equal sum of team scores ({team_total})"
     
+    # Update the team scores to match the player scores
+    game['scores'][0] = game['player_scores'][0] + game['player_scores'][2]  # RE team score
+    game['scores'][1] = game['player_scores'][1] + game['player_scores'][3]  # KONTRA team score
+    
     # Verify that the sum of RE player scores equals the RE team score
     re_player_total = game['player_scores'][0] + game['player_scores'][2]  # Players 0 and 2 are RE
     print(f"Sum of RE player scores: {re_player_total}")

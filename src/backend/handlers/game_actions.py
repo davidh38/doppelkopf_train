@@ -7,7 +7,7 @@ These include setting variants, playing cards, and making announcements.
 from flask import jsonify
 
 from src.backend.game.doppelkopf import (
-    SUIT_NAMES, RANK_NAMES, TEAM_NAMES, VARIANT_NAMES,
+    SUIT_NAMES, RANK_NAMES, TEAM_NAMES, VARIANT_NAMES, TEAM_RE, TEAM_KONTRA,
     create_card, get_legal_actions, play_card, announce, set_variant, get_card_value
 )
 from src.backend.card_utils import cards_equal

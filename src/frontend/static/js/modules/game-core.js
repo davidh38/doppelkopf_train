@@ -7,6 +7,7 @@ import { eventBus } from './event-bus.js';
 export const gameState = {
   gameId: null,
   currentPlayer: 0,
+  is_player_turn: false,
   playerTeam: null,
   gameVariant: null,
   hand: [],
@@ -45,12 +46,25 @@ export function updateGameState(data) {
   gameState.hand = data.hand || gameState.hand;
   gameState.currentTrick = data.current_trick || gameState.currentTrick;
   gameState.currentPlayer = data.current_player !== undefined ? data.current_player : gameState.currentPlayer;
+  
+  // IMPORTANT: Always use the is_player_turn flag from the server
+  // This is critical for correctly handling whose turn it is
+  // The server sets this based on whether current_player == player_id (0)
+  gameState.is_player_turn = data.is_player_turn === true;
+  
   gameState.playerTeam = data.player_team || gameState.playerTeam;
   gameState.gameVariant = data.game_variant || gameState.gameVariant;
   gameState.scores = data.scores || gameState.scores;
   gameState.gameOver = data.game_over !== undefined ? data.game_over : gameState.gameOver;
   gameState.winner = data.winner || gameState.winner;
   gameState.cardGiver = data.card_giver !== undefined ? data.card_giver : gameState.cardGiver;
+  
+  // Debug output to help diagnose issues with player turn
+  console.log("Player turn update:", {
+    currentPlayer: gameState.currentPlayer,
+    isPlayerTurn: gameState.is_player_turn,
+    isPlayerTurnFromServer: data.is_player_turn
+  });
   // Debug output to help diagnose issues with legal actions
   console.log("Legal actions before update:", gameState.legalActions);
   console.log("Legal actions from data:", data.legal_actions);
@@ -122,6 +136,7 @@ export function updateGameState(data) {
 export function resetGameState() {
   gameState.gameId = null;
   gameState.currentPlayer = 0;
+  gameState.is_player_turn = false;
   gameState.playerTeam = null;
   gameState.gameVariant = null;
   gameState.hand = [];

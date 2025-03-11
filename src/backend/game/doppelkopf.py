@@ -270,7 +270,7 @@ def create_game_state() -> Dict:
         'hands': [[] for _ in range(4)],
         'tricks': [],
         'current_trick': [],
-        'current_player': 0,
+        'current_player': 0,  # This will be overridden in game_management.py
         'game_variant': VARIANT_NORMAL,
         'scores': [0, 0],  # [RE score, KONTRA score]
         'player_scores': [0, 0, 0, 0],  # Individual player scores
@@ -278,7 +278,7 @@ def create_game_state() -> Dict:
         'trick_winner': None,
         'game_over': False,
         'players_with_hochzeit': set(),  # Cache for players who have hochzeit
-        'card_giver': 0,  # Player who is the card giver
+        'card_giver': 0,  # Player who is the card giver (will be set in game_management.py)
         
         # Variant selection phase
         'variant_selection_phase': True,
@@ -600,6 +600,10 @@ def set_variant(state: Dict, variant: str, player_idx: int = None) -> bool:
         
         # End variant selection phase
         state['variant_selection_phase'] = False
+        
+        # Reset the current player to be the player next to the card giver
+        # This ensures the correct player starts the first trick
+        state['current_player'] = (state['card_giver'] + 1) % state['num_players']
         
     return True
 
@@ -934,7 +938,7 @@ def end_game(state: Dict) -> None:
     kontra_score = state['scores'][1]
     
     # In normal game, RE team needs 121 points to win
-    if re_score > kontra_score:
+    if re_score >= 121:
         state['winner'] = TEAM_RE
     else:
         state['winner'] = TEAM_KONTRA

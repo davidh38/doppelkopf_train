@@ -26,7 +26,7 @@ export function renderHand() {
   // Render the sorted hand
   sortedHand.forEach(card => {
     // Check if the card is in the legal actions
-    const isPlayable = gameState.currentPlayer === 0 && 
+    const isPlayable = gameState.is_player_turn && 
                        gameState.legalActions && 
                        gameState.legalActions.some(legalCard => legalCard.id === card.id);
     
@@ -55,7 +55,7 @@ export function renderHand() {
   });
   
   // If it's the player's turn, add a message to indicate they can play
-  if (gameState.currentPlayer === 0) {
+  if (gameState.is_player_turn) {
     const messageEl = document.createElement('div');
     messageEl.style.textAlign = 'center';
     messageEl.style.marginTop = '10px';

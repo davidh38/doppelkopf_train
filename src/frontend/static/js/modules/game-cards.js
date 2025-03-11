@@ -208,7 +208,7 @@ export function playCard(cardId) {
   }
   
   // Check if the card is in the legal actions
-  const isPlayable = gameState.currentPlayer === 0 && 
+  const isPlayable = gameState.is_player_turn && 
                      gameState.legalActions && 
                      gameState.legalActions.some(legalCard => legalCard.id === cardId);
   
@@ -262,6 +262,7 @@ export function playCard(cardId) {
       gameState.hand = data.state.hand || [];
       gameState.currentTrick = data.state.current_trick || [];
       gameState.currentPlayer = data.state.current_player;
+      gameState.is_player_turn = data.state.is_player_turn !== undefined ? data.state.is_player_turn : (gameState.currentPlayer === 0);
       gameState.legalActions = data.state.legal_actions || [];
       
       // Emit event that the game state has changed
