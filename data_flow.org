@@ -58,29 +58,69 @@ The game follows these steps in order, with the corresponding API routes:
    - Displays detailed information about the game outcome
    - Shows points earned, special achievements, and game points awarded
 
-** WebSocket Events
+** Communication Patterns
 
-Socket.IO provides real-time updates during gameplay, showing AI player moves and trick completions automatically. The main WebSocket events include:
+The application uses a combination of regular HTTP requests (REST API) and WebSockets for communication between the frontend and backend, each serving different purposes in the application flow.
 
-1. *game_update*: Sent when the game state changes
-   - Contains the complete game state for the client to render
+*** WebSocket Communication
+
+Socket.IO provides real-time updates during gameplay, enabling push notifications from the server to the client without requiring the client to poll for changes. WebSockets are used for:
+
+1. *Real-time Game State Updates*: When the game state changes due to AI actions or as a result of player actions
+   - *game_update* event: Contains the complete game state for the client to render
    - Includes information about current player, hands, tricks, scores, etc.
 
-2. *ai_selecting_variant*: Sent when an AI player is selecting a game variant
-   - Parameters: player, variant
-   - Used to show the variant selection animation for AI players
+2. *AI Player Actions*: When AI players make decisions
+   - *ai_selecting_variant* event: Sent when an AI player is selecting a game variant
+   - *ai_playing_card* event: Sent when an AI player plays a card
+   - Used to show animations for AI player actions
 
-3. *ai_playing_card*: Sent when an AI player plays a card
-   - Parameters: player, card
-   - Used to show the card playing animation for AI players
+3. *Game Progress Events*: 
+   - *trick_completed* event: Sent when a trick is completed
+   - *game_over* event: Sent when the game ends
+   - *progress_update* event: Sent during game initialization to update the loading progress
 
-4. *trick_completed*: Sent when a trick is completed
-   - Parameters: winner, points, cards
-   - Used to show the trick completion animation and update scores
+4. *Room Management*:
+   - *join* event: Sent by the client to join a specific game room
+   - Enables targeted broadcasting of game events to only the players in a specific game
 
-5. *game_over*: Sent when the game ends
-   - Parameters: winner, scores, summary
-   - Used to show the game over screen with final results
+*** HTTP Request Communication (REST API)
+
+Regular HTTP requests are used for actions initiated by the human player and for retrieving specific game information. These include:
+
+1. *Initial Page Load*:
+   - GET request to the root route (/) to load the main game page
+   - GET request to /game-summary/<game_id> to view the summary of a completed game
+
+2. *Player-Initiated Actions*:
+   - POST request to /new_game to start a new game
+   - POST request to /set_variant to select a game variant
+   - POST request to /play_card to play a card
+   - POST request to /announce to make an announcement (Re, Contra, etc.)
+
+3. *Game Information Retrieval*:
+   - GET request to /get_current_trick to get information about the current trick
+   - GET request to /get_last_trick to get information about the last completed trick
+   - GET request to /get_scoreboard to get the current scoreboard
+   - GET request to /model_info to get information about the AI model being used
+
+*** When WebSockets Are Not Used
+
+WebSockets are not used in the following scenarios:
+
+1. *Initial Page Load*: The first request to load the application uses a standard HTTP GET request.
+
+2. *Player Actions*: When the human player takes an action (starting a game, selecting a variant, playing a card, making an announcement), these are sent as HTTP POST requests rather than WebSocket events.
+
+3. *Static Information Retrieval*: When retrieving information that doesn't require real-time updates (like the scoreboard or game summary), standard HTTP GET requests are used.
+
+4. *Game Setup*: The initial game setup, including creating a new game and joining it, uses HTTP requests before establishing the WebSocket connection for real-time updates.
+
+The combination of HTTP requests for player actions and WebSockets for real-time updates provides a responsive and efficient communication pattern:
+
+- HTTP requests are used when the client initiates an action and expects a direct response
+- WebSockets are used when the server needs to push updates to the client in real-time
+- This hybrid approach optimizes for both user interaction responsiveness and real-time game state synchronization
 
 ** Data Flow Diagram
 
