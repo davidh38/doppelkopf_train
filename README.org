@@ -184,6 +184,8 @@ http://localhost:5008
 
 ** Game Rules
 
+For a comprehensive explanation of the game rules, see the [[file:rules.org][Doppelkopf Game Rules]] document.
+
 *** Basic Rules
 
 Doppelkopf is a trick-taking card game for four players. The deck consists of 48 cards (two copies of each card from 9 to Ace in four suits). Players are divided into two teams: Re and Kontra, typically determined by who holds the Queens of Clubs.
