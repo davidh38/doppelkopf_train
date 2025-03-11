@@ -156,3 +156,109 @@ The game state is managed on the server and includes:
    - Additional announcements (No 90, No 60, No 30, Black)
 
 The state is updated after each action and sent to all connected clients to keep the UI in sync with the game state.
+
+** Data Structures
+
+The Doppelkopf game application uses several key data structures to manage the game state and flow:
+
+*** Global Data Structures
+
+**** `games` Dictionary
+The main data structure that stores all active game instances:
+- Key: Game ID (a unique hexadecimal string)
+- Value: A dictionary containing:
+  - `game`: The core game state dictionary
+  - `ai_agents`: AI agents for non-human players
+  - `last_trick`: Information about the last completed trick
+  - `last_trick_players`: Players involved in the last trick
+  - `last_trick_winner`: Player who won the last trick
+  - `last_trick_points`: Points earned in the last trick
+  - `re_announced`, `contra_announced`: Flags for announcements
+  - `no90_announced`, `no60_announced`, `no30_announced`, `black_announced`: Flags for additional announcements
+  - `re_announcement_card`, `contra_announcement_card`: Card count when announcements were made
+  - `starting_player`: Player who started the game
+  - `player_variants`: Dictionary mapping player indices to their chosen variants
+  - `revealed_teams`: List of booleans indicating if a player's team has been revealed
+
+**** `scoreboard` Dictionary
+Tracks wins and player scores across multiple games:
+- `player_wins`: Number of games won by the human player
+- `ai_wins`: Number of games won by AI players
+- `player_scores`: List of scores for all 4 players
+- `last_starting_player`: Index of the player who started the last game
+- `last_card_giver`: Index of the player who was the card giver in the last game
+
+*** Game State Data Structures
+
+**** Game State Dictionary
+The core data structure representing a game's state:
+- `num_players`: Number of players (always 4)
+- `deck`: List of all cards in the deck
+- `hands`: List of lists, where each inner list contains the cards in a player's hand
+- `tricks`: List of completed tricks
+- `current_trick`: List of cards in the current trick
+- `current_player`: Index of the player whose turn it is
+- `game_variant`: The current game variant (normal, hochzeit, queen solo, etc.)
+- `scores`: List with two elements [RE team score, KONTRA team score]
+- `player_scores`: List of individual player scores
+- `teams`: List indicating which team each player belongs to (RE, KONTRA, or UNKNOWN)
+- `trick_winner`: Index of the player who won the last trick
+- `game_over`: Boolean indicating if the game is over
+- `players_with_hochzeit`: Set of player indices who have both Queens of Clubs
+- `card_giver`: Index of the player who dealt the cards
+- `variant_selection_phase`: Boolean indicating if the game is in the variant selection phase
+- `player_variant_choices`: List of variant choices made by each player
+- `variant_priority`: Dictionary mapping variant names to priority values
+- `re_announced`, `contra_announced`: Flags for announcements
+- `can_announce`: Boolean indicating if announcements can still be made
+
+**** Card Dictionary
+Represents a playing card:
+- `suit`: The suit of the card (CLUBS, SPADES, HEARTS, DIAMONDS)
+- `rank`: The rank of the card (NINE, JACK, QUEEN, KING, TEN, ACE)
+- `is_second`: Boolean indicating if this is the second copy of the card
+
+When sending card information to the frontend, additional fields are added:
+- `suit_name`: String name of the suit
+- `rank_name`: String name of the rank
+- `suit_emoji`: Emoji representation of the suit
+- `rank_emoji`: Emoji representation of the rank
+- `display`: Human-readable display string
+- `id`: Unique identifier for the card
+
+*** Frontend Data Structures
+
+**** Game State for Frontend
+A JSON-serializable version of the game state sent to the frontend:
+- `current_player`: Index of the current player
+- `is_player_turn`: Boolean indicating if it's the human player's turn
+- `player_team`: String name of the human player's team
+- `game_variant`: String name of the game variant
+- `scores`: Team scores
+- `player_scores`: Individual player scores
+- `game_over`: Boolean indicating if the game is over
+- `winner`: String name of the winning team
+- `hand`: List of the human player's cards
+- `legal_actions`: List of legal cards the human player can play
+- `other_players`: List of dictionaries with information about AI players
+- `revealed_teams`: List of booleans indicating if a player's team has been revealed
+- `player_score`: The human player's score
+- `last_trick_points`: Points earned in the last trick
+- `last_trick_diamond_ace_bonus`: Bonus points from Diamond Ace captures
+- `re_announced`, `contra_announced`: Flags for announcements
+- `has_hochzeit`: Boolean indicating if the player has both Queens of Clubs
+- `can_announce`: Boolean indicating if announcements can still be made
+- `can_announce_re`, `can_announce_contra`: Booleans indicating if the player can make specific announcements
+- `card_giver`: Index of the card giver
+- `current_trick`: List of cards in the current trick
+- `trick_players`: List of players involved in the current trick
+- `last_trick`: List of cards in the last completed trick
+- `trick_winner`: Index of the player who won the last trick
+
+**** WebSocket Event Data
+Data sent through WebSocket events:
+- `game_update`: Contains the complete game state
+- `ai_selecting_variant`: Contains player index and variant
+- `ai_playing_card`: Contains player index and card
+- `trick_completed`: Contains winner, points, and cards
+- `game_over`: Contains winner, scores, and summary
