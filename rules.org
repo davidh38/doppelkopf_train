@@ -1,0 +1,208 @@
+#+TITLE: Doppelkopf Game Rules
+#+AUTHOR: 
+#+DATE: 2025-03-11
+
+* Introduction
+
+Doppelkopf is a traditional German trick-taking card game for four players. The name "Doppelkopf" (meaning "double head") refers to the double deck of cards used in the game. It's a strategic team-based game where players must work together to score points by winning tricks containing valuable cards.
+
+* Game Overview
+
+** Objective
+The objective of Doppelkopf is to score more points than the opposing team. Players are divided into two teams (Re and Kontra), and the team that scores at least 121 points out of the 240 total points available wins the game.
+
+** Players
+Doppelkopf is played with exactly 4 players, who are seated around a table. Players directly across from each other are not necessarily on the same team, as team membership is determined by the cards dealt.
+
+** Teams
+There are two teams in Doppelkopf:
+- *Re Team*: Players who have a Queen of Clubs in their hand
+- *Kontra Team*: Players who do not have a Queen of Clubs
+
+In the standard game, team membership is initially secret and is only revealed during play (typically when a player plays a Queen of Clubs or makes an announcement).
+
+* Card Deck
+
+** Composition
+Doppelkopf uses a double deck of 48 cards (two copies of each card from 9 to Ace in four suits). The deck consists of:
+- 2 copies of each Ace (A)
+- 2 copies of each Ten (10)
+- 2 copies of each King (K)
+- 2 copies of each Queen (Q)
+- 2 copies of each Jack (J)
+- No 9s are used in this implementation
+
+** Card Values
+Each card has a point value:
+- Ace: 11 points
+- Ten: 10 points
+- King: 4 points
+- Queen: 3 points
+- Jack: 2 points
+- Nine: 0 points (not used in this implementation)
+
+The total point value of all cards in the deck is 240 points.
+
+* Trump Cards
+
+Trump cards are special cards that beat any non-trump card regardless of suit. The trump cards vary depending on the game variant:
+
+** Normal Game and Hochzeit (Marriage)
+In the normal game and Hochzeit variant:
+- All Queens and Jacks are trump cards
+- All Diamond cards are trump cards
+- The Ten of Hearts is also a trump card
+
+** Queen Solo
+Only Queens are trump cards.
+
+** Jack Solo
+Only Jacks are trump cards.
+
+** King Solo
+Only Kings are trump cards.
+
+** Fleshless
+- All Diamond cards are trump cards
+- The Ten of Hearts is a trump card
+- Queens, Jacks, and Kings are NOT trump cards
+
+* Trump Hierarchy
+
+In the normal game, the trump cards are ranked in the following order (from highest to lowest):
+
+1. Ten of Hearts
+2. Queens (in order: Clubs, Spades, Hearts, Diamonds)
+3. Jacks (in order: Clubs, Spades, Hearts, Diamonds)
+4. Diamonds (in order: Ace, Ten, King, Queen, Jack)
+
+In solo variants, only the specified cards (Queens, Jacks, or Kings) are trump, and they follow the suit order: Clubs, Spades, Hearts, Diamonds.
+
+* Game Variants
+
+Doppelkopf can be played in several variants, which are chosen at the beginning of the game:
+
+** Normal Game
+The standard game where teams are determined by who has the Queens of Clubs.
+
+** Hochzeit (Marriage)
+A player who has both Queens of Clubs can announce "Hochzeit" (Marriage). This player is initially on the Re team alone, and their partner is determined by the first player who wins a non-trump trick.
+
+** Queen Solo
+Only Queens are trump cards. The player who chooses this variant plays alone against the other three players.
+
+** Jack Solo
+Only Jacks are trump cards. The player who chooses this variant plays alone against the other three players.
+
+** King Solo
+Only Kings are trump cards. The player who chooses this variant plays alone against the other three players.
+
+** Fleshless
+Queens, Jacks, and Kings are not trump cards. Only Diamonds and the Ten of Hearts are trump. The player who chooses this variant plays alone against the other three players.
+
+* Game Flow
+
+** Variant Selection Phase
+1. At the beginning of the game, each player has the opportunity to choose a game variant.
+2. Players choose in clockwise order, starting with the player to the right of the card giver.
+3. If multiple players choose special variants, the variant with the highest priority is played:
+   - Fleshless (highest priority)
+   - King Solo
+   - Queen Solo
+   - Jack Solo
+   - Hochzeit
+   - Normal (lowest priority)
+
+** Card Play
+1. After the variant is determined, the player to the right of the card giver leads the first trick.
+2. Players play one card each in clockwise order.
+3. Players must follow suit if possible. If they cannot follow suit, they may play any card.
+4. If the lead card is a trump, players must play a trump card if they have one.
+5. The highest card wins the trick (trump beats non-trump, and within the same category, the higher card wins).
+6. The winner of a trick leads the next trick.
+
+** Trick Taking
+1. A trick consists of one card played by each player (4 cards total).
+2. The player who played the highest card wins the trick and collects all cards in it.
+3. The winner of a trick leads the next trick.
+4. After all cards have been played (12 tricks), the game ends and scores are calculated.
+
+* Announcements
+
+Announcements are special declarations that increase the stakes of the game:
+
+** Re and Contra
+- *Re*: Can only be announced by players on the Re team (those with Queens of Clubs)
+- *Contra*: Can only be announced by players on the Kontra team (those without Queens of Clubs)
+- Announcements must be made before the fifth card is played
+- Making an announcement doubles the game's value
+
+** Additional Announcements
+After making a Re or Contra announcement, players can make additional announcements to further increase the stakes:
+- *No 90*: Declaring that the opposing team will not reach 90 points
+- *No 60*: Declaring that the opposing team will not reach 60 points
+- *No 30*: Declaring that the opposing team will not reach 30 points
+- *Black*: Declaring that the opposing team will not win any tricks
+
+These additional announcements must be made in order (No 90 → No 60 → No 30 → Black) and within 5 cards after the initial Re or Contra announcement.
+
+* Special Rules
+
+** Doppelkopf Bonus
+A special scoring rule applies in normal game and Hochzeit variants:
+- When a trick contains 40 or more points, it is called a "doppelkopf"
+- The team that wins a doppelkopf trick gets a bonus point
+- This bonus point is subtracted from the opposing team's score to maintain the total of 240 points
+
+** Diamond Ace Capture
+In normal game and Hochzeit variants:
+- When a player captures an opponent's Diamond Ace in a trick, their team gets a bonus point
+- This bonus point is subtracted from the opposing team's score
+
+* Scoring
+
+** Basic Scoring
+- Each team's score is the sum of the point values of all cards in the tricks they won
+- The total points available in the game is 240
+- A team needs at least 121 points to win
+
+** Game Points
+Game points are awarded at the end of the game:
+
+*** Normal Game and Hochzeit
+- Winners: +1 game point per player
+- Losers: -1 game point per player
+
+*** Solo Variants
+When a solo player wins:
+- Solo player: +3 game points (one for each opponent)
+- Opponents: -1 game point each
+
+When a solo player loses:
+- Solo player: -3 game points
+- Opponents: +1 game point each
+
+If Re was announced, the game points are doubled.
+
+* End Game
+
+The game ends when all cards have been played. The team with more points wins:
+- Re team needs at least 121 points to win
+- Kontra team wins if Re team has 120 points or fewer
+
+* Hochzeit (Marriage) Special Rules
+
+When a player has both Queens of Clubs, they can announce "Hochzeit" (Marriage):
+1. The player who announces Hochzeit is initially on the Re team alone
+2. Their partner is determined by the first player (other than themselves) who wins a non-trump trick
+3. If no non-trump trick is won by another player, the Hochzeit player remains alone against the other three players
+4. Once the partner is determined, they join the Re team and the other two players form the Kontra team
+
+* Solo Variants Special Rules
+
+In solo variants (Queen Solo, Jack Solo, King Solo, Fleshless):
+1. The player who chooses the solo variant plays alone on the Re team
+2. The other three players form the Kontra team
+3. Only the specified cards are trump (Queens, Jacks, Kings, or none for Fleshless)
+4. The solo player needs at least 121 points to win
+5. Game points are tripled (and doubled again if Re was announced)
