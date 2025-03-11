@@ -146,6 +146,14 @@ After making a Re or Contra announcement, players can make additional announceme
 
 These additional announcements must be made in order (No 90 → No 60 → No 30 → Black) and within 5 cards after the initial Re or Contra announcement.
 
+** Announcement Window Extension
+- If an announcement is made, each player has another 5 cards that can be played until announcements are no longer possible
+- If during that extended window, a player makes another announcement, the window is extended again by 5 more cards
+- This means that each announcement effectively resets the 5-card countdown for making further announcements
+- For example, if a player announces "Re" after the 3rd card is played, announcements are possible until the 8th card (3+5)
+- If another player then announces "Contra" after the 6th card, the window extends to the 11th card (6+5)
+- This pattern continues with each new announcement, allowing for strategic timing of announcements
+
 * Special Rules
 
 ** Doppelkopf Bonus
