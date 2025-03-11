@@ -89,16 +89,16 @@ The standard game where teams are determined by who has the Queens of Clubs.
 A player who has both Queens of Clubs can announce "Hochzeit" (Marriage). This player is initially on the Re team alone, and their partner is determined by the first player who wins a non-trump trick.
 
 ** Queen Solo
-Only Queens are trump cards. The player who chooses this variant plays alone against the other three players.
+Only Queens are trump cards. The player who chooses this variant plays alone against the other three players. In this variant, the solo player is automatically on the Re team, and all other players are on the Kontra team.
 
 ** Jack Solo
-Only Jacks are trump cards. The player who chooses this variant plays alone against the other three players.
+Only Jacks are trump cards. The player who chooses this variant plays alone against the other three players. In this variant, the solo player is automatically on the Re team, and all other players are on the Kontra team.
 
 ** King Solo
-Only Kings are trump cards. The player who chooses this variant plays alone against the other three players.
+Only Kings are trump cards. The player who chooses this variant plays alone against the other three players. In this variant, the solo player is automatically on the Re team, and all other players are on the Kontra team.
 
 ** Fleshless
-Queens, Jacks, and Kings are not trump cards. Only Diamonds and the Ten of Hearts are trump. The player who chooses this variant plays alone against the other three players.
+Queens, Jacks, and Kings are not trump cards. Only Diamonds and the Ten of Hearts are trump. The player who chooses this variant plays alone against the other three players. In this variant, the solo player is automatically on the Re team, and all other players are on the Kontra team.
 
 * Game Flow
 
