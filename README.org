@@ -158,6 +158,16 @@ http://localhost:5008
 
 For a comprehensive explanation of the game rules, see the [[file:rules.org][Doppelkopf Game Rules]] document.
 
+*** Terminology
+
+- Before each round, the game variant is chosen
+- A game consists of a certain number of rounds
+- A round consists of 12 tricks
+- A trick is the process of playing a card by each player
+- After a trick has been played, the trick is assigned to the winner of the trick
+- After each round a round summary is shown, which is right now called game summary
+- There is a score, that holds the accumulated summary of each round
+
 *** Basic Rules
 
 Doppelkopf is a trick-taking card game for four players. The deck consists of 48 cards (two copies of each card from 9 to Ace in four suits). Players are divided into two teams: Re and Kontra, typically determined by who holds the Queens of Clubs.

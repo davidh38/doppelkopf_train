@@ -10,11 +10,11 @@ import { gameBoard, gameOverScreen } from './game-ui-core.js';
 export function showGameOverScreen() {
   console.log("Showing game over screen");
   
-  // Redirect to the game summary page
+  // Redirect to the round summary page
   if (gameState.gameId) {
     window.location.href = `/game-summary/${gameState.gameId}`;
   } else {
-    console.error("Game ID not found, cannot redirect to game summary");
+    console.error("Game ID not found, cannot redirect to round summary");
     
     // Fallback to the old behavior if game ID is not available
     // Hide the game board
@@ -39,9 +39,9 @@ export function showGameOverScreen() {
         winnerHeader.style.color = winnerTeam === 'RE' ? '#2ecc71' : '#e74c3c';
         gameResultEl.appendChild(winnerHeader);
         
-        // Add game summary if available
+        // Add round summary if available
         if (gameState.gameSummary) {
-          console.log("Adding game summary to game over screen");
+          console.log("Adding round summary to game over screen");
           const summaryEl = document.createElement('pre');
           summaryEl.textContent = gameState.gameSummary;
           summaryEl.style.textAlign = 'left';
@@ -56,7 +56,7 @@ export function showGameOverScreen() {
           summaryEl.style.fontFamily = 'monospace';
           gameResultEl.appendChild(summaryEl);
         } else {
-          console.log("No game summary available");
+          console.log("No round summary available");
         }
       }
       

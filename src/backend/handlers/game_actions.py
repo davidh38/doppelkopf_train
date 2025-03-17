@@ -14,7 +14,7 @@ from src.backend.card_utils import cards_equal
 from src.backend.config import games, scoreboard
 from src.backend.game_state import (
     get_game_state, check_team_revelation, 
-    generate_game_summary, update_scoreboard_for_game_over
+    generate_round_summary, update_scoreboard_for_game_over
 )
 from src.backend.ai_logic import ai_play_turn, handle_trick_completion
 
@@ -155,8 +155,8 @@ def play_card_route(socketio, data):
     
     # Check if game is over and update scoreboard
     if game['game_over']:
-        # Generate game summary
-        summary_text = generate_game_summary(game_id)
+        # Generate round summary
+        summary_text = generate_round_summary(game_id)
         
         # Update scoreboard
         update_scoreboard_for_game_over(game_id)
@@ -183,7 +183,7 @@ def play_card_route(socketio, data):
             'player_scores': scoreboard['player_scores']
         }
         
-        # Add the game summary to the response
+        # Add the round summary to the response
         response_data['game_summary'] = games[game_id]['game_summary']
     
     return jsonify(response_data)

@@ -21,7 +21,7 @@ from src.backend.handlers.game_actions import (
     set_variant_route, play_card_route, announce_route
 )
 from src.backend.handlers.game_state_routes import (
-    get_current_trick, get_last_trick, game_summary, get_ai_hands
+    get_current_trick, get_last_trick, round_summary, get_ai_hands
 )
 from src.backend.card_utils import cards_equal
 from src.backend.config import games, scoreboard
@@ -36,8 +36,8 @@ def register_routes(app, socketio):
         
     @app.route('/game-summary/<game_id>')
     def game_summary_route(game_id):
-        """Render the game summary page."""
-        return game_summary(game_id)
+        """Render the round summary page."""
+        return round_summary(game_id)
 
     @app.route('/model_info', methods=['GET'])
     def model_info_route():

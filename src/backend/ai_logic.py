@@ -17,7 +17,7 @@ from src.backend.game.doppelkopf import (
     get_card_value, get_state_size, get_action_size, cards_equal
 )
 from src.backend.config import games, MODEL_PATH
-from src.backend.game_state import print_scoreboard, check_team_revelation, get_game_state, generate_game_summary, update_scoreboard_for_game_over, card_to_dict
+from src.backend.game_state import print_scoreboard, check_team_revelation, get_game_state, generate_round_summary, update_scoreboard_for_game_over, card_to_dict
 
 def handle_trick_completion(socketio, game_id, game):
     """Handle the completion of a trick."""
@@ -288,8 +288,8 @@ def ai_play_turn(socketio, game_id):
             
             # Check if the game is over after this trick
             if game['game_over']:
-                # Generate game summary
-                generate_game_summary(game_id)
+                # Generate round summary
+                generate_round_summary(game_id)
                 
                 # Update scoreboard
                 update_scoreboard_for_game_over(game_id)

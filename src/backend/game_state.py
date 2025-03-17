@@ -96,7 +96,7 @@ def get_game_state(game_id, player_id=0):
         'card_giver': game['card_giver']
     }
     
-    # If the game is over, include the game summary
+    # If the game is over, include the round summary
     if game['game_over'] and 'game_summary' in game_data:
         state['game_summary'] = game_data['game_summary']
     
@@ -194,8 +194,8 @@ def check_team_revelation(game, player, card, game_data):
         print(f"Player {player} revealed team by playing Queen of Clubs")
         game_data['revealed_teams'][player] = True
 
-def generate_game_summary(game_id):
-    """Generate a detailed game summary."""
+def generate_round_summary(game_id):
+    """Generate a detailed round summary."""
     game_data = games[game_id]
     game = game_data['game']
     
@@ -214,7 +214,7 @@ def generate_game_summary(game_id):
         kontra_points = re_players  # Each KONTRA player gets +re_players
     
     # Create summary text
-    summary_text = f"Game Over! {TEAM_NAMES[game['winner']]} team wins!\n\n"
+    summary_text = f"Round Over! {TEAM_NAMES[game['winner']]} team wins!\n\n"
     
     # Add team composition
     summary_text += "Team Composition:\n"
@@ -365,7 +365,7 @@ def generate_game_summary(game_id):
         total_score = scoreboard['player_scores'][i]
         summary_text += f"- {player_name}: {points_display} points ({points}) (Total: {total_score})\n"
     
-    # Store the game summary in the game data
+    # Store the round summary in the game data
     game_data['game_summary'] = summary_text
     
     return summary_text

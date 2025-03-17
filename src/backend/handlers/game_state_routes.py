@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Game state route handlers for the Doppelkopf web application.
-These include getting trick data and game summary.
+These include getting trick data and round summary.
 """
 
 from flask import render_template, jsonify
@@ -59,8 +59,8 @@ def get_last_trick(game_id):
         'trick_points': game_data['last_trick_points']
     })
 
-def game_summary(game_id):
-    """Render the game summary page."""
+def round_summary(game_id):
+    """Render the round summary page."""
     if game_id not in games:
         return jsonify({'error': 'Game not found'}), 404
         
@@ -71,8 +71,8 @@ def game_summary(game_id):
     winner_team = TEAM_NAMES[game['winner']] if 'winner' in game else "Unknown"
     winner_color = "#2ecc71" if winner_team == "RE" else "#e74c3c"
     
-    # Get the game summary
-    game_summary = game_data.get('game_summary', '')
+    # Get the round summary
+    round_summary = game_data.get('game_summary', '')
     
     # Get the scores
     re_score = game['scores'][0] if 'scores' in game else 0
@@ -320,7 +320,7 @@ def game_summary(game_id):
     return render_template('game-summary.html',
                           winner_team=winner_team,
                           winner_color=winner_color,
-                          game_summary=game_summary,
+                          game_summary=round_summary,
                           re_score=re_score,
                           kontra_score=kontra_score,
                           re_announced=re_announced,

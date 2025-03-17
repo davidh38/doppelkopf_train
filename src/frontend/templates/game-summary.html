@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Doppelkopf - Game Summary</title>
+    <title>Doppelkopf - Round Summary</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <style>
@@ -57,11 +57,11 @@
     <div class="container">
         <h1>Doppelkopf</h1>
         <div style="text-align: center; margin-bottom: 15px; color: #3498db; font-weight: bold;">
-            Game Summary
+            Round Summary
         </div>
         
-        <!-- Game summary screen -->
-        <div id="game-summary" class="screen">
+        <!-- Round summary screen -->
+        <div id="round-summary" class="screen">
             <h2>Game Over</h2>
             <div id="game-result">
                 <h3 id="winner" style="color: {{ winner_color }};">Team {{ winner_team }} wins!</h3>
