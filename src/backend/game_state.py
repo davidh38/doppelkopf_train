@@ -60,8 +60,10 @@ def get_game_state(game_id, player_id=0):
     
     # Convert game state to JSON-serializable format
     state = {
+        'game_id': game_id,
         'current_player': game['current_player'],
         'is_player_turn': game['current_player'] == player_id,
+        'human_positions': game_data['human_positions'],  # Add human player positions
         'player_team': TEAM_NAMES[game['teams'][player_id]],
         'game_variant': VARIANT_NAMES[game['game_variant']],
         'scores': game['scores'],
@@ -77,7 +79,8 @@ def get_game_state(game_id, player_id=0):
                 'card_count': len(game['hands'][i]),
                 'is_current': game['current_player'] == i,
                 'score': game['player_scores'][i],
-                'revealed_team': game_data['revealed_teams'][i]
+                'revealed_team': game_data['revealed_teams'][i],
+                'is_human': i in game_data['human_positions']
             } for i in range(1, game['num_players'])
         ],
         'revealed_teams': game_data['revealed_teams'],

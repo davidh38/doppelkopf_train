@@ -29,17 +29,21 @@ def set_variant_route(socketio, data):
     
     game = games[game_id]['game']
     
+    # Make sure we have player_variants initialized
+    if 'player_variants' not in games[game_id]:
+        games[game_id]['player_variants'] = {}
+
     # Set the variant for the player
     result = set_variant(game, variant, player_idx)
     
     if not result:
         return jsonify({'error': 'Invalid variant or not in variant selection phase'}), 400
     
-    # Store the player's variant selection
-    if 'player_variants' not in games[game_id]:
-        games[game_id]['player_variants'] = {}
-    
+    # Store the player's variant selection after successful set_variant
     games[game_id]['player_variants'][player_idx] = variant
+    
+    # Make sure all players get the updated game state
+    socketio.emit('game_update', get_game_state(game_id), room=game_id)
     
     # If the variant selection phase is over, have AI play if it's not the player's turn
     if not game['variant_selection_phase'] and game['current_player'] != 0:

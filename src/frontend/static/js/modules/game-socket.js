@@ -118,7 +118,7 @@ export function handleProgressUpdate(data) {
       }
       
       // Show the game board with variant selection if we have a game ID
-      if (gameState && gameState.gameId) {
+      if (gameState && gameState.game_id) {
         console.log("Game ready, showing game board with variant selection");
         
         const gameSetupScreen = document.getElementById('game-setup');

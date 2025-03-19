@@ -19,6 +19,7 @@ export let gameBoard;
 export let gameOverScreen;
 export let playerHandEl;
 export let currentTrickEl;
+export let gameIdEl;
 export let turnIndicatorEl;
 export let playerTeamEl;
 export let gameVariantEl;
@@ -43,6 +44,7 @@ export function initUI() {
   
   playerHandEl = document.getElementById('player-hand');
   currentTrickEl = document.getElementById('hardcoded-trick');
+  gameIdEl = document.getElementById('game-id');
   turnIndicatorEl = document.getElementById('turn-indicator');
   playerTeamEl = document.getElementById('player-team');
   gameVariantEl = document.getElementById('game-variant');
@@ -56,9 +58,19 @@ export function initUI() {
 }
 
 /**
+ * Update the game ID display
+ */
+function updateGameId() {
+  if (gameState.game_id) {
+    gameIdEl.textContent = gameState.game_id;
+  }
+}
+
+/**
  * Render the UI based on the current game state
  */
 export function renderUI() {
+  updateGameId();
   renderHand();
   renderCurrentTrick();
   updateTurnIndicator();

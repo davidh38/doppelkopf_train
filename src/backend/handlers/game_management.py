@@ -15,13 +15,27 @@ from src.backend.config import games, scoreboard
 from src.backend.game_state import get_game_state
 from src.backend.ai_logic import ai_play_turn, initialize_ai_agents
 
+from src.backend.config import games, scoreboard, args
+
 def new_game(socketio):
-    """Start a new game."""
+    """Start a new game with configurable number of human players."""
     # Generate a unique game ID
     game_id = os.urandom(8).hex()
     
     # Initialize game
     game = create_game_state()
+    
+    # Determine human player positions
+    num_humans = args.human
+    human_positions = []
+    if args.human_settings == 'first':
+        # Place human players in first positions
+        human_positions = list(range(num_humans))
+    else:  # random
+        # Randomly place human players
+        all_positions = list(range(4))
+        random.shuffle(all_positions)
+        human_positions = all_positions[:num_humans]
     
     # For the first game, randomly select a card giver
     if 'last_card_giver' not in scoreboard:
@@ -59,6 +73,7 @@ def new_game(socketio):
     games[game_id] = {
         'game': game,
         'ai_agents': ai_agents,
+        'human_positions': human_positions,  # Store human player positions
         'last_trick': None,
         'last_trick_players': None,
         'last_trick_winner': None,
@@ -76,10 +91,10 @@ def new_game(socketio):
         'revealed_teams': [False, False, False, False]
     }
     
-    # If it's not the player's turn, have AI players choose variants in sequence
-    if game['current_player'] != 0:
-        # Have all AI players choose their variants in sequence until it's the human player's turn
-        while game['variant_selection_phase'] and game['current_player'] != 0:
+    # If it's not any human player's turn, have AI players choose variants in sequence
+    if game['current_player'] not in human_positions:
+        # Have all AI players choose their variants in sequence until it's a human player's turn or phase is over
+        while game['variant_selection_phase'] and game['current_player'] not in human_positions:
             current_player = game['current_player']
             
             # Emit an event to show the variant selection animation for this AI player
@@ -99,9 +114,10 @@ def new_game(socketio):
             # Update the game state for the client
             socketio.emit('game_update', get_game_state(game_id), room=game_id)
     else:
-        # Set legal actions for the player if it's their turn
-        game['legal_actions'] = get_legal_actions(game, 0)
-        print(f"Setting legal actions for player in new game: {game['legal_actions']}")
+        # Set legal actions if it's a human player's turn
+        if game['current_player'] in human_positions:
+            game['legal_actions'] = get_legal_actions(game, game['current_player'])
+            print(f"Setting legal actions for player {game['current_player']} in new game: {game['legal_actions']}")
     
     # Return initial game state
     return jsonify({

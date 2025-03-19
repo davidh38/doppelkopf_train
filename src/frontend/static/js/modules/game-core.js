@@ -5,7 +5,7 @@ import { eventBus } from './event-bus.js';
 
 // Game state
 export const gameState = {
-  gameId: null,
+  game_id: null,
   currentPlayer: 0,
   is_player_turn: false,
   playerTeam: null,
@@ -43,6 +43,7 @@ export function updateGameState(data) {
   if (!data) return;
   
   // Update game state properties
+  gameState.game_id = data.game_id;
   gameState.hand = data.hand || gameState.hand;
   gameState.currentTrick = data.current_trick || gameState.currentTrick;
   gameState.currentPlayer = data.current_player !== undefined ? data.current_player : gameState.currentPlayer;
@@ -134,7 +135,7 @@ export function updateGameState(data) {
  * Reset the game state
  */
 export function resetGameState() {
-  gameState.gameId = null;
+  gameState.game_id = null;
   gameState.currentPlayer = 0;
   gameState.is_player_turn = false;
   gameState.playerTeam = null;

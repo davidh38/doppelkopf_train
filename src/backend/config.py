@@ -28,9 +28,23 @@ def parse_arguments():
                         help='Path to a trained model')
     parser.add_argument('--port', type=int, default=5007,
                         help='Port to run the server on')
-    return parser.parse_args()
+    parser.add_argument('--human', type=int, default=1,
+                        help='Number of human players (1-4)')
+    parser.add_argument('--human-settings', type=str, default='first',
+                        help='Where to place human player(s): "first" or "random" (default: first)')
+    args = parser.parse_args()
+    
+    # Validate human players argument
+    if not 1 <= args.human <= 4:
+        parser.error('Number of human players must be between 1 and 4')
+    
+    # Validate human-settings argument
+    if args.human_settings not in ['first', 'random']:
+        parser.error('Human-settings must be either "first" or "random"')
+        
+    return args
 
-# Get command line arguments
+# Parse and validate command line arguments
 args = parse_arguments()
 MODEL_PATH = args.model
 

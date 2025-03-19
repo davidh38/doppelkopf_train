@@ -54,9 +54,11 @@ def handle_trick_completion(socketio, game_id, game):
     diamond_ace_captured = 'diamond_ace_captured' in game
     
     # Emit the trick completed event with points and Diamond Ace capture info
+    # Import args to check number of human players
+    from src.backend.config import args
     socketio.emit('trick_completed', {
         'winner': game['trick_winner'],
-        'is_player': game['trick_winner'] == 0,
+        'is_player': 0 <= game['trick_winner'] < args.human,
         'trick_points': trick_points,
         'diamond_ace_bonus': diamond_ace_bonus,
         'diamond_ace_captured': diamond_ace_captured
@@ -74,8 +76,10 @@ def handle_trick_completion(socketio, game_id, game):
     return True
 
 def initialize_ai_agents(socketio, game, game_id):
-    """Initialize AI agents for the game."""
+    """Initialize AI agents for the game based on number of human players."""
+    from src.backend.config import args
     ai_agents = []
+    num_ai_players = 4 - args.human  # Total players (4) minus human players
     
     # Send progress update to all clients
     socketio.emit('progress_update', {'step': 'model_loading_start', 'message': 'Loading AI model...'})
@@ -159,8 +163,9 @@ def initialize_ai_agents(socketio, game, game_id):
     # Send progress update for next steps
     socketio.emit('progress_update', {'step': 'setup_other_agents', 'message': 'Setting up other AI players...'}, room=game_id)
     
-    # Other AI players use random agent
-    for i in range(2):
+    # Add random agents for remaining AI players
+    remaining_agents = num_ai_players - 1 if len(ai_agents) == 1 else num_ai_players
+    for i in range(remaining_agents):
         ai_agents.append(select_random_action)
     
     return ai_agents
@@ -178,8 +183,11 @@ def ai_play_turn(socketio, game_id):
     print_scoreboard("Start of AI turns")
     print(f"Last Starting Player: {game_data.get('starting_player', 0)}")
     
-    # Keep playing AI turns until it's the human's turn or game is over
-    while game['current_player'] != 0 and not game['game_over']:
+    # Import args to check number of human players
+    from src.backend.config import args
+
+    # Keep playing AI turns until it's a human player's turn or game is over
+    while not (0 <= game['current_player'] < args.human) and not game['game_over']:
         # Check if a trick has been completed but not yet cleared
         if game.get('trick_winner') is not None:
             # Handle trick completion
@@ -199,11 +207,13 @@ def ai_play_turn(socketio, game_id):
             print(f"Error: Invalid current_player: {current_player}")
             break
             
-        ai_idx = current_player - 1
+        # Adjust AI index based on number of human players
+        from src.backend.config import args
+        ai_idx = current_player - args.human
         
-        # Ensure ai_idx is valid (0, 1, or 2)
+        # Ensure ai_idx is valid
         if ai_idx < 0 or ai_idx >= len(ai_agents):
-            print(f"Error: Invalid AI index: {ai_idx} (current_player: {current_player})")
+            print(f"Error: Invalid AI index: {ai_idx} (current_player: {current_player}, human players: {args.human})")
             break
             
         agent = ai_agents[ai_idx]

@@ -48,10 +48,10 @@ export function startNewGame() {
   .then(data => {
     console.log("New game response:", data);
     
-    gameState.gameId = data.game_id;
+    gameState.game_id = data.game_id;
     
     // Join the Socket.IO room for this game
-    eventBus.emit('joinRoom', { game_id: gameState.gameId });
+    eventBus.emit('joinRoom', { game_id: gameState.game_id });
     
     // Update game state with the response data
     if (data.state) {
@@ -120,7 +120,7 @@ export function setGameVariant(variant) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      game_id: gameState.gameId,
+      game_id: gameState.game_id,
       variant: variant
     })
   })
@@ -254,7 +254,7 @@ export function makeAnnouncement(announcement) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      game_id: gameState.gameId,
+      game_id: gameState.game_id,
       announcement: announcement
     })
   })

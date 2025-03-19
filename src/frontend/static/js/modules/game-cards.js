@@ -248,7 +248,7 @@ export function playCard(cardId) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      game_id: gameState.gameId,
+      game_id: gameState.game_id,
       card_id: cardId
     })
   })
