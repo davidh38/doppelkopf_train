@@ -11,8 +11,8 @@ export function showGameOverScreen() {
   console.log("Showing game over screen");
   
   // Redirect to the round summary page
-  if (gameState.gameId) {
-    window.location.href = `/game-summary/${gameState.gameId}`;
+  if (gameState.game_id) {
+    window.location.href = `/game-summary/${gameState.game_id}`;
   } else {
     console.error("Game ID not found, cannot redirect to round summary");
     

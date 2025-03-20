@@ -135,7 +135,7 @@ export function showLastTrick() {
   }
   
   // Make an API request to get the last trick
-  fetch(`/get_last_trick?game_id=${gameState.gameId}`)
+  fetch(`/get_last_trick?game_id=${gameState.game_id}`)
     .then(response => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

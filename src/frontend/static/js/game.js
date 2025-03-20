@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Game state
     let gameState = {
-        gameId: null,
+        game_id: null,
         currentPlayer: 0,
         playerTeam: null,
         gameVariant: null,
@@ -502,7 +502,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 // Show the game board with variant selection if we have a game ID
-                if (gameState.gameId) {
+                if (gameState.game_id) {
                     console.log("Game ready, showing game board with variant selection");
                     
                     if (gameSetupScreen) {

@@ -170,7 +170,7 @@ export function revealAIHands() {
   console.log('Revealing AI hands');
   
   // Make an API request to get the AI hands
-  fetch(`/get_ai_hands?game_id=${gameState.gameId}`)
+  fetch(`/get_ai_hands?game_id=${gameState.game_id}`)
     .then(response => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
