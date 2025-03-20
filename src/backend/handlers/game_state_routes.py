@@ -101,6 +101,7 @@ def round_summary(game_id):
         re_achievement_points += 1  # RE team wins
     else:
         kontra_achievement_points += 1  # KONTRA team wins
+        kontra_achievement_points += 1  # Extra point for KONTRA wins
     
     # Check for no 90 achievement
     if winner_team == "RE" and kontra_score < 90:
@@ -209,7 +210,7 @@ def round_summary(game_id):
     if winner_team == "RE":
         score_calculation_details += f"""
         <tr style="font-weight: bold; background-color: rgba(46, 204, 113, 0.2);">
-            <td>🏆 RE Wins (Special Achievement)</td>
+            <td>🏆 Team Wins (Special Achievement)</td>
             <td>+1</td>
         </tr>
         """
@@ -248,7 +249,11 @@ def round_summary(game_id):
     else:  # KONTRA wins
         score_calculation_details += f"""
         <tr style="font-weight: bold; background-color: rgba(231, 76, 60, 0.2);">
-            <td>🏆 KONTRA Wins (Special Achievement)</td>
+            <td>🏆 Team Wins (Special Achievement)</td>
+            <td>+1</td>
+        </tr>
+        <tr style="font-weight: bold; background-color: rgba(231, 76, 60, 0.2);">
+            <td>🎯 KONTRA Wins (Bonus Achievement)</td>
             <td>+1</td>
         </tr>
         """
