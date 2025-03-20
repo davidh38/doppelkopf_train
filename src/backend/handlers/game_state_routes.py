@@ -2,7 +2,7 @@
 Game state route handlers for the Doppelkopf game.
 """
 from flask import jsonify, request, render_template
-from src.backend.game_state import get_game_state, card_to_dict, generate_game_summary, update_scoreboard_for_game_over
+from src.backend.game_state import get_game_state, card_to_dict, generate_round_summary, update_scoreboard_for_game_over
 from src.backend.handlers.session_handlers import get_game_id_from_session
 from src.backend.config import games, scoreboard
 from src.backend.game.doppelkopf import (
