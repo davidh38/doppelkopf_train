@@ -120,7 +120,7 @@ function reconnectToGame(gameId) {
         gameState.hand = data.state.hand || [];
         gameState.currentTrick = data.state.current_trick || [];
         gameState.currentPlayer = data.state.current_player;
-        gameState.is_player_turn = data.state.is_player_turn !== undefined ? data.state.is_player_turn : (data.state.current_player === 0);
+        gameState.is_player_turn = data.state.is_player_turn !== undefined ? data.state.is_player_turn : (data.state.current_player === gameState.playerIdx);
         gameState.legalActions = data.state.legal_actions || [];
         gameState.variant_selection_phase = data.state.variant_selection_phase || false;
         gameState.gameVariant = data.state.game_variant || 'NORMAL';

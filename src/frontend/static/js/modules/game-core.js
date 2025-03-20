@@ -29,7 +29,8 @@ export const gameState = {
   playerVariants: {},
   hasHochzeit: false,
   canAnnounce: false,
-  cardGiver: null
+  cardGiver: null,
+  playerIdx: 0  // Store the player's index (0 for first player, 1-3 for joining players)
 };
 
 // Store model path
@@ -63,6 +64,7 @@ export function updateGameState(data) {
   // Debug output to help diagnose issues with player turn
   console.log("Player turn update:", {
     currentPlayer: gameState.currentPlayer,
+    playerIdx: gameState.playerIdx,
     isPlayerTurn: gameState.is_player_turn,
     isPlayerTurnFromServer: data.is_player_turn
   });
@@ -148,6 +150,7 @@ export function resetGameState() {
   gameState.winner = null;
   gameState.revealed_teams = [false, false, false, false];
   gameState.otherPlayers = [];
+  gameState.playerIdx = 0;  // Reset player index to 0
   
   // Properly reset all announcement-related state
   gameState.announcements = null; // Set to null instead of empty object to ensure proper initialization
