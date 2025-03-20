@@ -381,6 +381,11 @@ def update_scoreboard_for_game_over(game_id):
     
     print_scoreboard("Before Game Over Update", game)
     
+    # Check if scores have already been updated for this game
+    if game_data.get('scores_updated', False):
+        print("Scores already updated for this game, skipping update")
+        return
+    
     # Calculate scores based on special achievements
     re_score = game['scores'][0]
     kontra_score = game['scores'][1]
@@ -433,5 +438,8 @@ def update_scoreboard_for_game_over(game_id):
         scoreboard['player_wins'] += 1
     else:
         scoreboard['ai_wins'] += 1
+    
+    # Mark that scores have been updated for this game
+    game_data['scores_updated'] = True
     
     print_scoreboard("After Game Over Update", game)
