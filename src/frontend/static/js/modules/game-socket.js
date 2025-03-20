@@ -47,6 +47,22 @@ export function initSocket() {
       console.log("Game over detected, showing game over screen directly");
       showGameOverScreen();
     }
+    
+    // Show or hide the variant selection area based on the variant selection phase
+    if (data.variant_selection_phase === false) {
+      console.log("Not in variant selection phase, hiding variant selection area");
+      const gameVariantSelection = document.getElementById('game-variant-selection');
+      if (gameVariantSelection) {
+        gameVariantSelection.classList.add('hidden');
+      }
+    } else if (data.variant_selection_phase === true) {
+      console.log("In variant selection phase, showing variant selection area");
+      const gameVariantSelection = document.getElementById('game-variant-selection');
+      if (gameVariantSelection) {
+        gameVariantSelection.classList.remove('hidden');
+        gameVariantSelection.style.display = "block";
+      }
+    }
   });
   
   socket.on('trick_completed', function(data) {
@@ -66,8 +82,11 @@ export function initSocket() {
   
   // Listen for events from other modules
   eventBus.on('joinRoom', function(data) {
-    socket.emit('join', { game_id: data.game_id });
-    console.log(`Joined game room: ${data.game_id}`);
+    socket.emit('join', { 
+      game_id: data.game_id,
+      player_idx: data.player_idx || 0  // Default to player 0 if not specified
+    });
+    console.log(`Joined game room: ${data.game_id} as player ${data.player_idx || 0}`);
   });
 }
 

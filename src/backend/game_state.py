@@ -50,8 +50,17 @@ def card_to_dict(card):
         'id': f"{suit_name}_{rank_name}_{1 if card['is_second'] else 0}"
     }
 
-def get_game_state(game_id, player_id=0):
-    """Get the current game state for the specified player."""
+def get_game_state(game_id, player_id=0, player_idx=None):
+    """Get the current game state for the specified player.
+    
+    Args:
+        game_id: The ID of the game
+        player_id: The ID of the player (default: 0)
+        player_idx: Optional override for player_id (used for session reconnection)
+    """
+    # Use player_idx if provided, otherwise use player_id
+    if player_idx is not None:
+        player_id = player_idx
     if game_id not in games:
         return None
     
@@ -66,6 +75,7 @@ def get_game_state(game_id, player_id=0):
         'human_positions': game_data['human_positions'],  # Add human player positions
         'player_team': TEAM_NAMES[game['teams'][player_id]],
         'game_variant': VARIANT_NAMES[game['game_variant']],
+        'variant_selection_phase': game.get('variant_selection_phase', False),  # Include variant selection phase
         'scores': game['scores'],
         'player_scores': game['player_scores'],
         'game_over': game['game_over'],

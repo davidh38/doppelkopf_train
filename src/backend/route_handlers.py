@@ -572,7 +572,8 @@ def get_current_trick(game_id):
         'current_trick': current_trick,
         'trick_players': trick_players,
         'current_player': game['current_player'],
-        'starting_player': starting_player
+        'starting_player': starting_player,
+        'variant_selection_phase': game.get('variant_selection_phase', False)  # Include variant selection phase
     })
 
 def get_last_trick(game_id):
