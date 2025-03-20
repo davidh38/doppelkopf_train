@@ -1006,9 +1006,22 @@ def end_game(state: Dict) -> None:
         # This implements a zero-sum approach for game points
         for i, team in enumerate(state['teams']):
             if team == winning_team:
-                state['player_game_points'][i] = 1  # Positive points for winners
+                # Base point for winning
+                base_points = 1
+                
+                # Additional point for winning as Kontra
+                if team == TEAM_KONTRA:
+                    base_points += 1  # Extra point for winning as Kontra
+                
+                state['player_game_points'][i] = base_points  # Positive points for winners
             elif team == losing_team:
-                state['player_game_points'][i] = -1  # Negative points for losers
+                # Losing team gets negative points
+                # If Kontra team won, RE team loses 2 points
+                # If RE team won, Kontra team loses 1 point
+                if winning_team == TEAM_KONTRA:
+                    state['player_game_points'][i] = -2  # Negative points for losers against Kontra
+                else:
+                    state['player_game_points'][i] = -1  # Negative points for losers against RE
 
 def get_state_for_player(state: Dict, player_idx: int) -> List[float]:
     """

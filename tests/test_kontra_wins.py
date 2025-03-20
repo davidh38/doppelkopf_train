@@ -380,15 +380,15 @@ def test_kontra_party_wins_with_125_points():
     print(f"KONTRA team score after round 10: {game['scores'][1]} points")
     print(f"Player scores after round 10: {game['player_scores']}")
     
-    # Directly set the final scores to ensure KONTRA wins
-    game['scores'] = [90, 150]  # [RE score, KONTRA score]
+    # Directly set the final scores to ensure KONTRA wins with exactly 125 points
+    game['scores'] = [115, 125]  # [RE score, KONTRA score]
     
     # Update player scores to match team scores
     # Players 1 and 3 are RE, Players 0 and 2 are KONTRA
-    game['player_scores'][1] = 45  # RE player
-    game['player_scores'][3] = 45  # RE player
-    game['player_scores'][0] = 75  # KONTRA player
-    game['player_scores'][2] = 75  # KONTRA player
+    game['player_scores'][1] = 57  # RE player
+    game['player_scores'][3] = 58  # RE player
+    game['player_scores'][0] = 62  # KONTRA player
+    game['player_scores'][2] = 63  # KONTRA player
     
     # End the game
     end_game(game)
