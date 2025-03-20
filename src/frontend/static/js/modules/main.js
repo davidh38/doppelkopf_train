@@ -94,17 +94,22 @@ function reconnectToGame(gameId) {
   // Join the Socket.IO room for this game with the correct player index
   eventBus.emit('joinRoom', { game_id: gameId, player_idx: gameState.playerIdx });
   
-  // Get the current game state
-  fetch(`/get_current_trick?game_id=${gameId}`)
+  // Get the full game state
+  fetch('/get_game_state')
     .then(response => response.json())
     .then(data => {
       console.log("Reconnected to game:", data);
       
       // Update the game state with the response data
-      if (data) {
-        // Update game state with the current trick data
-        gameState.currentTrick = data.current_trick || [];
-        gameState.currentPlayer = data.current_player;
+      if (data.success && data.state) {
+        // Update game state with the full state data
+        gameState.hand = data.state.hand || [];
+        gameState.currentTrick = data.state.current_trick || [];
+        gameState.currentPlayer = data.state.current_player;
+        gameState.is_player_turn = data.state.is_player_turn !== undefined ? data.state.is_player_turn : (data.state.current_player === 0);
+        gameState.legalActions = data.state.legal_actions || [];
+        gameState.variant_selection_phase = data.state.variant_selection_phase || false;
+        gameState.gameVariant = data.state.game_variant || 'NORMAL';
         
         // Hide the progress container
         if (progressContainer) progressContainer.classList.add('hidden');
@@ -116,8 +121,15 @@ function reconnectToGame(gameId) {
           gameBoard.classList.remove('hidden');
         }
         
-        // The variant selection area will be shown or hidden based on the game state
-        // when we receive the game_update event from the server
+        // Show or hide the variant selection area based on the game state
+        const variantSelectionArea = document.getElementById('game-variant-selection');
+        if (variantSelectionArea) {
+          if (gameState.variant_selection_phase) {
+            variantSelectionArea.style.display = 'block';
+          } else {
+            variantSelectionArea.style.display = 'none';
+          }
+        }
         
         // Emit event that game state has been updated
         eventBus.emit('gameStateUpdated', gameState);

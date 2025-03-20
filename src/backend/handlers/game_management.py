@@ -7,6 +7,7 @@ These include starting a new game and getting the scoreboard.
 import os
 import random
 from flask import jsonify
+from src.backend.handlers.session_handlers import set_game_id_in_session
 
 from src.backend.game.doppelkopf import (
     create_game_state, get_legal_actions, set_variant
@@ -118,6 +119,9 @@ def new_game(socketio):
         if game['current_player'] in human_positions:
             game['legal_actions'] = get_legal_actions(game, game['current_player'])
             print(f"Setting legal actions for player {game['current_player']} in new game: {game['legal_actions']}")
+    
+    # Store the game ID in the session
+    set_game_id_in_session(game_id)
     
     # Return initial game state
     return jsonify({

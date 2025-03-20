@@ -21,8 +21,9 @@ from src.backend.handlers.game_actions import (
     set_variant_route, play_card_route, announce_route
 )
 from src.backend.handlers.game_state_routes import (
-    get_current_trick, get_last_trick, round_summary, get_ai_hands
+    get_current_trick, get_last_trick, round_summary, get_ai_hands, get_game_state_route
 )
+from src.backend.handlers.session_handlers import check_session_route
 from src.backend.card_utils import cards_equal
 from src.backend.config import games, scoreboard
 
@@ -89,3 +90,13 @@ def register_routes(app, socketio):
     def get_scoreboard_route():
         """Get the current scoreboard."""
         return get_scoreboard()
+        
+    @app.route('/get_game_state', methods=['GET'])
+    def get_game_state_route_handler():
+        """Get the full game state for the current session."""
+        return get_game_state_route()
+        
+    @app.route('/check_session', methods=['GET'])
+    def check_session_route_handler():
+        """Check if there's an active game session."""
+        return check_session_route()
