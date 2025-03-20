@@ -102,9 +102,16 @@ def play_card_route(socketio, data):
     
     game = games[game_id]['game']
     
+    # Get the player index from the request
+    player_idx = data.get('player_idx', 0)
+    
     # Check if it's the player's turn
-    if game['current_player'] != 0:
+    if game['current_player'] != player_idx:
         return jsonify({'error': 'Not your turn'}), 400
+    
+    # Check if this position is controlled by a human
+    if player_idx not in games[game_id]['human_positions']:
+        return jsonify({'error': 'This position is controlled by AI'}), 400
     
     # Find the card in the player's hand
     card_parts = card_id.split('_')
@@ -123,15 +130,15 @@ def play_card_route(socketio, data):
     selected_card = create_card(suit, rank, is_second)
     
     # Find the card in the legal actions
-    legal_actions = get_legal_actions(game, 0)
+    legal_actions = get_legal_actions(game, player_idx)
     if not any(cards_equal(selected_card, legal_card) for legal_card in legal_actions):
         return jsonify({'error': 'Invalid card or not a legal move'}), 400
     
     # Play the card
-    play_card(game, 0, selected_card)
+    play_card(game, player_idx, selected_card)
     
     # Check if the player revealed their team by playing a Queen of Clubs
-    check_team_revelation(game, 0, selected_card, games[game_id])
+    check_team_revelation(game, player_idx, selected_card, games[game_id])
     
     # Check if a trick was completed
     trick_completed = game.get('trick_winner') is not None
@@ -152,10 +159,10 @@ def play_card_route(socketio, data):
     # Have AI players take their turns
     ai_play_turn(socketio, game_id)
     
-    # Set legal actions for the player if it's their turn
-    if game['current_player'] == 0:
-        game['legal_actions'] = get_legal_actions(game, 0)
-        print(f"Setting legal actions for player after AI turns: {game['legal_actions']}")
+    # Set legal actions for human players if it's their turn
+    if game['current_player'] in games[game_id]['human_positions']:
+        game['legal_actions'] = get_legal_actions(game, game['current_player'])
+        print(f"Setting legal actions for player {game['current_player']} after turns: {game['legal_actions']}")
     
     # Check if game is over and update scoreboard
     if game['game_over']:
@@ -170,7 +177,7 @@ def play_card_route(socketio, data):
         'state': get_game_state(game_id),
         'trick_completed': trick_completed,
         'trick_winner': trick_winner,
-        'is_player_winner': trick_winner == 0 if trick_winner is not None else False,
+        'is_player_winner': trick_winner == player_idx if trick_winner is not None else False,
         'trick_points': trick_points if trick_completed else 0,
         'scoreboard': scoreboard
     }

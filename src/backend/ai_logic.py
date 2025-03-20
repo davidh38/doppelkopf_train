@@ -186,8 +186,11 @@ def ai_play_turn(socketio, game_id):
     # Import args to check number of human players
     from src.backend.config import args
 
+    # Get human positions from game data
+    human_positions = game_data.get('human_positions', [0])
+    
     # Keep playing AI turns until it's a human player's turn or game is over
-    while not (0 <= game['current_player'] < args.human) and not game['game_over']:
+    while game['current_player'] not in human_positions and not game['game_over']:
         # Check if a trick has been completed but not yet cleared
         if game.get('trick_winner') is not None:
             # Handle trick completion
@@ -196,24 +199,28 @@ def ai_play_turn(socketio, game_id):
             # Print scoreboard after trick completion
             print_scoreboard("After Trick Completion", game)
             
-            # If the new current player is the human player, break out of the loop
-            if game['current_player'] == 0:
+            # If the new current player is a human player, break out of the loop
+            if game['current_player'] in human_positions:
                 break
         
         current_player = game['current_player']
         
-        # Ensure current_player is valid (1, 2, or 3)
-        if current_player < 1 or current_player > 3:
-            print(f"Error: Invalid current_player: {current_player}")
+        # Check if current player is a human player
+        if current_player in human_positions:
+            print(f"Error: Current player {current_player} is a human player")
             break
             
-        # Adjust AI index based on number of human players
-        from src.backend.config import args
-        ai_idx = current_player - args.human
+        # Find the AI index for this player
+        ai_idx = 0  # Default to first AI agent
+        
+        # Count how many AI players come before this one
+        for i in range(current_player):
+            if i not in human_positions:
+                ai_idx += 1
         
         # Ensure ai_idx is valid
         if ai_idx < 0 or ai_idx >= len(ai_agents):
-            print(f"Error: Invalid AI index: {ai_idx} (current_player: {current_player}, human players: {args.human})")
+            print(f"Error: Invalid AI index: {ai_idx} (current_player: {current_player}, human positions: {human_positions})")
             break
             
         agent = ai_agents[ai_idx]

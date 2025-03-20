@@ -24,6 +24,7 @@ from src.backend.handlers.game_state_routes import (
     get_current_trick, get_last_trick, round_summary, get_ai_hands, get_game_state_route
 )
 from src.backend.handlers.session_handlers import check_session_route
+from src.backend.handlers.multiplayer import join_page, join_game, get_active_games
 from src.backend.card_utils import cards_equal
 from src.backend.config import games, scoreboard
 
@@ -100,3 +101,18 @@ def register_routes(app, socketio):
     def check_session_route_handler():
         """Check if there's an active game session."""
         return check_session_route()
+        
+    @app.route('/join', methods=['GET'])
+    def join_route():
+        """Render the join game page."""
+        return join_page()
+        
+    @app.route('/join_game', methods=['POST'])
+    def join_game_route():
+        """Handle a request to join a game."""
+        return join_game()
+        
+    @app.route('/get_active_games', methods=['GET'])
+    def get_active_games_route():
+        """Get a list of active games with available AI positions."""
+        return get_active_games()

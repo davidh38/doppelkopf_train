@@ -94,6 +94,20 @@ function reconnectToGame(gameId) {
   // Join the Socket.IO room for this game with the correct player index
   eventBus.emit('joinRoom', { game_id: gameId, player_idx: gameState.playerIdx });
   
+  // Update the UI to show which player this client is controlling
+  const playerIndicator = document.createElement('div');
+  playerIndicator.id = 'player-indicator';
+  playerIndicator.style.position = 'fixed';
+  playerIndicator.style.top = '10px';
+  playerIndicator.style.right = '10px';
+  playerIndicator.style.backgroundColor = '#3498db';
+  playerIndicator.style.color = 'white';
+  playerIndicator.style.padding = '5px 10px';
+  playerIndicator.style.borderRadius = '4px';
+  playerIndicator.style.zIndex = '1000';
+  playerIndicator.textContent = `Playing as Player ${gameState.playerIdx}`;
+  document.body.appendChild(playerIndicator);
+  
   // Get the full game state
   fetch('/get_game_state')
     .then(response => response.json())

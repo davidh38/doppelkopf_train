@@ -3,7 +3,7 @@ Game state route handlers for the Doppelkopf game.
 """
 from flask import jsonify, request, render_template
 from src.backend.game_state import get_game_state, card_to_dict, generate_round_summary, update_scoreboard_for_game_over
-from src.backend.handlers.session_handlers import get_game_id_from_session
+from src.backend.handlers.session_handlers import get_game_id_from_session, get_player_idx_from_session
 from src.backend.config import games, scoreboard
 from src.backend.game.doppelkopf import (
     TEAM_RE, TEAM_KONTRA, TEAM_UNKNOWN,
@@ -27,8 +27,11 @@ def get_game_state_route():
             'error': 'No game ID found in session'
         }), 400
     
-    # Get the game state
-    game_state = get_game_state(game_id)
+    # Get the player index from the session
+    player_idx = get_player_idx_from_session()
+    
+    # Get the game state for this player
+    game_state = get_game_state(game_id, player_idx)
     
     if not game_state:
         return jsonify({

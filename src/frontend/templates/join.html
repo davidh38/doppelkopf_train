@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Join Doppelkopf Game</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <style>
+        .join-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        .join-btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 18px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .join-btn:hover {
+            background-color: #2980b9;
+        }
+        
+        .error-message {
+            color: #e74c3c;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        
+        .success-message {
+            color: #2ecc71;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        
+        .available-games {
+            margin-top: 30px;
+            text-align: left;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        
+        .game-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .game-item:last-child {
+            border-bottom: none;
+        }
+        
+        .game-id {
+            font-weight: bold;
+            color: #3498db;
+        }
+        
+        .player-position {
+            display: inline-block;
+            margin: 5px;
+            padding: 8px 12px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        
+        .player-position.human {
+            background-color: #e8f4f8;
+            border-color: #3498db;
+        }
+        
+        .player-position.ai {
+            background-color: #f8f4e8;
+            border-color: #e67e22;
+            cursor: pointer;
+        }
+        
+        .player-position.ai:hover {
+            background-color: #f5efe0;
+            border-color: #d35400;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Join Doppelkopf Game</h1>
+        
+        <div class="join-container">
+            <h2>Join an Existing Game</h2>
+            <p>Enter a game ID and select an AI position to take over.</p>
+            
+            <form id="join-form" action="/join_game" method="post">
+                <div class="form-group">
+                    <label for="game-id">Game ID:</label>
+                    <input type="text" id="game-id" name="game_id" placeholder="Enter game ID" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="player-position">Select Position to Take Over:</label>
+                    <select id="player-position" name="player_position" required>
+                        <option value="" disabled selected>Select a position</option>
+                        <option value="1">Player 1</option>
+                        <option value="2">Player 2</option>
+                        <option value="3">Player 3</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="join-btn">Join Game</button>
+            </form>
+            
+            <div id="error-message" class="error-message" style="display: none;"></div>
+            <div id="success-message" class="success-message" style="display: none;"></div>
+            
+            {% if active_games %}
+            <div class="available-games">
+                <h3>Available Games</h3>
+                {% for game in active_games %}
+                <div class="game-item">
+                    <div>Game ID: <span class="game-id">{{ game.id }}</span></div>
+                    <div>Players:</div>
+                    {% for position, is_human in game.positions.items() %}
+                    <div class="player-position {% if is_human %}human{% else %}ai{% endif %}" 
+                         data-game-id="{{ game.id }}" 
+                         data-position="{{ position }}"
+                         {% if not is_human %}onclick="selectPosition('{{ game.id }}', {{ position }})"{% endif %}>
+                        Player {{ position }}: {% if is_human %}Human{% else %}AI{% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <div style="margin-top: 20px;">
+                <a href="/" class="btn">Back to Home</a>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function selectPosition(gameId, position) {
+            document.getElementById('game-id').value = gameId;
+            document.getElementById('player-position').value = position;
+        }
+        
+        document.getElementById('join-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            const gameId = document.getElementById('game-id').value;
+            const position = document.getElementById('player-position').value;
+            
+            if (!gameId || !position) {
+                showError('Please enter a game ID and select a position.');
+                return;
+            }
+            
+            // Submit the form using fetch
+            fetch('/join_game', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    game_id: gameId,
+                    player_position: position
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showSuccess('Successfully joined the game! Redirecting...');
+                    // Redirect to the game page
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1500);
+                } else {
+                    showError(data.error || 'Failed to join the game.');
+                }
+            })
+            .catch(error => {
+                showError('An error occurred. Please try again.');
+                console.error('Error:', error);
+            });
+        });
+        
+        function showError(message) {
+            const errorElement = document.getElementById('error-message');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+            document.getElementById('success-message').style.display = 'none';
+        }
+        
+        function showSuccess(message) {
+            const successElement = document.getElementById('success-message');
+            successElement.textContent = message;
+            successElement.style.display = 'block';
+            document.getElementById('error-message').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

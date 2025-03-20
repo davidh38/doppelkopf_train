@@ -249,7 +249,8 @@ export function playCard(cardId) {
     },
     body: JSON.stringify({
       game_id: gameState.game_id,
-      card_id: cardId
+      card_id: cardId,
+      player_idx: gameState.playerIdx
     })
   })
   .then(response => response.json())
